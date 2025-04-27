@@ -7,7 +7,6 @@ from python_di.configs.bean import test_inject
 from python_di.configs.test import test_booter, boot_test
 from python_di.inject.profile_composite_injector.inject_context_di import autowire_fn
 
-
 @test_booter(scan_root_module=AgentConfig)
 class ServerRunnerBoot:
     pass
