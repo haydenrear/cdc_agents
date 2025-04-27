@@ -1,0 +1,16 @@
+class a(object):
+  pass
+
+@b
+@c()
+class   d  (   e ,  f):
+  pass
+
+class g:
+  pass
+
+class h():
+  pass
+
+class i(j, k,):
+  pass

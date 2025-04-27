@@ -1,0 +1,6 @@
+services:
+  model-server:
+    image: cdc_agents
+    container_name: cdc-agents-container
+    ports:
+      - "9992:9992"

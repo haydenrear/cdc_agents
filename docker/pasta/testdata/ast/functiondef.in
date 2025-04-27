@@ -1,0 +1,30 @@
+def a(b):
+  c
+
+def   d  (   e  ,f= g, *h,  ** i ):
+  j
+
+def k():
+  l
+  m
+  return n
+
+@o()
+@p
+@q(r, s, t=u)
+def v():
+  w
+
+def x(y, z=a,):
+  b
+
+class A:
+  @b
+  @c
+  def d():
+    e
+
+def f(
+    g, h=i
+    ):
+  j

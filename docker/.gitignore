@@ -1,0 +1,9 @@
+drools_py_copied/
+metadata_extractor_copied/
+python_di_copied/
+python_util_copied/
+src/
+resources/
+application-docker.yml
+docker.env
+requirements.txt

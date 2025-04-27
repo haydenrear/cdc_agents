@@ -1,0 +1,22 @@
+work_dir: "/cdc_agents_home/work"
+env_factories:
+  factories:
+    test:
+      - factory: python_di.inject.context_builder.factory_ctx.FactoryCtx
+        lazy: "False"
+      - factory: python_di.inject.reflectable_ctx.ReflectableCtx
+        lazy: "False"
+      - factory: drools_py.inject.serialization_ctx.SerializationCtx
+        lazy: "False"
+agent_config:
+  agents:
+    - agent_card:
+      agent_clazz: cdc_agents.agent.agent.CurrencyAgent
+profiles:
+  active_profiles:
+    main_profile:
+      profile_name: main_profile
+      priority: 1000000
+  default_profile:
+    profile_name: main_profile
+    priority: 1000000

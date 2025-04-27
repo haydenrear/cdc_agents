@@ -1,0 +1,50 @@
+try:
+  a
+except:
+  b
+
+try  :
+  c
+except d as e  :
+  f
+else  :
+  g
+
+try:
+  h
+  i
+except   j   as    k:
+  l
+  m
+except  n:
+  o
+finally  :
+  p
+  q
+
+try:
+  # 1
+  try:
+    r
+  except:
+    s
+except:
+  t
+
+try:
+  # 2
+  try:
+    u
+  except:
+    v
+finally:
+  w
+
+try:
+  # 3
+  try:
+    x
+  finally:
+    y
+finally:
+  z
