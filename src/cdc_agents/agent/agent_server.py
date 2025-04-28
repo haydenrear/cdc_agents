@@ -7,7 +7,7 @@ from cdc_agents.common.server.server import DynamicA2AServer
 from cdc_agents.common.types import AgentCard, AgentCapabilities, AgentSkill, MissingAPIKeyError
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.agent.task_manager import AgentTaskManager
-from cdc_agents.agent.agent import CurrencyAgent, A2AAgent
+from cdc_agents.agent.agent import A2AAgent
 import click
 import os
 
