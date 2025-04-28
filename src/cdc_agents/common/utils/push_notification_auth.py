@@ -32,7 +32,7 @@ class PushNotificationAuth:
         return hashlib.sha256(body_str.encode()).hexdigest()
 
 class PushNotificationSenderAuth(PushNotificationAuth):
-    def __init__(self):
+    def     __init__(self):
         self.public_keys = []
         self.private_key_jwk: PyJWK = None
 

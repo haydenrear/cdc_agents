@@ -24,7 +24,7 @@ from cdc_agents.common.types import (
     InvalidParamsError,
 )
 from cdc_agents.common.server.task_manager import InMemoryTaskManager
-from cdc_agents.agent.agent import CurrencyAgent
+from cdc_agents.agent.agent import CurrencyAgent, A2AAgent
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 import cdc_agents.common.server.utils as utils
 from typing import Union
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentTaskManager(InMemoryTaskManager):
-    def __init__(self, agent: CurrencyAgent, notification_sender_auth: PushNotificationSenderAuth):
+    def __init__(self, agent: A2AAgent, notification_sender_auth: PushNotificationSenderAuth):
         super().__init__()
         self.agent = agent
         self.notification_sender_auth = notification_sender_auth

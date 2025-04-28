@@ -1,3 +1,4 @@
+import typing
 from typing import Union, Any
 from pydantic import BaseModel, Field, TypeAdapter
 from typing import Literal, List, Annotated, Optional
@@ -90,6 +91,9 @@ class Task(BaseModel):
     history: List[Message] | None = None
     metadata: dict[str, Any] | None = None
 
+class AgentPosted(BaseModel):
+    success: bool
+    endpoint: str
 
 class TaskStatusUpdateEvent(BaseModel):
     id: str
@@ -191,6 +195,8 @@ class GetTaskRequest(JSONRPCRequest):
 class GetTaskResponse(JSONRPCResponse):
     result: Task | None = None
 
+class PostAgentResponse(JSONRPCResponse):
+    result: AgentPosted | None = None
 
 class CancelTaskRequest(JSONRPCRequest):
     method: Literal["tasks/cancel",] = "tasks/cancel"
@@ -327,6 +333,15 @@ class AgentSkill(BaseModel):
     inputModes: List[str] | None = None
     outputModes: List[str] | None = None
 
+class AgentCode(BaseModel):
+    code: str
+    py_file: str
+
+class AgentDescriptor(BaseModel):
+    model: str
+    system_instruction: str
+    tools: typing.List[str] = None
+    agent_name: str
 
 class AgentCard(BaseModel):
     name: str
