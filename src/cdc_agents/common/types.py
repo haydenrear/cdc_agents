@@ -339,9 +339,9 @@ class AgentCode(BaseModel):
 
 class AgentDescriptor(BaseModel):
     model: str
-    system_instruction: str
-    tools: typing.List[str] = None
     agent_name: str
+    system_instruction: str = None
+    tools: typing.List[str] = None
 
 class AgentCard(BaseModel):
     name: str

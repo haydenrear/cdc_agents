@@ -24,7 +24,7 @@ from cdc_agents.common.types import (
     InvalidParamsError,
 )
 from cdc_agents.common.server.task_manager import InMemoryTaskManager
-from cdc_agents.agent.agent import CurrencyAgent, A2AAgent
+from cdc_agents.agent.agent import A2AAgent
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 import cdc_agents.common.server.utils as utils
 from typing import Union

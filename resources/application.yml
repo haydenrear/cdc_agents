@@ -1,7 +1,20 @@
 agent_config:
   agents:
-    - agent_card:
-      agent_clazz: cdc_agents.agent.agent.CurrencyAgent
+    CurrencyAgent:
+      agent_card:
+      agent_clazz: cdc_agents.agent.agents.currency_agent.CurrencyAgent
+    CdcAgent:
+      agent_card:
+      agent_clazz: cdc_agents.agent.agent.commit_diff_context_server_agent.CdcAgent
+      agent_descriptor:
+        model: ollama_chat://ollama_chat/hermes3:3b
+        agent_name: CdcAgent
+    DeepCodeAgent:
+      agent_card:
+      agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeAgent
+      agent_descriptor:
+        model: ollama_chat://ollama_chat/hermes3:3b
+        agent_name: DeepCodeAgent
 profiles:
   active_profiles:
     main_profile:

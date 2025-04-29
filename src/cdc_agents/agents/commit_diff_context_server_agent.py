@@ -1,3 +1,5 @@
+import abc
+import array
 import dataclasses
 import enum
 import typing
@@ -5,13 +7,16 @@ from typing import Any, Dict, AsyncIterable
 
 import httpx
 import injector
+import torch
+from array import ArrayType
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 
-from cdc_agents.agent.agent import A2AAgent, ResponseFormat
+from cdc_agents.agent.agent import A2AAgent, ResponseFormat, BaseAgent
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
+from python_di.inject.profile_composite_injector.scopes.prototype_scope import prototype_scope
 
 
 class GitAction(enum.Enum):
@@ -57,7 +62,7 @@ class GitRepoResult:
 def perform_git_actions(actions_to_perform: typing.List[str] | str | typing.List[GitAction],
                         git_repo_url: str, git_branch: str,
                         perform_ops_async: bool) -> GitRepoResult:
-    """Use this to embed a git repository for code context
+    """Use this to embed a git repository for code context.
 
     Args:
         git_repo_url: the git repo URL for the repository to embed.
@@ -73,47 +78,58 @@ def perform_git_actions(actions_to_perform: typing.List[str] | str | typing.List
         perform_ops_async: whether to return immediately or wait until all operations are completed
     Returns: a result object containing information about the operations completed
     """
-    pass
+    raise NotImplementedError()
+
+@dataclasses.dataclass(init=True)
+class GitRepo:
+    git_repo_url: str
+    git_branch: str
+
+@dataclasses.dataclass(init=True)
+class CommitDiffFileItem:
+    path: str
+    source: str
+
+@dataclasses.dataclass(init=True)
+class CommitDiffFileResult:
+    errs: typing.List[Error]
+    files: typing.List
+
 
 @tool
-def retrieve_commit_diff_code_context():
-    """Use this to get current exchange rate.
+def retrieve_commit_diff_code_context(git_repos: typing.List[GitRepo],
+                                      query: str) -> CommitDiffFileResult:
+    """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts.
 
     Args:
-        currency_from: The currency to convert from (e.g., "USD").
-        currency_to: The currency to convert to (e.g., "EUR").
-        currency_date: The date for the exchange rate or "latest". Defaults to "latest".
+        git_repos: a list of git repositories to sample from. These should have been previously embedded using perform_git_actions function.
+        query: a code snippet or embedding to use to condition the response. Will be used to search the database for related commit diffs.
 
     Returns:
-        A dictionary containing the exchange rate data, or an error message if the request fails.
+        a result object containing a list of source files, with the source field containing the XML delimited history of the source code, up to the current state of the file.
     """
-    try:
-        return None
-        # response.raise_for_status()
-        #
-        # data = response.json()
-        # if "rates" not in data:
-        #     return {"error": "Invalid API response format."}
-        # return data
-    except httpx.HTTPError as e:
-        return {"error": f"API request failed: {e}"}
-    except ValueError:
-        return {"error": "Invalid JSON response from API."}
+    raise NotImplementedError()
 
-@component()
+class DeepResearchOrchestrated(BaseAgent, abc.ABC):
+    """
+    Marker interface for DI, marking the agents being orchestrated.
+    """
+    pass
+
+@component(bind_to=[DeepResearchOrchestrated])
 @injectable()
-class CdcAgent(A2AAgent):
+class CdcAgent(DeepResearchOrchestrated, A2AAgent):
 
     SYSTEM_INSTRUCTION = (
         """
         You are a specialized assistant for code context information.
-        Your sole purpose is to use the 'get_exchange_rate' tool to answer questions about currency exchange rates.
-        If the user asks about anything other than currency conversion or exchange rates,
-        politely state that you cannot help with that topic and can only assist with currency-related queries. 
-        Do not attempt to answer unrelated questions or use tools for other purposes.
-        Set response status to input_required if the user needs to provide more information.
-        Set response status to error if there is an error while processing the request.
-        Set response status to completed if the request is complete.
+        # Your sole purpose is to use the 'get_exchange_rate' tool to answer questions about currency exchange rates.
+        # If the user asks about anything other than currency conversion or exchange rates,
+        # politely state that you cannot help with that topic and can only assist with currency-related queries. 
+        # Do not attempt to answer unrelated questions or use tools for other purposes.
+        # Set response status to input_required if the user needs to provide more information.
+        # Set response status to error if there is an error while processing the request.
+        # Set response status to completed if the request is complete.
         """
     )
 
@@ -123,7 +139,7 @@ class CdcAgent(A2AAgent):
                           agent_config.agents['CdcAgent'].agent_descriptor.model if 'CdcAgent' in agent_config.agents.keys() else None,
                           [retrieve_commit_diff_code_context, perform_git_actions],
                           self.SYSTEM_INSTRUCTION)
-        self.agent_config: AgentCardItem = agent_config['CdcAgent'] \
+        self.agent_config: AgentCardItem = agent_config.agents['CdcAgent'] \
             if 'CdcAgent' in agent_config.agents.keys() else None
 
     def invoke(self, query, sessionId) -> str:
@@ -132,58 +148,12 @@ class CdcAgent(A2AAgent):
         return self.get_agent_response(config)
 
     async def stream(self, query, sessionId) -> AsyncIterable[Dict[str, Any]]:
-        inputs = {"messages": [("user", query)]}
-        config = {"configurable": {"thread_id": sessionId}}
-
-        for item in self.graph.stream(inputs, config, stream_mode="values"):
-            message = item["messages"][-1]
-            if (
-                    isinstance(message, AIMessage)
-                    and message.tool_calls
-                    and len(message.tool_calls) > 0
-            ):
-                yield {
-                    "is_task_complete": False,
-                    "require_user_input": False,
-                    "content": "Looking up the exchange rates...",
-                }
-            elif isinstance(message, ToolMessage):
-                yield {
-                    "is_task_complete": False,
-                    "require_user_input": False,
-                    "content": "Processing the exchange rates..",
-                }
-
-        yield self.get_agent_response(config)
-
+        return self.stream_agent_response_graph(query, sessionId, self.graph)
 
     def get_agent_response(self, config):
-        current_state = self.graph.get_state(config)
-        structured_response = current_state.values.get('structured_response')
-        if structured_response and isinstance(structured_response, ResponseFormat):
-            if structured_response.status == "input_required":
-                return {
-                    "is_task_complete": False,
-                    "require_user_input": True,
-                    "content": structured_response.message
-                }
-            elif structured_response.status == "error":
-                return {
-                    "is_task_complete": False,
-                    "require_user_input": True,
-                    "content": structured_response.message
-                }
-            elif structured_response.status == "completed":
-                return {
-                    "is_task_complete": True,
-                    "require_user_input": False,
-                    "content": structured_response.message
-                }
+        return self.get_agent_response_graph(config, self.graph)
 
-        return {
-            "is_task_complete": False,
-            "require_user_input": True,
-            "content": "We are unable to process your request at the moment. Please try again.",
-        }
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
+
+
