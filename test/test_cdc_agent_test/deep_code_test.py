@@ -29,5 +29,7 @@ class AgentConfigPropsTest(unittest.TestCase):
     def test_deep_code_injection(self):
         assert self.ai_suite
         assert self.code
+        assert self.code.agents
+        assert len(self.code.agents) != 0
 
 
