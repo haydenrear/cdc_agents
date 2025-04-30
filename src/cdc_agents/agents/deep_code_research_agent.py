@@ -1,4 +1,7 @@
-from cdc_agents.agent.agent import A2AAgent, StateGraphA2AOrchestrator, OrchestratedAgent, A2AOrchestratorAgent
+import abc
+
+from cdc_agents.agent.agent import A2AAgent, StateGraphA2AOrchestrator, OrchestratedAgent, A2AOrchestratorAgent, \
+    BaseAgent
 import dataclasses
 import enum
 import typing
@@ -11,10 +14,22 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 
 from cdc_agents.agent.agent import A2AAgent, ResponseFormat
-from cdc_agents.agents.commit_diff_context_server_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
+
+class DeepResearchOrchestrated(BaseAgent, abc.ABC):
+    """
+    Marker interface for DI, marking the agents being orchestrated.
+    """
+    @property
+    @abc.abstractmethod
+    def orchestrator_prompt(self):
+        """
+        :return: what information to provide the orchestrator in a prompt.
+        """
+        pass
+
 
 @tool
 def call_a_friend():
@@ -33,21 +48,19 @@ class DeepCodeAgent(A2AOrchestratorAgent, DeepResearchOrchestrated):
 
     SYSTEM_INSTRUCTION = (
         """
-        You are a specialized assistant for code context information.
-        # Your sole purpose is to use the 'get_exchange_rate' tool to answer questions about currency exchange rates.
-        # If the user asks about anything other than currency conversion or exchange rates,
-        # politely state that you cannot help with that topic and can only assist with currency-related queries. 
-        # Do not attempt to answer unrelated questions or use tools for other purposes.
-        # Set response status to input_required if the user needs to provide more information.
-        # Set response status to error if there is an error while processing the request.
-        # Set response status to completed if the request is complete.
+        You are an orchestrator agent that delegates to other agents to retrieve contextual information for generating code 
+        that can add features and submit bug patches across multiple repositories and projects.
+        The agents that you orchestrate have access to tools that they can use to provide contextual information to you, orchestrate
+        tooling to facilitate adding contextual information to you, generate the code, and run the code to provide feedback
+        and testing services.
         """
     )
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         A2AAgent.__init__(self,
-                          agent_config.agents['DeepCodeAgent'].agent_descriptor.model if 'DeepCodeAgent' in agent_config.agents.keys() else None,
+                          agent_config.agents['DeepCodeAgent'].agent_descriptor.model
+                          if 'DeepCodeAgent' in agent_config.agents.keys() else None,
                           [call_a_friend],
                           self.SYSTEM_INSTRUCTION)
         self.agent_config: AgentCardItem = agent_config.agents['DeepCodeAgent'] \

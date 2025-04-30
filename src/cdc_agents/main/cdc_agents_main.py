@@ -1,5 +1,3 @@
-import os
-
 from cdc_agents.agent.agent_server import AgentServerRunner
 from python_di.configs.app import boot_application
 
