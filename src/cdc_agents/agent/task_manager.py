@@ -22,6 +22,8 @@ from cdc_agents.common.types import (
     TaskPushNotificationConfig,
     TaskNotFoundError,
     InvalidParamsError,
+    # PushTaskEvent,
+    GetTaskResponse, PushTaskEvent,
 )
 from cdc_agents.common.server.task_manager import InMemoryTaskManager
 from cdc_agents.agent.agent import A2AAgent
@@ -36,6 +38,10 @@ logger = logging.getLogger(__name__)
 
 
 class AgentTaskManager(InMemoryTaskManager):
+
+    async def on_push_task_event(self, request: PushTaskEvent) -> GetTaskResponse:
+        raise NotImplementedError("Hasn't been implemented yet")
+
     def __init__(self, agent: A2AAgent, notification_sender_auth: PushNotificationSenderAuth):
         super().__init__()
         self.agent = agent
@@ -100,14 +106,15 @@ class AgentTaskManager(InMemoryTaskManager):
     def _validate_request(
         self, request: Union[SendTaskRequest, SendTaskStreamingRequest]
     ) -> JSONRPCResponse | None:
+        raise NotImplementedError("need to implement supported content types for all.")
         task_send_params: TaskSendParams = request.params
         if not utils.are_modalities_compatible(
-            task_send_params.acceptedOutputModes, CurrencyAgent.SUPPORTED_CONTENT_TYPES
+            task_send_params.acceptedOutputModes, self.agent.SUPPORTED_CONTENT_TYPES
         ):
             logger.warning(
                 "Unsupported output mode. Received %s, Support %s",
                 task_send_params.acceptedOutputModes,
-                CurrencyAgent.SUPPORTED_CONTENT_TYPES,
+                self.agent.SUPPORTED_CONTENT_TYPES,
             )
             return utils.new_incompatible_types_error(request.id)
         

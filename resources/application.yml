@@ -1,11 +1,17 @@
 agent_config:
   agents:
-    CdcAgent:
+    CdcCodegenAgent:
       agent_card:
-      agent_clazz: cdc_agents.agent.agent.commit_diff_context_server_agent.CdcAgent
+      agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodegenAgent
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:3b
-        agent_name: CdcAgent
+        agent_name: CdcCodegenAgent
+    CdcCodeSearchAgent:
+      agent_card:
+      agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodeSearchAgent
+      agent_descriptor:
+        model: ollama_chat://ollama_chat/hermes3:3b
+        agent_name: CdcCodeSearchAgent
     DeepCodeAgent:
       agent_card:
       agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeAgent

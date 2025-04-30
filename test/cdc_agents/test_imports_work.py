@@ -1,6 +1,6 @@
 import unittest
 
-from cdc_agents.agent.agent import get_exchange_rate
+from cdc_agents.agents.currency_agent import get_exchange_rate
 from cdc_agents.agent.task_manager import AgentTaskManager
 
 class DoTestImportsWork(unittest.TestCase):

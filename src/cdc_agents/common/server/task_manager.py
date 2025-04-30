@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Union, AsyncIterable, List
-from cdc_agents.common.types import Task
+from cdc_agents.common.types import Task, PushTaskEvent
 from cdc_agents.common.types import (
     JSONRPCResponse,
     TaskIdParams,
@@ -38,6 +38,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TaskManager(ABC):
+
+    @abstractmethod
+    async def on_push_task_event(self, request: PushTaskEvent) -> GetTaskResponse:
+        pass
+
     @abstractmethod
     async def on_get_task(self, request: GetTaskRequest) -> GetTaskResponse:
         pass

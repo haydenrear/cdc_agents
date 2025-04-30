@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 import typing
 from typing import Any, Dict, AsyncIterable
 from typing import Literal
@@ -8,12 +9,14 @@ from langchain_core.messages import HumanMessage, BaseMessage
 from langchain_ollama import ChatOllama, OllamaLLM
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import MessagesState, END
+from langchain_core.runnables.config import  RunnableConfig
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 from pydantic import BaseModel
 
 from cdc_agents.config.agent_config_props import AgentConfigProps
+from python_util.logger.logger import LoggerFacade
 
 memory = MemorySaver()
 
@@ -53,15 +56,19 @@ class A2AAgent(BaseAgent, abc.ABC):
         self._agent_name = str(self.__class__)
 
     @property
+    def supported_content_types(self) -> str:
+        raise NotImplementedError("implement for all!")
+
+    @property
     def agent_name(self) -> str:
         return self._agent_name
 
     @abc.abstractmethod
-    async def stream(self, query, sessionId) -> AsyncIterable[Dict[str, Any]]:
+    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
         pass
 
     @abc.abstractmethod
-    def get_agent_response(self, config):
+    def get_agent_response(self, config, graph):
         pass
 
     @staticmethod
@@ -121,7 +128,7 @@ class A2AAgent(BaseAgent, abc.ABC):
 class A2AOrchestratorAgent(A2AAgent, abc.ABC):
     pass
 
-class A2AAgentOrchestrator(BaseAgent, abc.ABC):
+class A2AAgentOrchestrator(A2AAgent, abc.ABC):
     # def __init__(self, model, tools, system_instruction, agents: typing.List[A2AAgent]):
     pass
 
@@ -134,6 +141,11 @@ class DelegatingToolA2AAgentOrchestrator(A2AAgentOrchestrator, abc.ABC):
 class OrchestratedAgent:
     def __init__(self, agent: A2AAgent):
         self.agent = agent
+
+@dataclasses.dataclass(init=True)
+class OrchestratorAgentGraph:
+    state_graph: StateGraph
+    config: RunnableConfig
 
 class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
     """
@@ -149,6 +161,7 @@ class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
         self.props = props
         self.orchestrator_agent = orchestrator_agent
         self.agents = agents
+        self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
 
     @staticmethod
     def get_next_node(last_message: BaseMessage, goto: str):
@@ -173,7 +186,11 @@ class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
             goto=goto,
         )
 
-    def invoke(self, query, sessionId):
+    def _create_orchestration_graph(self, sessionId) -> OrchestratorAgentGraph:
+        return OrchestratorAgentGraph(self._create_state_graph(sessionId),
+                                      self._create_orchestration_config(sessionId))
+
+    def _create_state_graph(self, sessionId) -> StateGraph:
         state_graph = StateGraph(MessagesState)
         state_graph.add_node(self.orchestrator_agent.agent_name,
                              lambda state: self.next_node(self.orchestrator_agent, state, sessionId))
@@ -182,12 +199,33 @@ class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
             state_graph.add_node(agent_name, lambda state: self.next_node(agent.agent, state, sessionId))
 
         state_graph.set_entry_point(self.orchestrator_agent.agent_name)
-        graph = state_graph.compile()
+        return state_graph
 
-        config = {
+    def _create_orchestration_config(self, sessionId) -> RunnableConfig:
+        return {
             "configurable": {"thread_id": sessionId},
-            "recursion_limit": self.props.orchestrator_max_recurs}
+            "recursion_limit": self.max_recurs}
 
+    def invoke(self, query, sessionId):
+        config, graph = self._create_invoke_graph(query, sessionId)
+        return self.get_agent_response(config, graph)
+
+    def _create_invoke_graph(self, query, sessionId):
+        a = self._create_orchestration_graph(sessionId)
+        config = a.config
+        state_graph = a.state_graph
+        graph = state_graph.compile()
         graph.invoke({"messages": [("user", query)]}, config)
+        return config, graph
 
-        return A2AAgent.get_agent_response_graph(config, graph)
+    def get_agent_response(self, config, graph = None):
+        if graph is None:
+            LoggerFacade.error("Graph was None for State Graph - get_agent_response must be called after invoked.")
+        return self.get_agent_response_graph(config, graph)
+
+    async def stream(self, query, sessionId, graph = None) -> AsyncIterable[Dict[str, Any]]:
+        if graph is None:
+            _, graph = self._create_invoke_graph(query, sessionId)
+        return self.stream_agent_response_graph(query, sessionId, graph)
+
+

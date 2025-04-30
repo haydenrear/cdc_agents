@@ -9,7 +9,6 @@ from starlette.requests import Request
 
 import python_util.io_utils.file_dirs
 from cdc_agents.agent.agent import A2AAgent
-from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.common.types import (
     A2ARequest,
     JSONRPCResponse,
@@ -158,6 +157,7 @@ class DynamicA2AServer:
 
     @staticmethod
     def _do_put_agent(body, agents):
+        from cdc_agents.agent.task_manager import AgentTaskManager
         agent_card = AgentCard(**body['agent_card'])
         agent_code = AgentCode(**body['agent_code'])
         agent_descriptor = AgentDescriptor(**body['agent_descriptor'])

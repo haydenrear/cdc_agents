@@ -191,6 +191,12 @@ class GetTaskRequest(JSONRPCRequest):
     method: Literal["tasks/get"] = "tasks/get"
     params: TaskQueryParams
 
+class TaskEventBody(BaseModel):
+    body_value: typing.Dict[str, typing.Union[typing.Dict, str]]
+
+class PushTaskEvent(JSONRPCRequest):
+    method: Literal["tasks/pushEvent"] = "tasks/pushEvent"
+    body: TaskEventBody
 
 class GetTaskResponse(JSONRPCResponse):
     result: Task | None = None
@@ -210,7 +216,6 @@ class CancelTaskResponse(JSONRPCResponse):
 class SetTaskPushNotificationRequest(JSONRPCRequest):
     method: Literal["tasks/pushNotification/set",] = "tasks/pushNotification/set"
     params: TaskPushNotificationConfig
-
 
 class SetTaskPushNotificationResponse(JSONRPCResponse):
     result: TaskPushNotificationConfig | None = None

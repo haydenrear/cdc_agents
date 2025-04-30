@@ -11,34 +11,48 @@ from langchain_core.tools import tool
 
 @tool
 def perform_local_file_operation():
+    """
+    """
     pass
 
 @tool
 def perform_git_operation():
+    """
+    """
     pass
 
 @tool
 def perform_browser_operation():
+    """
+    """
     pass
 
 @tool
 def retrieve_dependency_descriptor():
+    """
+    """
     pass
 
 @tool
 def search_github_for_sources():
+    """
+    """
     pass
 
 @tool
 def search_gitlab_for_sources():
+    """
+    """
     pass
 
 @tool
 def search_maven_repo_for_sources():
+    """
+    """
     pass
 
-@component(bind_to=[DeepResearchOrchestrated])
-@injectable()
+# @component(bind_to=[DeepResearchOrchestrated])
+# @injectable()
 class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AAgent):
 
     SYSTEM_INSTRUCTION = (
@@ -54,7 +68,7 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AAgent):
         """
     )
 
-    @injector.inject
+    # @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         cdc_codegen_agent = str(LibraryEnumerationAgent)
         A2AAgent.__init__(self,
@@ -77,10 +91,10 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AAgent):
         self.graph.invoke({"messages": [("user", query)]}, config)
         return self.get_agent_response(config)
 
-    async def stream(self, query, sessionId) -> AsyncIterable[Dict[str, Any]]:
+    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
         return self.stream_agent_response_graph(query, sessionId, self.graph)
 
-    def get_agent_response(self, config):
+    def get_agent_response(self, config, graph=None):
         return self.get_agent_response_graph(config, self.graph)
 
 

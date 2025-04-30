@@ -61,11 +61,11 @@ class CurrencyAgent(A2AAgent):
         self.graph.invoke({"messages": [("user", query)]}, config)
         return self.get_agent_response(config)
 
-    async def stream(self, query, sessionId) -> AsyncIterable[Dict[str, Any]]:
+    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
         return self.stream_agent_response_graph(query, sessionId, self.graph)
 
 
-    def get_agent_response(self, config):
+    def get_agent_response(self, config, graph=None):
         return self.get_agent_response_graph(config, self.graph)
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]

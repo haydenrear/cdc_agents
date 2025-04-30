@@ -11,22 +11,30 @@ from langchain_core.tools import tool
 
 @tool
 def perform_docker_operation():
+    """
+    """
     pass
 
 @tool
 def perform_local_file_operation():
+    """
+    """
     pass
 
 @tool
 def perform_git_operation():
+    """
+    """
     pass
 
 @tool
 def perform_browser_operation():
+    """
+    """
     pass
 
-@component(bind_to=[DeepResearchOrchestrated])
-@injectable()
+# @component(bind_to=[DeepResearchOrchestrated])
+# @injectable()
 class CodeRunnerAgent(DeepResearchOrchestrated, A2AAgent):
 
     SYSTEM_INSTRUCTION = (
@@ -42,7 +50,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AAgent):
         """
     )
 
-    @injector.inject
+    # @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         cdc_codegen_agent = str(CodeRunnerAgent)
         A2AAgent.__init__(self,
@@ -64,10 +72,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AAgent):
         self.graph.invoke({"messages": [("user", query)]}, config)
         return self.get_agent_response(config)
 
-    async def stream(self, query, sessionId) -> AsyncIterable[Dict[str, Any]]:
+    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
         return self.stream_agent_response_graph(query, sessionId, self.graph)
 
-    def get_agent_response(self, config):
+    def get_agent_response(self, config, graph=None):
         return self.get_agent_response_graph(config, self.graph)
 
 
