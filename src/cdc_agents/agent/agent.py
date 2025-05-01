@@ -1,4 +1,5 @@
 import abc
+import asyncio
 import dataclasses
 import typing
 from typing import Any, Dict, AsyncIterable
@@ -7,6 +8,7 @@ from typing import Literal
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages import HumanMessage, BaseMessage
 from langchain_core.runnables.config import RunnableConfig
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_ollama import ChatOllama, OllamaLLM
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import MessagesState, END
@@ -16,7 +18,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from cdc_agents.common.types import PushTaskEvent, PushTaskEventResponseItem
-from cdc_agents.config.agent_config_props import AgentConfigProps
+from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool
 from python_util.logger.logger import LoggerFacade
 
 memory = MemorySaver()
@@ -60,11 +62,23 @@ class A2AAgent(BaseAgent, abc.ABC):
             if model.startswith('ollama_chat://'):
                 self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
 
+
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=memory,
             prompt = self.system_instruction, response_format=ResponseFormat
         )
-        self._agent_name = str(self.__class__)
+        self._agent_name = self.__class__.__name__
+
+    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        asyncio.run(self.add_mcp_tools_async(additional_tools))
+
+    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        if additional_tools is not None:
+            async with MultiServerMCPClient({s.name: s.tool_options for k,s in additional_tools.items()}) as client:
+                self.tools.extend(client.get_tools())
+            self.graph = create_react_agent(
+                self.model, tools=self.tools, checkpointer=memory,
+                prompt = self.system_instruction, response_format=ResponseFormat)
 
     @property
     def task_event_hooks(self) -> list[TaskEventHook]:

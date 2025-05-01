@@ -17,6 +17,9 @@ from cdc_agents.agent.agent import A2AAgent, ResponseFormat
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
+from python_di.inject.profile_composite_injector.composite_injector import profile_scope
+from python_di.inject.profile_composite_injector.scopes.profile_scope import ProfileScope
+
 
 class DeepResearchOrchestrated(BaseAgent, abc.ABC):
     """

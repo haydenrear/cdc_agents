@@ -5,14 +5,20 @@ from python_di.env.base_module_config_props import ConfigurationProperties
 from python_di.properties.configuration_properties_decorator import configuration_properties
 from pydantic.main import BaseModel
 
+class AgentMcpTool(BaseModel):
+    tool_options: typing.Any
+    name: typing.Optional[str] = None
+
 class AgentCardItem(BaseModel):
     agent_card: typing.Optional[AgentCard] = None
     agent_descriptor: typing.Optional[AgentDescriptor] = None
     agent_clazz: typing.Optional[str] = None
+    mcp_tools: typing.Dict[str, AgentMcpTool] = None
 
 @configuration_properties(prefix_name='agent_config')
 class AgentConfigProps(ConfigurationProperties):
     agents: typing.Dict[str, AgentCardItem] = {}
     orchestrator_max_recurs: typing.Optional[int] = 5000
     host: typing.Optional[str] = "0.0.0.0"
-    port: typing.Optional[int] = 5000
+    port: typing.Optional[int] = 50000
+    initialize_server: typing.Optional[bool] = True

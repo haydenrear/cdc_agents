@@ -1,4 +1,5 @@
 agent_config:
+  initialize_server: false
   agents:
     CdcCodegenAgent:
       agent_card:
@@ -39,15 +40,3 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:7b
         agent_name: DeepCodeAgent
-profiles:
-  active_profiles:
-    main_profile:
-      profile_name: main_profile
-env_factories:
-  factories:
-    - factory: python_di.inject.context_builder.factory_ctx.FactoryCtx
-      lazy: "False"
-    - factory: python_di.inject.reflectable_ctx.ReflectableCtx
-      lazy: "False"
-    - factory: drools_py.inject.serialization_ctx.SerializationCtx
-      lazy: "False"

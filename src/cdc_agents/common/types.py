@@ -125,10 +125,8 @@ class TaskIdParams(BaseModel):
     id: str
     metadata: dict[str, Any] | None = None
 
-
 class TaskQueryParams(TaskIdParams):
     historyLength: int | None = None
-
 
 class TaskSendParams(BaseModel):
     id: str
@@ -139,24 +137,17 @@ class TaskSendParams(BaseModel):
     historyLength: int | None = None
     metadata: dict[str, Any] | None = None
 
-
 class TaskPushNotificationConfig(BaseModel):
     id: str
     pushNotificationConfig: PushNotificationConfig
-
-
-## RPC Messages
-
 
 class JSONRPCMessage(BaseModel):
     jsonrpc: Literal["2.0"] = "2.0"
     id: int | str | None = Field(default_factory=lambda: uuid4().hex)
 
-
 class JSONRPCRequest(JSONRPCMessage):
     method: str
     params: dict[str, Any] | None = None
-
 
 class JSONRPCError(BaseModel):
     code: int
@@ -187,15 +178,18 @@ class GetTaskRequest(JSONRPCRequest):
     params: TaskQueryParams
 
 class TaskEventBody(BaseModel):
-    body_value: typing.Dict[str, typing.Union[typing.Dict, str]]
+    body_value: typing.Any = None
     session_id: str
 
 class PushTaskEvent(JSONRPCRequest):
+    """
+    Bit different from updating the history - instead the agent can choose how to respond to particular events
+    """
     method: Literal["tasks/pushEvent"] = "tasks/pushEvent"
     body: TaskEventBody
 
 class TaskEventResult(BaseModel):
-    body_value: typing.Dict[str, typing.Union[typing.Dict, str]] = None
+    body_value: typing.Any = None
 
 class PushTaskEventResponseItem(BaseModel):
     body: typing.Optional[TaskEventResult] = None
@@ -355,11 +349,11 @@ class AgentCard(BaseModel):
     provider: AgentProvider | None = None
     version: str
     documentationUrl: str | None = None
-    capabilities: AgentCapabilities
+    capabilities: AgentCapabilities | None = None
     authentication: AgentAuthentication | None = None
     defaultInputModes: List[str] = ["text"]
     defaultOutputModes: List[str] = ["text"]
-    skills: List[AgentSkill]
+    skills: List[AgentSkill] = []
 
 
 class A2AClientError(Exception):
