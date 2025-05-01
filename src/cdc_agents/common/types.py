@@ -163,25 +163,20 @@ class JSONRPCError(BaseModel):
     message: str
     data: Any | None = None
 
-
 class JSONRPCResponse(JSONRPCMessage):
     result: Any | None = None
     error: JSONRPCError | None = None
-
 
 class SendTaskRequest(JSONRPCRequest):
     method: Literal["tasks/send"] = "tasks/send"
     params: TaskSendParams
 
-
 class SendTaskResponse(JSONRPCResponse):
     result: Task | None = None
-
 
 class SendTaskStreamingRequest(JSONRPCRequest):
     method: Literal["tasks/sendSubscribe"] = "tasks/sendSubscribe"
     params: TaskSendParams
-
 
 class SendTaskStreamingResponse(JSONRPCResponse):
     result: TaskStatusUpdateEvent | TaskArtifactUpdateEvent | None = None
@@ -193,10 +188,21 @@ class GetTaskRequest(JSONRPCRequest):
 
 class TaskEventBody(BaseModel):
     body_value: typing.Dict[str, typing.Union[typing.Dict, str]]
+    session_id: str
 
 class PushTaskEvent(JSONRPCRequest):
     method: Literal["tasks/pushEvent"] = "tasks/pushEvent"
     body: TaskEventBody
+
+class TaskEventResult(BaseModel):
+    body_value: typing.Dict[str, typing.Union[typing.Dict, str]] = None
+
+class PushTaskEventResponseItem(BaseModel):
+    body: typing.Optional[TaskEventResult] = None
+    error: typing.Optional[JSONRPCError] = None
+
+class PushTaskEventResponse(JSONRPCResponse):
+     result: typing.List[PushTaskEventResponseItem] = None
 
 class GetTaskResponse(JSONRPCResponse):
     result: Task | None = None
@@ -208,10 +214,8 @@ class CancelTaskRequest(JSONRPCRequest):
     method: Literal["tasks/cancel",] = "tasks/cancel"
     params: TaskIdParams
 
-
 class CancelTaskResponse(JSONRPCResponse):
     result: Task | None = None
-
 
 class SetTaskPushNotificationRequest(JSONRPCRequest):
     method: Literal["tasks/pushNotification/set",] = "tasks/pushNotification/set"
@@ -228,7 +232,6 @@ class GetTaskPushNotificationRequest(JSONRPCRequest):
 
 class GetTaskPushNotificationResponse(JSONRPCResponse):
     result: TaskPushNotificationConfig | None = None
-
 
 class TaskResubscriptionRequest(JSONRPCRequest):
     method: Literal["tasks/resubscribe",] = "tasks/resubscribe"
@@ -312,22 +315,19 @@ class ContentTypeNotSupportedError(JSONRPCError):
     message: str = "Incompatible content types"
     data: None = None
 
-
 class AgentProvider(BaseModel):
     organization: str
     url: str | None = None
 
-
 class AgentCapabilities(BaseModel):
     streaming: bool = False
     pushNotifications: bool = False
+    receiveEvents: bool = False
     stateTransitionHistory: bool = False
-
 
 class AgentAuthentication(BaseModel):
     schemes: List[str]
     credentials: str | None = None
-
 
 class AgentSkill(BaseModel):
     id: str
@@ -383,3 +383,10 @@ class MissingAPIKeyError(Exception):
     """Exception for missing API key."""
 
     pass
+
+
+def aggregate_errs(res, results):
+    errs = [r.error for r in results if r.error is not None]
+    if len(errs) != 0:
+        res['error'] = JSONRPCError(**{"code": 500, "message": ', '.join([e.message for e in errs]), "data": errs})
+

@@ -1,3 +1,4 @@
+import abc
 from typing import AsyncIterable
 from cdc_agents.common.types import (
     SendTaskRequest,
@@ -23,7 +24,7 @@ from cdc_agents.common.types import (
     TaskNotFoundError,
     InvalidParamsError,
     # PushTaskEvent,
-    GetTaskResponse, PushTaskEvent,
+    GetTaskResponse, PushTaskEvent, PushTaskEventResponseItem, JSONRPCError, aggregate_errs, PushTaskEventResponse,
 )
 from cdc_agents.common.server.task_manager import InMemoryTaskManager
 from cdc_agents.agent.agent import A2AAgent
@@ -36,16 +37,20 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
-
 class AgentTaskManager(InMemoryTaskManager):
 
-    async def on_push_task_event(self, request: PushTaskEvent) -> GetTaskResponse:
-        raise NotImplementedError("Hasn't been implemented yet")
-
-    def __init__(self, agent: A2AAgent, notification_sender_auth: PushNotificationSenderAuth):
+    def __init__(self,
+                 agent: A2AAgent,
+                 notification_sender_auth: PushNotificationSenderAuth):
         super().__init__()
         self.agent = agent
         self.notification_sender_auth = notification_sender_auth
+
+    async def on_push_task_event(self, request: PushTaskEvent) -> PushTaskEventResponse:
+        results = [t.do_on_event(request) for t in self.agent.task_event_hooks]
+        res = {"result": results}
+        aggregate_errs(res, results)
+        return PushTaskEventResponse(**res)
 
     async def _run_streaming_agent(self, request: SendTaskStreamingRequest):
         task_send_params: TaskSendParams = request.params
@@ -106,15 +111,14 @@ class AgentTaskManager(InMemoryTaskManager):
     def _validate_request(
         self, request: Union[SendTaskRequest, SendTaskStreamingRequest]
     ) -> JSONRPCResponse | None:
-        raise NotImplementedError("need to implement supported content types for all.")
         task_send_params: TaskSendParams = request.params
         if not utils.are_modalities_compatible(
-            task_send_params.acceptedOutputModes, self.agent.SUPPORTED_CONTENT_TYPES
+            task_send_params.acceptedOutputModes, self.agent.supported_content_types
         ):
             logger.warning(
                 "Unsupported output mode. Received %s, Support %s",
                 task_send_params.acceptedOutputModes,
-                self.agent.SUPPORTED_CONTENT_TYPES,
+                self.agent.supported_content_types,
             )
             return utils.new_incompatible_types_error(request.id)
         

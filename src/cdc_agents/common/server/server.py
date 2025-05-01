@@ -2,6 +2,7 @@ import importlib
 import os.path
 import typing
 
+import asyncio
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
@@ -22,7 +23,7 @@ from cdc_agents.common.types import (
     InternalError,
     AgentCard,
     TaskResubscriptionRequest,
-    SendTaskStreamingRequest, PostAgentResponse, AgentPosted, AgentCode, AgentDescriptor,
+    SendTaskStreamingRequest, PostAgentResponse, AgentPosted, AgentCode, AgentDescriptor, PushTaskEvent,
 )
 from pydantic import ValidationError
 import json
@@ -32,6 +33,7 @@ from cdc_agents.common.server.task_manager import TaskManager
 import logging
 
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
+from python_util.logger.logger import LoggerFacade
 from python_util.reflection import reflection_utils
 
 logger = logging.getLogger(__name__)
@@ -54,8 +56,8 @@ class A2AServer:
         self.app = Starlette()
         self.app.add_route(self.endpoint, self._process_request, methods=["POST"])
         self.app.add_route(
-            "/.well-known/agent.json", self._get_agent_card, methods=["GET"]
-        )
+            "/.well-known/agent.json", self._get_agent_card, methods=["GET"])
+        self.app.add_route("/tasks/pushEvent", self.receive_event, methods=["POST", "GET", "PUT"])
 
     def start(self):
         if self.agent_card is None:
@@ -67,6 +69,19 @@ class A2AServer:
         import uvicorn
 
         uvicorn.run(self.app, host=self.host, port=self.port)
+
+    async def receive_event(self, request: Request):
+        try:
+            body = await request.json()
+            evt = PushTaskEvent(**body)
+            return await self.on_receive_event(evt)
+        except Exception as e:
+            return self._handle_exception(e)
+
+    async def on_receive_event(self, request: PushTaskEvent) -> JSONResponse:
+        LoggerFacade.debug("Received event.")
+        res = await self.task_manager.on_push_task_event(request)
+        return self._create_response(res)
 
     def _get_agent_card(self, request: Request) -> JSONResponse:
         return JSONResponse(self.agent_card.model_dump(exclude_none=True))

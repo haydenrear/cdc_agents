@@ -58,13 +58,14 @@ class DeepCodeAgent(A2AOrchestratorAgent, DeepResearchOrchestrated):
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
+        agent = 'DeepCodeAgent'
         A2AAgent.__init__(self,
-                          agent_config.agents['DeepCodeAgent'].agent_descriptor.model
-                          if 'DeepCodeAgent' in agent_config.agents.keys() else None,
+                          agent_config.agents[agent].agent_descriptor.model
+                          if agent in agent_config.agents.keys() else None,
                           [call_a_friend],
                           self.SYSTEM_INSTRUCTION)
-        self.agent_config: AgentCardItem = agent_config.agents['DeepCodeAgent'] \
-            if 'DeepCodeAgent' in agent_config.agents.keys() else None
+        self.agent_config: AgentCardItem = agent_config.agents[agent] \
+            if agent in agent_config.agents.keys() else None
 
     @property
     def orchestrator_prompt(self):
@@ -80,7 +81,6 @@ class DeepCodeAgent(A2AOrchestratorAgent, DeepResearchOrchestrated):
 
     def get_agent_response(self, config, graph=None):
         return self.get_agent_response_graph(config, self.graph)
-
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 

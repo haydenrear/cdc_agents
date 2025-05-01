@@ -38,6 +38,6 @@ class AgentConfigPropsTest(unittest.TestCase):
 
 
     def test_model_event_body(self):
-        evt = TaskEventBody(**{"body_value":{"hello": "goodbye", "what": {"okay": "goodbye"}}})
+        evt = TaskEventBody(**{"body_value":{"hello": "goodbye", "what": {"okay": "goodbye"}}, "session_id": "whatever_sess"})
         assert evt.body_value["hello"] == "goodbye"
         assert evt.body_value["what"]["okay"] == "goodbye"

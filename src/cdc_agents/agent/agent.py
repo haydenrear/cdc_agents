@@ -6,19 +6,29 @@ from typing import Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.runnables.config import RunnableConfig
 from langchain_ollama import ChatOllama, OllamaLLM
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import MessagesState, END
-from langchain_core.runnables.config import  RunnableConfig
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 from pydantic import BaseModel
 
+from cdc_agents.common.types import PushTaskEvent, PushTaskEventResponseItem
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from python_util.logger.logger import LoggerFacade
 
 memory = MemorySaver()
+
+class TaskEventHook(abc.ABC):
+    @abc.abstractmethod
+    def do_on_event(self, request: PushTaskEvent, *args, **kwargs) -> PushTaskEventResponseItem:
+        pass
+
+    def __call__(self, request: PushTaskEvent, *args, **kwargs) -> PushTaskEventResponseItem:
+        return self.do_on_event(*args, **kwargs)
+
 
 class ResponseFormat(BaseModel):
     """Respond to the user in this format."""
@@ -36,10 +46,11 @@ class BaseAgent(abc.ABC):
     def agent_name(self) -> str:
         pass
 
-
 class A2AAgent(BaseAgent, abc.ABC):
 
-    def __init__(self, model, tools, system_instruction):
+    def __init__(self, model, tools, system_instruction,
+                 task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+        self._task_event_hooks = task_event_hooks
         self.model = model
         self.tools = tools
         self.system_instruction = system_instruction
@@ -56,8 +67,15 @@ class A2AAgent(BaseAgent, abc.ABC):
         self._agent_name = str(self.__class__)
 
     @property
-    def supported_content_types(self) -> str:
-        raise NotImplementedError("implement for all!")
+    def task_event_hooks(self) -> list[TaskEventHook]:
+        return self._task_event_hooks
+
+    @property
+    def supported_content_types(self) -> list[str]:
+        if not hasattr(self, 'SUPPORTED_CONTENT_TYPES'):
+            raise NotImplementedError("Could not find supported content.")
+
+        return getattr(self, 'SUPPORTED_CONTENT_TYPES')
 
     @property
     def agent_name(self) -> str:
