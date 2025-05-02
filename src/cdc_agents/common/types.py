@@ -356,7 +356,8 @@ class AgentCard(BaseModel):
     defaultInputModes: List[str] = ["text"]
     defaultOutputModes: List[str] = ["text"]
     skills: List[AgentSkill] = []
-    managed_agents: list[AgentCardForward] = []
+    names_of_managed_agents: typing.List[str] = []
+    managed_agents: typing.List[AgentCardForward] = []
 
 class DiscoverAgents(BaseModel):
     agent_cards: typing.List[AgentCard] = []

@@ -10,7 +10,7 @@ from starlette.applications import Starlette
 from cdc_agents.agent.agent import A2AAgent
 from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.common.server import A2AServer
-from cdc_agents.common.server.server import DynamicA2AServer, create_json_response
+from cdc_agents.common.server.server import DynamicA2AServer, create_json_response, _add_all_managed_agents
 from cdc_agents.common.types import DiscoverAgents, AgentCard
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.config.agent_config_props import AgentConfigProps
@@ -24,6 +24,8 @@ class DiscoverableAgent:
     agent: A2AAgent
     agent_card: AgentCard
 
+
+
 @component()
 @injectable()
 class AgentServerRunner:
@@ -36,6 +38,7 @@ class AgentServerRunner:
         self.agents: typing.Dict[str, DiscoverableAgent] = {
             next_agent.agent_name: DiscoverableAgent(next_agent, self._to_discoverable_agent(next_agent))
             for next_agent in agents}
+        _add_all_managed_agents(self.agent_config_props)
         # self.start_dynamic_agent_cards() # TODO:
         self.starlette = self.load_server(agent_config_props.host, agent_config_props.port)
         if agent_config_props.initialize_server:
@@ -47,9 +50,8 @@ class AgentServerRunner:
         LoggerFacade.error(f"Could not find agent card in agent config props for agent {a.agent_name}."
                            f"Will not be discoverable.")
 
-    def start_dynamic_agent_cards(self):
-        DynamicA2AServer(self.agent_config_props.host, self.agent_config_props.port,
-                         agents=self.agents).start()
+    # def start_dynamic_agent_cards(self):
+    #     DynamicA2AServer(self.agent_config_props, agents=self.agents).start() # TODO:
 
     def run_server(self):
         """Starts the Currency Agent server."""

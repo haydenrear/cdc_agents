@@ -33,11 +33,21 @@ from cdc_agents.common.server.task_manager import TaskManager
 import logging
 
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
+from cdc_agents.config.agent_config_props import AgentConfigProps
 from python_util.logger.logger import LoggerFacade
 from python_util.reflection import reflection_utils
 
 logger = logging.getLogger(__name__)
 
+def _add_managed_agents(agent_card: AgentCard, agent_config_props):
+    if len(agent_card.names_of_managed_agents) != 0:
+        agent_card.managed_agents.extend([ag.agent_card for ag in agent_config_props.agents.values()
+                                          if ag.agent_card.name in agent_card.names_of_managed_agents])
+
+
+def _add_all_managed_agents(agent_config_props: AgentConfigProps):
+    for name, a in agent_config_props.agents.items():
+        _add_managed_agents(a.agent_card, agent_config_props)
 
 def create_json_response(result: Any) -> JSONResponse | EventSourceResponse:
     if isinstance(result, AsyncIterable):
@@ -52,6 +62,19 @@ def create_json_response(result: Any) -> JSONResponse | EventSourceResponse:
     else:
         logger.error(f"Unexpected result type: {type(result)}")
         raise ValueError(f"Unexpected result type: {type(result)}")
+
+
+def _handle_exception(e: Exception) -> JSONResponse:
+    if isinstance(e, json.decoder.JSONDecodeError):
+        json_rpc_error = JSONParseError()
+    elif isinstance(e, ValidationError):
+        json_rpc_error = InvalidRequestError(data=json.loads(e.json()))
+    else:
+        logger.error(f"Unhandled exception: {e}")
+        json_rpc_error = InternalError()
+
+    response = JSONRPCResponse(id=None, error=json_rpc_error)
+    return JSONResponse(response.model_dump(exclude_none=True), status_code=400)
 
 
 class A2AServer:
@@ -92,7 +115,7 @@ class A2AServer:
             evt = PushTaskEvent(**body)
             return await self.on_receive_event(evt)
         except Exception as e:
-            return self._handle_exception(e)
+            return _handle_exception(e)
 
     async def on_receive_event(self, request: PushTaskEvent) -> JSONResponse:
         LoggerFacade.debug("Received event.")
@@ -132,33 +155,21 @@ class A2AServer:
             return create_json_response(result)
 
         except Exception as e:
-            return self._handle_exception(e)
-
-    def _handle_exception(self, e: Exception) -> JSONResponse:
-        if isinstance(e, json.decoder.JSONDecodeError):
-            json_rpc_error = JSONParseError()
-        elif isinstance(e, ValidationError):
-            json_rpc_error = InvalidRequestError(data=json.loads(e.json()))
-        else:
-            logger.error(f"Unhandled exception: {e}")
-            json_rpc_error = InternalError()
-
-        response = JSONRPCResponse(id=None, error=json_rpc_error)
-        return JSONResponse(response.model_dump(exclude_none=True), status_code=400)
+            return _handle_exception(e)
 
 
 class DynamicA2AServer:
     def __init__(
             self,
-            host="0.0.0.0",
-            port=5000,
+            agent_config_props: AgentConfigProps,
             endpoint="/dynamic_agents",
-            agents: typing.Optional[typing.Dict] = None
+            agents: typing.Optional[typing.Dict] = None,
+            starlette: typing.Optional[Starlette] = None
     ):
-        self.host = host
-        self.port = port
+        self.host = agent_config_props.host
+        self.port = agent_config_props.port
         self.endpoint = endpoint
-        self.app = Starlette()
+        self.app = starlette if starlette is not None else Starlette()
         self.app.add_route("/dynamic_agents/put_agent", self._put_agent_card, methods=["POST"])
         self.agents = {} if not agents else agents
 
@@ -171,10 +182,9 @@ class DynamicA2AServer:
             body = await request.json()
             return self._do_put_agent(body, self.agents)
         except Exception as e:
-            return self._handle_exception(e)
+            return _handle_exception(e)
 
-    @staticmethod
-    def _do_put_agent(body, agents):
+    def _do_put_agent(self, body, agents):
         from cdc_agents.agent.task_manager import AgentTaskManager
         agent_card = AgentCard(**body['agent_card'])
         agent_code = AgentCode(**body['agent_code'])
@@ -188,11 +198,10 @@ class DynamicA2AServer:
         if not py_file.endswith('.py'):
             py_file = f'{py_file}.py'
 
-        to_write_to = os.path.join(python_util.io_utils.file_dirs.get_dir(__file__, 'agents'),
-                                   py_file)
+        to_write_to = os.path.join(python_util.io_utils.file_dirs.get_dir(__file__, 'agents'), py_file)
 
         if os.path.exists(to_write_to):
-            return DynamicA2AServer._handle_exception(FileExistsError(f"File {py_file} existed - could not save new agent."))
+            return _handle_exception(FileExistsError(f"File {py_file} existed - could not save new agent."))
 
         with open(to_write_to, 'w') as py_file_out:
             py_file_out.write(agent_code.code)
@@ -210,49 +219,20 @@ class DynamicA2AServer:
                 if isinstance(v, type) and reflection_utils.is_type_instance_of(A2AAgent, v):
                     agent: A2AAgent = v(model, tools, system_instructions)
                     importlib.import_module(agent_code.code)
+                    _add_managed_agents(agent_card, self.agents)
                     agent_value = A2AServer(agent_card=agent_card,
                                             task_manager=AgentTaskManager(agent=agent,
                                                                           notification_sender_auth=notification_sender_auth),
                                             host=host,
                                             port=port)
-                    agent_value.start()
+                    agent_value.start() # TODO:
                     agents[agent.agent_name] = agent_value
-                    return JSONResponse(
-                        PostAgentResponse(
-                            result=AgentPosted(success=True, endpoint='/dynamic_agents/put_agent')).model_dump(exclude_none=True),
-                        status_code=200)
+                    return create_json_response(PostAgentResponse(result=AgentPosted(success=True, endpoint='/dynamic_agents/put_agent')).model_dump(exclude_none=True))
 
             if os.path.exists(to_write_to):
                 os.remove(to_write_to)
 
-            return DynamicA2AServer._handle_exception(ModuleNotFoundError("Could not create agent."))
+            return _handle_exception(ModuleNotFoundError("Could not create agent."))
         except Exception as e:
-            return DynamicA2AServer._handle_exception(e)
+            return _handle_exception(e)
 
-
-    @staticmethod
-    def _handle_exception(e: Exception) -> JSONResponse:
-        if isinstance(e, json.decoder.JSONDecodeError):
-            json_rpc_error = JSONParseError()
-        elif isinstance(e, ValidationError):
-            json_rpc_error = InvalidRequestError(data=json.loads(e.json()))
-        else:
-            logger.error(f"Unhandled exception: {e}")
-            json_rpc_error = InternalError()
-
-        response = JSONRPCResponse(id=None, error=json_rpc_error)
-        return JSONResponse(response.model_dump(exclude_none=True), status_code=400)
-
-    def _create_response(self, result: Any) -> JSONResponse | EventSourceResponse:
-        if isinstance(result, AsyncIterable):
-
-            async def event_generator(result) -> AsyncIterable[dict[str, str]]:
-                async for item in result:
-                    yield {"data": item.model_dump_json(exclude_none=True)}
-
-            return EventSourceResponse(event_generator(result))
-        elif isinstance(result, JSONRPCResponse):
-            return JSONResponse(result.model_dump(exclude_none=True))
-        else:
-            logger.error(f"Unexpected result type: {type(result)}")
-            raise ValueError(f"Unexpected result type: {type(result)}")
