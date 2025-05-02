@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="interact with sessions" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="interact with sessions">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -161,7 +163,7 @@
       <updated>1745703736849</updated>
       <workItem from="1745703737854" duration="14760000" />
       <workItem from="1745780386975" duration="37033000" />
-      <workItem from="1746111852805" duration="12059000" />
+      <workItem from="1746111852805" duration="12737000" />
     </task>
     <task id="LOCAL-00001" summary="git ignore">
       <option name="closed" value="true" />
@@ -243,7 +245,23 @@
       <option name="project" value="LOCAL" />
       <updated>1746111880293</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="interact with sessions">
+      <option name="closed" value="true" />
+      <created>1746141369017</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1746141369017</updated>
+    </task>
+    <task id="LOCAL-00012" summary="interact with sessions">
+      <option name="closed" value="true" />
+      <created>1746141377847</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1746141377847</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -327,7 +345,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746123056923" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746141299928" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1745775417270" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>
