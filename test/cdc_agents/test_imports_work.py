@@ -7,7 +7,6 @@ class DoTestImportsWork(unittest.TestCase):
     def test_imports_work(self):
         out = get_exchange_rate
         a = AgentTaskManager
+        assert True, "Imports successful"
 
 
-if __name__ == '__main__':
-    unittest.main()

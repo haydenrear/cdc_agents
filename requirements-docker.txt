@@ -16,3 +16,4 @@ pyjwt>=2.10.1
 injector==0.22.0
 networkx==3.1
 lanchain==0.2.43
+rerankers==0.8.0

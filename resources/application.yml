@@ -1,3 +1,7 @@
+model_server:
+  host: localhost
+  port: 9991
+
 agent_config:
   agents:
     CdcCodegenAgent:

@@ -8,5 +8,4 @@ class DynamicA2aServerTest(unittest.TestCase):
         pass
         # DynamicA2AServer._do_put_agent()
 
-if __name__ == '__main__':
-    unittest.main()
+

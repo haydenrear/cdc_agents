@@ -23,8 +23,8 @@ class AgentConfigPropsTest(unittest.TestCase):
     def construct(self,
                   ai_suite: AgentConfigProps,
                   deep_code_orchestrator: DeepCodeOrchestrator):
-        AgentConfigPropsTest.ai_suite = ai_suite
-        AgentConfigPropsTest.code = deep_code_orchestrator
+        self.ai_suite = ai_suite
+        self.code = deep_code_orchestrator
 
     def test_deep_code_injection(self):
         assert self.ai_suite

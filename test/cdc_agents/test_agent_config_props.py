@@ -28,8 +28,8 @@ class AgentConfigPropsTest(unittest.TestCase):
     def construct(self,
                   ai_suite: AgentConfigProps,
                   server: AgentServerRunner):
-        AgentConfigPropsTest.ai_suite = ai_suite
-        AgentConfigPropsTest.server = server
+        self.ai_suite = ai_suite
+        self.server = server
 
     def test_agent_config_props(self):
         assert self.ai_suite
