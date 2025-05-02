@@ -118,9 +118,9 @@ def parse_to_message(in_value: typing.Union[PromptValue, str, dict[str, Any], Ba
     elif isinstance(in_value, PromptValue):
         return [m for f in in_value.to_messages() for m in parse_to_message(f)]
     elif isinstance(in_value, BaseMessage):
-        return [Message(content=parse_content(in_value))]
+        return [Message(content=parse_content(in_value), role=parse_role(in_value))]
     elif isinstance(in_value, MessageLikeRepresentation):
-        return [Message(content=parse_content(in_value))]
+        return [Message(content=parse_content(in_value), role=parse_role(in_value))]
     elif isinstance(in_value, list | tuple):
         return [m for f in in_value for m in parse_to_message(f)]
 
