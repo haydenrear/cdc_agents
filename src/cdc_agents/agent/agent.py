@@ -67,6 +67,7 @@ class A2AAgent(BaseAgent, abc.ABC):
             self.model, tools=self.tools, checkpointer=memory,
             prompt = self.system_instruction, response_format=ResponseFormat
         )
+
         self._agent_name = self.__class__.__name__
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):

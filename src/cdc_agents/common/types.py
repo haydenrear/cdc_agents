@@ -342,6 +342,8 @@ class AgentDescriptor(BaseModel):
     system_instruction: str = None
     tools: typing.List[str] = None
 
+AgentCardForward = typing.ForwardRef("AgentCard")
+
 class AgentCard(BaseModel):
     name: str
     description: str | None = None
@@ -354,11 +356,13 @@ class AgentCard(BaseModel):
     defaultInputModes: List[str] = ["text"]
     defaultOutputModes: List[str] = ["text"]
     skills: List[AgentSkill] = []
+    managed_agents: list[AgentCardForward] = []
 
+class DiscoverAgents(BaseModel):
+    agent_cards: typing.List[AgentCard] = []
 
 class A2AClientError(Exception):
     pass
-
 
 class A2AClientHTTPError(A2AClientError):
     def __init__(self, status_code: int, message: str):

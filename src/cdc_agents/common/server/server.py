@@ -39,6 +39,21 @@ from python_util.reflection import reflection_utils
 logger = logging.getLogger(__name__)
 
 
+def create_json_response(result: Any) -> JSONResponse | EventSourceResponse:
+    if isinstance(result, AsyncIterable):
+
+        async def event_generator(result) -> AsyncIterable[dict[str, str]]:
+            async for item in result:
+                yield {"data": item.model_dump_json(exclude_none=True)}
+
+        return EventSourceResponse(event_generator(result))
+    elif isinstance(result, JSONRPCResponse):
+        return JSONResponse(result.model_dump(exclude_none=True))
+    else:
+        logger.error(f"Unexpected result type: {type(result)}")
+        raise ValueError(f"Unexpected result type: {type(result)}")
+
+
 class A2AServer:
     def __init__(
         self,
@@ -82,7 +97,7 @@ class A2AServer:
     async def on_receive_event(self, request: PushTaskEvent) -> JSONResponse:
         LoggerFacade.debug("Received event.")
         res = await self.task_manager.on_push_task_event(request)
-        return self._create_response(res)
+        return create_json_response(res)
 
     def _get_agent_card(self, request: Request) -> JSONResponse:
         return JSONResponse(self.agent_card.model_dump(exclude_none=True))
@@ -114,7 +129,7 @@ class A2AServer:
                 logger.warning(f"Unexpected request type: {type(json_rpc_request)}")
                 raise ValueError(f"Unexpected request type: {type(request)}")
 
-            return self._create_response(result)
+            return create_json_response(result)
 
         except Exception as e:
             return self._handle_exception(e)
@@ -131,19 +146,6 @@ class A2AServer:
         response = JSONRPCResponse(id=None, error=json_rpc_error)
         return JSONResponse(response.model_dump(exclude_none=True), status_code=400)
 
-    def _create_response(self, result: Any) -> JSONResponse | EventSourceResponse:
-        if isinstance(result, AsyncIterable):
-
-            async def event_generator(result) -> AsyncIterable[dict[str, str]]:
-                async for item in result:
-                    yield {"data": item.model_dump_json(exclude_none=True)}
-
-            return EventSourceResponse(event_generator(result))
-        elif isinstance(result, JSONRPCResponse):
-            return JSONResponse(result.model_dump(exclude_none=True))
-        else:
-            logger.error(f"Unexpected result type: {type(result)}")
-            raise ValueError(f"Unexpected result type: {type(result)}")
 
 class DynamicA2AServer:
     def __init__(
