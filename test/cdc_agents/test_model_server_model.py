@@ -1,6 +1,10 @@
 import logging
 import unittest
 
+from langchain_core.language_models import LanguageModelInput
+from langchain_core.messages import BaseMessage
+from langchain_core.prompt_values import PromptValue, ChatPromptValue
+
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.model_server.model_server_model import ModelServerModel, LoggingModelServerExecutor
@@ -38,6 +42,17 @@ class ModelServerModelTest(unittest.TestCase):
         assert self.server.model_server_config_props.port is not None
 
         found = self.server.invoke("hello")
-        assert found == "hello!"
+        assert found.content == ["hello"]
 
+        message = BaseMessage(content="whatever", type="chat")
+        found = self.server.invoke(ChatPromptValue(messages=[message]))
+        assert found.content == ["whatever"]
 
+        message = BaseMessage(content="ok", type="chat")
+        found = self.server.invoke([message])
+        assert found.content == ["ok"]
+
+        message = BaseMessage(content="ok", type="chat")
+        message_w = BaseMessage(content="do", type="chat")
+        found = self.server.invoke([message, message_w])
+        assert found.content == ["ok", "do"]

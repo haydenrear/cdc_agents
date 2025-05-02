@@ -11,6 +11,7 @@ from langchain_core.runnables import Runnable, RunnableConfig
 from pydantic import BaseModel
 
 from aisuite.framework import ChatCompletionResponse
+from aisuite.framework.choice import Choice
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps, ModelServerModelProps
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
@@ -25,7 +26,6 @@ class ModelServerInput(BaseModel, abc.ABC):
 class Message(BaseModel):
     content: str
     role: str = "system"
-
 
 class RerankDocument(BaseModel):
     text: str
@@ -74,7 +74,10 @@ class LoggingModelServerExecutor(ModelServerExecutor):
 
     def __call__(self, model_server_input: ModelServerInput, *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         LoggerFacade.info("Called model server executor")
-        return "hello!"
+        if isinstance(model_server_input, ModelServerChatInput):
+            return ChatCompletionResponse.create_completion_response([Choice.create_choice(c) for c in model_server_input.messages])
+        else:
+            return "hello!"
 
 @component(bind_to=[ModelServerExecutor], profile='main_profile', scope=profile_scope)
 @injectable()
@@ -153,7 +156,7 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput]):
         if isinstance(model_input, str):
             return model_input
         else:
-            return BaseMessage(content=[c.message.content for c in model_input.choices])
+            return BaseMessage(content=[c.message.content for c in model_input.choices], type="chat")
 
     def invoke(self, model_input: LanguageModelInput,
                config: Optional[RunnableConfig] = None, **kwargs: Any) -> LanguageModelOutput:
