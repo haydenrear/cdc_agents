@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="discover agents">
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/model/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/model/model_server_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="discover agents" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -17,8 +13,8 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Python Unit Test" />
         <option value="Python Script" />
+        <option value="Python Unit Test" />
       </list>
     </option>
   </component>
@@ -57,7 +53,9 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props.executor": "Run",
     "Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body.executor": "Run",
+    "Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model.executor": "Run",
     "Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.DoTestImportsWork.test_imports_work.executor": "Run",
     "Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.MyTestCase.test_something.executor": "Run",
     "Python tests.Python tests for test_cdc_agent_test.agent_config_props_test.AgentConfigPropsTest.test_agent_config_props.executor": "Run",
@@ -107,7 +105,23 @@
       <recent name="$PROJECT_DIR$/src/cdc_agents" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.Python tests in cdc_agents">
+  <component name="RunManager" selected="Python tests.Python tests">
+    <configuration name="Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
+      <module name="cdc_agents" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/test" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
     <configuration name="Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
       <module name="cdc_agents" />
       <option name="ENV_FILES" value="" />
@@ -121,6 +135,22 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
+      <module name="cdc_agents" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/test" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
@@ -142,6 +172,8 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model" />
+        <item itemvalue="Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props" />
         <item itemvalue="Python tests.Python tests in cdc_agents" />
         <item itemvalue="Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body" />
       </list>
@@ -165,7 +197,7 @@
       <updated>1745703736849</updated>
       <workItem from="1745703737854" duration="14760000" />
       <workItem from="1745780386975" duration="37033000" />
-      <workItem from="1746111852805" duration="19925000" />
+      <workItem from="1746111852805" duration="25570000" />
     </task>
     <task id="LOCAL-00001" summary="git ignore">
       <option name="closed" value="true" />
@@ -279,7 +311,31 @@
       <option name="project" value="LOCAL" />
       <updated>1746148283271</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="discover agents">
+      <option name="closed" value="true" />
+      <created>1746201029094</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1746201029094</updated>
+    </task>
+    <task id="LOCAL-00016" summary="discover agents">
+      <option name="closed" value="true" />
+      <created>1746201741715</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1746201741715</updated>
+    </task>
+    <task id="LOCAL-00017" summary="discover agents">
+      <option name="closed" value="true" />
+      <created>1746201790303</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1746201790303</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -311,16 +367,6 @@
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/python_di/inject/context_factory/context_factory_executor/register_factory.py</url>
-          <line>153</line>
-          <option name="timeStamp" value="47" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/python_di/inject/context_factory/context_factory_executor/register_factory.py</url>
-          <line>151</line>
-          <option name="timeStamp" value="48" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <condition expression="f is None" language="Python" />
           <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/inject_context_di.py</url>
           <line>60</line>
@@ -336,16 +382,6 @@
           <line>43</line>
           <option name="timeStamp" value="67" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/python_di/inject/context_builder/factory_ctx.py</url>
-          <line>31</line>
-          <option name="timeStamp" value="68" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/python_di/env/env_properties.py</url>
-          <line>213</line>
-          <option name="timeStamp" value="70" />
-        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -359,7 +395,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746148269383" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746201781571" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1745775417270" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>

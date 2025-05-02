@@ -1,13 +1,17 @@
 import abc
 import dataclasses
+import threading
 import typing
 from typing import Optional, Any
 
 import injector
-from langchain_core.language_models import LanguageModelInput, LanguageModelOutput
+from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.language_models import LanguageModelInput, LanguageModelOutput, BaseChatModel
 from langchain_core.messages import BaseMessage, MessageLikeRepresentation
+from langchain_core.outputs import ChatGenerationChunk
 from langchain_core.prompt_values import PromptValue
 from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from aisuite.framework import ChatCompletionResponse
@@ -52,7 +56,9 @@ class ModelServerValidationEndpoint(ModelServerInput):
 class ModelServerExecutor(abc.ABC):
 
     @abc.abstractmethod
-    def __call__(self, model_server_input: ModelServerInput, *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
+    def __call__(self, model_server_input: ModelServerInput,
+                 tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None,
+                 *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         pass
 
     @property
@@ -72,7 +78,9 @@ class LoggingModelServerExecutor(ModelServerExecutor):
     def __init__(self, model_props: ModelServerConfigProps):
         self._model_props = model_props
 
-    def __call__(self, model_server_input: ModelServerInput, *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
+    def __call__(self, model_server_input: ModelServerInput,
+                 tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None,
+                 *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         LoggerFacade.info("Called model server executor")
         if isinstance(model_server_input, ModelServerChatInput):
             return ChatCompletionResponse.create_completion_response([Choice.create_choice(c) for c in model_server_input.messages])
@@ -87,7 +95,9 @@ class RestModelServerExecutor(ModelServerExecutor):
     def __init__(self, model_props: ModelServerConfigProps):
         self._model_props = model_props
 
-    def __call__(self, model_server_input: ModelServerInput, *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
+    def __call__(self, model_server_input: ModelServerInput,
+                 tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None,
+                 *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         pass
 
     @property
@@ -124,9 +134,10 @@ def parse_to_message(in_value: typing.Union[PromptValue, str, dict[str, Any], Ba
     elif isinstance(in_value, list | tuple):
         return [m for f in in_value for m in parse_to_message(f)]
 
+bind_tools_lock = threading.RLock()
 
 @prototype_scope_bean()
-class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput]):
+class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput], BaseChatModel):
 
     @prototype_factory()
     def __init__(self,
@@ -136,6 +147,8 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput]):
         self.executor = executor
         self.model_props = model_props
         self.model_server_config_props = model_server_config_props
+        self.bound_tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None
+        self.tool_choice: typing.Optional[str] = None
 
     @classmethod
     def convert_to_model_server(cls,
@@ -148,7 +161,6 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput]):
         elif isinstance(model_input, typing.Sequence):
             return ModelServerChatInput(messages = [m for f in model_input for m in parse_to_message(f)])
 
-
     @classmethod
     def convert_to_language_model_output(cls,
                                          model_input: typing.Union[ChatCompletionResponse, str],
@@ -158,7 +170,49 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput]):
         else:
             return BaseMessage(content=[c.message.content for c in model_input.choices], type="chat")
 
+    @injector.synchronized(bind_tools_lock)
     def invoke(self, model_input: LanguageModelInput,
                config: Optional[RunnableConfig] = None, **kwargs: Any) -> LanguageModelOutput:
         executed_on_model_server = self.executor(self.convert_to_model_server(model_input, config))
         return self.convert_to_language_model_output(executed_on_model_server, config)
+
+    @injector.synchronized(bind_tools_lock)
+    def bind_tools(
+            self,
+            tools: typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]],
+            *,
+            tool_choice: Optional[typing.Union[str]] = None,
+            **kwargs: Any,
+    ) -> Runnable[LanguageModelInput, BaseMessage]:
+        """Bind tools to the model.
+
+        Args:
+            tools: Sequence of tools to bind to the model.
+            tool_choice: The tool to use. If "any" then any tool can be used.
+
+        Returns:
+            A Runnable that returns a message.
+        """
+        LoggerFacade.info("Model server needs to add tools to prompt.")
+        if self.bound_tools is not None:
+            if tools != self.bound_tools:
+                LoggerFacade.error(f"Attempted to rebind tools for {self}")
+
+        self.bound_tools = tools
+        self.tool_choice = tool_choice
+
+        assert self.tool_choice == "Any" or not self.tool_choice, \
+            ("tool choice should be either Any or None at this point."
+             "Future state is return immutable new ModelServerModel each time if this changes.")
+
+        return self
+
+    @injector.synchronized(bind_tools_lock)
+    def _stream(
+            self,
+            messages: list[BaseMessage],
+            stop: Optional[list[str]] = None,
+            run_manager: Optional[CallbackManagerForLLMRun] = None,
+            **kwargs: Any,
+    ) -> typing.Iterator[ChatGenerationChunk]:
+        raise NotImplementedError

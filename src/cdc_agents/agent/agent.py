@@ -65,8 +65,7 @@ class A2AAgent(BaseAgent, abc.ABC):
 
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=memory,
-            prompt = self.system_instruction, response_format=ResponseFormat
-        )
+            prompt = self.system_instruction, response_format=ResponseFormat)
 
         self._agent_name = self.__class__.__name__
 
