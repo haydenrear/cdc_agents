@@ -159,8 +159,27 @@ class A2AAgent(BaseAgent, abc.ABC):
 class A2AOrchestratorAgent(A2AAgent, abc.ABC):
     pass
 
+
+@dataclasses.dataclass(init=True)
+class NextAgentResponse:
+    next_agent: str
+
 class AgentOrchestrator(A2AAgent, abc.ABC):
-    pass
+
+    @abc.abstractmethod
+    def orchestration_prompt(self):
+        pass
+
+    @abc.abstractmethod
+    def parse_orchestration_response(self, last_message) -> typing.Union[BaseMessage, NextAgentResponse]:
+        pass
+
+    def is_terminate_node(self, last_message, state) -> bool:
+        return self.message_contains(last_message)
+
+    def message_contains(self, last_message, answer="FINAL ANSWER") -> bool:
+        return answer in last_message.content or any([answer in c for c in last_message.content])
+
 
 class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
     """
@@ -193,30 +212,34 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.agents = agents
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
 
-    def get_next_node(self, last_message: BaseMessage, executed: str):
-        if self.orchestrator_agent.agent_name == executed:
-            if self._message_contains(last_message):
-                return END
-            elif self._message_contains(last_message, 'ROUTE TO AGENT'):
-                raise Exception('TODO - this should retrieve where to go from there, or if its not orchestrator, '
-                                'then return back to orchestrator')
+    def get_next_node(self, last_message: typing.Union[BaseMessage, NextAgentResponse], executed: str, state):
+        if isinstance(last_message, BaseMessage):
+            is_last_message = self.is_terminate_node(last_message, state)
+            if is_last_message:
+                if self.props.let_orchestrated_agents_terminate or self.orchestrator_agent.agent_name == executed:
+                    return END
+                else:
+                    return self.orchestrator_agent.agent_name
             else:
-                # TODO: shouldn't this add something, such as, please come to a final answer or ask one of the sub-agents
                 return self.orchestrator_agent.agent_name
-        else:
-            return self.orchestrator_agent.agent_name
-
-    def _message_contains(self, last_message, answer="FINAL ANSWER"):
-        return answer in last_message.content or any([answer in c for c in last_message.content])
+        elif isinstance(last_message, NextAgentResponse):
+            return last_message.next_agent
 
     def next_node(self, agent: BaseAgent, state: MessagesState, session_id)-> Command[typing.Union[str, END]] :
         result = agent.invoke(state, session_id)
         last_message: BaseMessage = result["messages"][-1]
 
-        result["messages"][-1] = HumanMessage(
-            content=last_message.content, name=agent.agent_name)
+        last_message = HumanMessage(content=last_message.content, name=agent.agent_name)
 
-        goto = self.get_next_node(last_message, agent.agent_name)
+        result["messages"][-1] = last_message
+
+        last_message = self.parse_orchestration_response(last_message)
+
+        goto = self.get_next_node(last_message, agent.agent_name, state)
+
+        if goto == self.orchestrator_agent.agent_name and agent.agent_name == self.orchestrator_agent.agent_name:
+            last_message.content.append("Did not receive a FINAL ANSWER delimited with FINAL ANSWER or which agent to forward to. "
+                                        "Please either summarize into a FINAL ANSWER or delegate to one of you're agents who will.")
 
         return Command(
             update={

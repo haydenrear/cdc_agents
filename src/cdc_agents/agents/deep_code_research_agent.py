@@ -3,7 +3,7 @@ import abc
 from langchain.agents import create_react_agent
 
 from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, A2AOrchestratorAgent, \
-    BaseAgent
+    BaseAgent, NextAgentResponse
 import dataclasses
 import enum
 import typing
@@ -12,7 +12,7 @@ from typing import Any, Dict, AsyncIterable
 import httpx
 import injector
 import torch
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage, BaseMessage
 from langchain_core.tools import tool
 
 from cdc_agents.agent.agent import A2AAgent, ResponseFormat
@@ -111,4 +111,18 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
     @property
     def agent_name(self) -> str:
         return f'Graph orchestrator agent; {self.orchestrator_agent.agent_name}'
+
+    def orchestration_prompt(self):
+        return "hello!"
+
+    def parse_orchestration_response(self, last_message: BaseMessage) -> typing.Union[BaseMessage, NextAgentResponse]:
+        found = list(filter(lambda x: 'NEXT AGENT:' in x, last_message.content if isinstance(last_message.content, list) else [last_message.content]))
+        if len(found) == 0:
+            return last_message
+        else:
+            split = found[0].split('NEXT AGENT:')
+            if len(split) <= 1:
+                return last_message
+            f = split[1].strip()
+            return NextAgentResponse(f)
 

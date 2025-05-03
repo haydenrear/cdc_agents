@@ -86,6 +86,9 @@ class ModelServerModelTest(unittest.TestCase):
         self._mock_executor_call()
 
         class TestAgent(A2AAgent) :
+
+            did_call = False
+
             async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
                 pass
 
@@ -93,10 +96,16 @@ class ModelServerModelTest(unittest.TestCase):
                 pass
 
             def invoke(self, query, sessionId) -> str:
+                self.did_call = True
                 found = self.graph.invoke(query)
                 return found
 
-        class TestOrchestratorAgent(A2AOrchestratorAgent) :
+
+
+        class TestOrchestratorAgent(A2AOrchestratorAgent):
+
+            did_call = False
+
             async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
                 pass
 
@@ -104,7 +113,7 @@ class ModelServerModelTest(unittest.TestCase):
                 pass
 
             def invoke(self, query, sessionId) -> str:
-
+                self.did_call = True
                 i = self.graph.invoke(query)
                 return i
 
@@ -113,7 +122,7 @@ class ModelServerModelTest(unittest.TestCase):
         self.server.get_agent_response = self._agent_response
         self.server.agents.clear()
         self.server.orchestrator_agent = TestOrchestratorAgent(self.model, [call_a_friend_in], "test")
-        self.server.agents[k] = OrchestratedAgent(TestAgent(self.model, [call_a_friend_in], "test"))
+        self.server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.model, [call_a_friend_in], "test"))
         invoked = self.server.invoke("hello", "test")
 
         assert len(invoked) != 0
@@ -123,6 +132,9 @@ class ModelServerModelTest(unittest.TestCase):
         assert any([i.content[-1] == 'FINAL ANSWER: hello!' for i in invoked if isinstance(i, HumanMessage)])
 
         assert invoked[-1].content[-1] == 'FINAL ANSWER: hello!'
+
+        TestOrchestratorAgent.did_call = True
+        OrchestratedAgent.did_call = True
 
     def _mock_executor_call(self):
         class Executor:
@@ -140,6 +152,7 @@ class ModelServerModelTest(unittest.TestCase):
             Action: call_a_friend_in
             Action Input: 
             """,
+            "NEXT AGENT: TestAgent",
             "okay",
             "FINAL ANSWER: hello!"
         ]

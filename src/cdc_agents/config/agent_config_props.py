@@ -18,6 +18,7 @@ class AgentCardItem(BaseModel):
 @configuration_properties(prefix_name='agent_config')
 class AgentConfigProps(ConfigurationProperties):
     agents: typing.Dict[str, AgentCardItem] = {}
+    let_orchestrated_agents_terminate: bool = True
     orchestrator_max_recurs: typing.Optional[int] = 5000
     host: typing.Optional[str] = "0.0.0.0"
     port: typing.Optional[int] = 50000

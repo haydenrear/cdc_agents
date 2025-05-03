@@ -144,13 +144,10 @@ def parse_to_message(in_value: typing.Union[PromptValue, str, dict[str, Any], Ba
     elif isinstance(in_value, list | tuple):
         return [m for f in in_value for m in parse_to_message(f)]
 
-
-
 def _to_messages(content, role2):
     if isinstance(content, list):
         return [Message(content=m, role=role2) for m in content]
     return [Message(content=content, role=role2)]
-
 
 bind_tools_lock = threading.RLock()
 
@@ -180,6 +177,61 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
         self.config_props = model_server_config_props
         self.bound_tools = tools
         self.tool_choice = tool_choice
+
+    @injector.synchronized(bind_tools_lock)
+    def invoke(self, model_input: LanguageModelInput,
+               config: Optional[RunnableConfig] = None, **kwargs: Any) -> LanguageModelOutput:
+        executed_on_model_server = self.executor.call(self.convert_to_model_server(model_input, config))
+        out = self.convert_to_language_model_output(executed_on_model_server, config)
+        return out
+
+    @injector.synchronized(bind_tools_lock)
+    def bind_tools(
+            self,
+            tools: typing.Sequence[typing.Union[typing.Dict[str, Any], type, BaseTool]],
+            *,
+            tool_choice: Optional[typing.Union[str]] = None,
+            **kwargs: Any,
+    ) -> Runnable[LanguageModelInput, BaseMessage]:
+        """Bind tools to the model.
+
+        Args:
+            tools: Sequence of tools to bind to the model.
+            tool_choice: The tool to use. If "any" then any tool can be used.
+
+        Returns:
+            A Runnable that returns a message.
+        """
+        if self.bound_tools is not None:
+            if tools != self.bound_tools:
+                LoggerFacade.error(f"Attempted to rebind tools for {self}")
+
+        self.bound_tools = tools
+        self.tool_choice = tool_choice
+
+        assert not self.tool_choice or self.tool_choice.lower() == "any", \
+            ("tool choice should be either Any or None at this point. "
+             "Future state is return immutable new ModelServerModel each time if this changes.")
+
+        return self
+
+    @injector.synchronized(bind_tools_lock)
+    def _stream(
+            self,
+            messages: list[BaseMessage],
+            stop: Optional[list[str]] = None,
+            run_manager: Optional[CallbackManagerForLLMRun] = None,
+            **kwargs: Any,
+    ) -> typing.Iterator[ChatGenerationChunk]:
+        raise NotImplementedError
+
+    @property
+    def _llm_type(self) -> str:
+        raise NotImplementedError
+
+    def _generate(self, messages: list[BaseMessage], stop: Optional[list[str]] = None,
+                  run_manager: Optional[CallbackManagerForLLMRun] = None, **kwargs: Any) -> ChatResult:
+        raise NotImplementedError
 
     @classmethod
     def convert_to_model_server(cls,
@@ -257,59 +309,3 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
                 pass
 
         return value
-
-    @injector.synchronized(bind_tools_lock)
-    def invoke(self, model_input: LanguageModelInput,
-               config: Optional[RunnableConfig] = None, **kwargs: Any) -> LanguageModelOutput:
-        executed_on_model_server = self.executor.call(self.convert_to_model_server(model_input, config))
-        out = self.convert_to_language_model_output(executed_on_model_server, config)
-        return out
-
-    @injector.synchronized(bind_tools_lock)
-    def bind_tools(
-            self,
-            tools: typing.Sequence[typing.Union[typing.Dict[str, Any], type, BaseTool]],
-            *,
-            tool_choice: Optional[typing.Union[str]] = None,
-            **kwargs: Any,
-    ) -> Runnable[LanguageModelInput, BaseMessage]:
-        """Bind tools to the model.
-
-        Args:
-            tools: Sequence of tools to bind to the model.
-            tool_choice: The tool to use. If "any" then any tool can be used.
-
-        Returns:
-            A Runnable that returns a message.
-        """
-        if self.bound_tools is not None:
-            if tools != self.bound_tools:
-                LoggerFacade.error(f"Attempted to rebind tools for {self}")
-
-        # self.bound_tools = tools
-        # self.tool_choice = tool_choice
-
-        # assert self.tool_choice.lower() == "any" or not self.tool_choice, \
-        #     ("tool choice should be either Any or None at this point. "
-        #      "Future state is return immutable new ModelServerModel each time if this changes.")
-
-        return self
-
-    @injector.synchronized(bind_tools_lock)
-    def _stream(
-            self,
-            messages: list[BaseMessage],
-            stop: Optional[list[str]] = None,
-            run_manager: Optional[CallbackManagerForLLMRun] = None,
-            **kwargs: Any,
-    ) -> typing.Iterator[ChatGenerationChunk]:
-        raise NotImplementedError
-
-    @property
-    def _llm_type(self) -> str:
-        raise NotImplementedError
-
-    def _generate(self, messages: list[BaseMessage], stop: Optional[list[str]] = None,
-                  run_manager: Optional[CallbackManagerForLLMRun] = None, **kwargs: Any) -> ChatResult:
-        raise NotImplementedError
-
