@@ -48,6 +48,17 @@ class BaseAgent(abc.ABC):
     def agent_name(self) -> str:
         pass
 
+    @property
+    def terminal_string(self) -> str:
+        return "FINAL ANSWER"
+
+    def is_terminate_node(self, last_message, state) -> bool:
+        return self.message_contains(last_message, self.terminal_string)
+
+    def message_contains(self, last_message, answer) -> bool:
+        return answer in last_message.content or any([answer in c for c in last_message.content])
+
+
 class A2AAgent(BaseAgent, abc.ABC):
 
     def __init__(self, model, tools, system_instruction,
@@ -174,13 +185,6 @@ class AgentOrchestrator(A2AAgent, abc.ABC):
     def parse_orchestration_response(self, last_message) -> typing.Union[BaseMessage, NextAgentResponse]:
         pass
 
-    def is_terminate_node(self, last_message, state) -> bool:
-        return self.message_contains(last_message)
-
-    def message_contains(self, last_message, answer="FINAL ANSWER") -> bool:
-        return answer in last_message.content or any([answer in c for c in last_message.content])
-
-
 class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
     """
     Generate a tool for each agent being orchestrated, then pass them into one model.
@@ -212,11 +216,12 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.agents = agents
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
 
-    def get_next_node(self, last_message: typing.Union[BaseMessage, NextAgentResponse], executed: str, state):
+    def get_next_node(self, last_executed_agent: BaseAgent, last_message: typing.Union[BaseMessage, NextAgentResponse], state):
         if isinstance(last_message, BaseMessage):
-            is_last_message = self.is_terminate_node(last_message, state)
+            is_last_message = last_executed_agent.is_terminate_node(last_message, state)
             if is_last_message:
-                if self.props.let_orchestrated_agents_terminate or self.orchestrator_agent.agent_name == executed:
+                if (self.props.let_orchestrated_agents_terminate
+                        or self.orchestrator_agent.agent_name == last_executed_agent.agent_name):
                     return END
                 else:
                     return self.orchestrator_agent.agent_name
@@ -235,17 +240,14 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         last_message = self.parse_orchestration_response(last_message)
 
-        goto = self.get_next_node(last_message, agent.agent_name, state)
+        goto = self.get_next_node(agent, last_message, state)
 
         if goto == self.orchestrator_agent.agent_name and agent.agent_name == self.orchestrator_agent.agent_name:
-            last_message.content.append("Did not receive a FINAL ANSWER delimited with FINAL ANSWER or which agent to forward to. "
-                                        "Please either summarize into a FINAL ANSWER or delegate to one of you're agents who will.")
+            last_message.content.append(f"Did not receive a {self.terminal_string} delimited with {self.terminal_string} or which agent to forward to. "
+                                        f"Please either summarize into a {self.terminal_string} or delegate to one of you're agents who will.")
 
         return Command(
-            update={
-                # share internal message history of chart agent with other agents
-                "messages": result["messages"],
-            },
+            update={"messages": result["messages"]},
             goto=goto)
 
     def _create_orchestration_graph(self, session_id) -> OrchestratorAgentGraph:
