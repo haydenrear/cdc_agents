@@ -2,7 +2,7 @@ import abc
 
 from langchain.agents import create_react_agent
 
-from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, A2AOrchestratorAgent, \
+from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, OrchestratorAgent, \
     BaseAgent, NextAgentResponse
 import dataclasses
 import enum
@@ -49,7 +49,7 @@ def call_a_friend():
 
 @component(bind_to=[A2AAgent])
 @injectable()
-class DeepCodeAgent(A2AOrchestratorAgent, DeepResearchOrchestrated):
+class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
 
     SYSTEM_INSTRUCTION = (
         """

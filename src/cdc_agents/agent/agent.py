@@ -167,7 +167,7 @@ class A2AAgent(BaseAgent, abc.ABC):
                     "content": "Processing the exchange rates..",
                 }
 
-class A2AOrchestratorAgent(A2AAgent, abc.ABC):
+class OrchestratorAgent(A2AAgent, abc.ABC):
     pass
 
 
@@ -205,7 +205,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     Facilitate multi-agent through lang-graph state graph. This means multiple models, each with smaller prompt from lower number of tools.
     """
     def __init__(self, agents: typing.Dict[str, OrchestratedAgent],
-                 orchestrator_agent: A2AOrchestratorAgent,
+                 orchestrator_agent: OrchestratorAgent,
                  props: AgentConfigProps):
         """
         :param agents: agents being orchestrated

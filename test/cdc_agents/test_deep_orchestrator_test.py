@@ -1,3 +1,4 @@
+import copy
 import logging
 import typing
 import unittest
@@ -13,7 +14,7 @@ from langchain_core.tools import BaseTool, tool
 from langgraph.graph.state import CompiledStateGraph
 
 from aisuite.framework import ChatCompletionResponse
-from cdc_agents.agent.agent import A2AAgent, OrchestratedAgent, A2AOrchestratorAgent
+from cdc_agents.agent.agent import A2AAgent, OrchestratedAgent, OrchestratorAgent
 from cdc_agents.agents.deep_code_research_agent import call_a_friend, DeepCodeOrchestrator
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
@@ -83,7 +84,7 @@ class ModelServerModelTest(unittest.TestCase):
             """
             return "hello..."
 
-        self._mock_executor_call()
+        model = self._mock_executor_call()
 
         class TestAgent(A2AAgent) :
 
@@ -102,7 +103,7 @@ class ModelServerModelTest(unittest.TestCase):
 
 
 
-        class TestOrchestratorAgent(A2AOrchestratorAgent):
+        class TestOrchestratorAgent(OrchestratorAgent):
 
             did_call = False
 
@@ -118,12 +119,13 @@ class ModelServerModelTest(unittest.TestCase):
                 return i
 
 
-        k = next(iter(self.server.agents))[0]
-        self.server.get_agent_response = self._agent_response
-        self.server.agents.clear()
-        self.server.orchestrator_agent = TestOrchestratorAgent(self.model, [call_a_friend_in], "test")
-        self.server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.model, [call_a_friend_in], "test"))
-        invoked = self.server.invoke("hello", "test")
+        server = copy.copy(self.server)
+        server.agents = copy.copy(server.agents)
+        server.get_agent_response = self._agent_response
+        server.agents.clear()
+        server.orchestrator_agent = TestOrchestratorAgent(model, [call_a_friend_in], "test")
+        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(model, [call_a_friend_in], "test"))
+        invoked = server.invoke("hello", "test")
 
         assert len(invoked) != 0
         assert any([isinstance(i, ToolMessage) for i in invoked])
@@ -156,8 +158,10 @@ class ModelServerModelTest(unittest.TestCase):
             "okay",
             "FINAL ANSWER: hello!"
         ]
-        self.model.executor = Executor()
-        self.model.executor.call = mock
+        model = copy.copy(self.model)
+        model.executor = Executor()
+        model.executor.call = mock
+        return model
 
     def _agent_response(self, *args, **kwargs):
         c: CompiledStateGraph = args[1]
