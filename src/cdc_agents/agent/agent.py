@@ -5,6 +5,7 @@ import typing
 from typing import Any, Dict, AsyncIterable
 from typing import Literal
 
+from langchain.agents import AgentExecutor
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages import HumanMessage, BaseMessage
 from langchain_core.runnables.config import RunnableConfig
@@ -30,7 +31,6 @@ class TaskEventHook(abc.ABC):
 
     def __call__(self, request: PushTaskEvent, *args, **kwargs) -> PushTaskEventResponseItem:
         return self.do_on_event(*args, **kwargs)
-
 
 class ResponseFormat(BaseModel):
     """Respond to the user in this format."""
@@ -61,11 +61,10 @@ class A2AAgent(BaseAgent, abc.ABC):
                 self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
             if model.startswith('ollama_chat://'):
                 self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
-
-
+        self.mem = memory
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=memory,
-            prompt = self.system_instruction, response_format=ResponseFormat)
+            prompt = self.system_instruction)
 
         self._agent_name = self.__class__.__name__
 
@@ -78,7 +77,7 @@ class A2AAgent(BaseAgent, abc.ABC):
                 self.tools.extend(client.get_tools())
             self.graph = create_react_agent(
                 self.model, tools=self.tools, checkpointer=memory,
-                prompt = self.system_instruction, response_format=ResponseFormat)
+                prompt = self.system_instruction)
 
     @property
     def task_event_hooks(self) -> list[TaskEventHook]:
@@ -106,7 +105,7 @@ class A2AAgent(BaseAgent, abc.ABC):
     @staticmethod
     def get_agent_response_graph(config, graph):
         current_state = graph.get_state(config)
-        structured_response = current_state.values.get('structured_response')
+        structured_response = current_state.values.get('messages')
         if structured_response and isinstance(structured_response, ResponseFormat):
             if structured_response.status == "input_required":
                 return {
@@ -160,11 +159,10 @@ class A2AAgent(BaseAgent, abc.ABC):
 class A2AOrchestratorAgent(A2AAgent, abc.ABC):
     pass
 
-class A2AAgentOrchestrator(A2AAgent, abc.ABC):
-    # def __init__(self, model, tools, system_instruction, agents: typing.List[A2AAgent]):
+class AgentOrchestrator(A2AAgent, abc.ABC):
     pass
 
-class DelegatingToolA2AAgentOrchestrator(A2AAgentOrchestrator, abc.ABC):
+class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
     """
     Generate a tool for each agent being orchestrated, then pass them into one model.
     """
@@ -179,7 +177,7 @@ class OrchestratorAgentGraph:
     state_graph: StateGraph
     config: RunnableConfig
 
-class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
+class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     """
     Facilitate multi-agent through lang-graph state graph. This means multiple models, each with smaller prompt from lower number of tools.
     """
@@ -195,40 +193,49 @@ class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
         self.agents = agents
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
 
-    @staticmethod
-    def get_next_node(last_message: BaseMessage, goto: str):
-        if "FINAL ANSWER" in last_message.content:
-            # Any agent decided the work is done
-            return END
-        return goto
+    def get_next_node(self, last_message: BaseMessage, executed: str):
+        if self.orchestrator_agent.agent_name == executed:
+            if self._message_contains(last_message):
+                return END
+            elif self._message_contains(last_message, 'ROUTE TO AGENT'):
+                raise Exception('TODO - this should retrieve where to go from there, or if its not orchestrator, '
+                                'then return back to orchestrator')
+            else:
+                # TODO: shouldn't this add something, such as, please come to a final answer or ask one of the sub-agents
+                return self.orchestrator_agent.agent_name
+        else:
+            return self.orchestrator_agent.agent_name
 
-    def next_node(self, agent: BaseAgent, state: MessagesState, sessionId)-> Command[typing.Union[str, END]] :
-        result = agent.invoke(state, sessionId)
-        goto = self.get_next_node(result["messages"][-1], self.orchestrator_agent.agent_name)
-        # wrap in a human message, as not all providers allow
-        # AI message at the last position of the input messages list
+    def _message_contains(self, last_message, answer="FINAL ANSWER"):
+        return answer in last_message.content or any([answer in c for c in last_message.content])
+
+    def next_node(self, agent: BaseAgent, state: MessagesState, session_id)-> Command[typing.Union[str, END]] :
+        result = agent.invoke(state, session_id)
+        last_message: BaseMessage = result["messages"][-1]
+
         result["messages"][-1] = HumanMessage(
-            content=result["messages"][-1].content, name=agent.agent_name
-        )
+            content=last_message.content, name=agent.agent_name)
+
+        goto = self.get_next_node(last_message, agent.agent_name)
+
         return Command(
             update={
                 # share internal message history of chart agent with other agents
                 "messages": result["messages"],
             },
-            goto=goto,
-        )
+            goto=goto)
 
-    def _create_orchestration_graph(self, sessionId) -> OrchestratorAgentGraph:
-        return OrchestratorAgentGraph(self._create_state_graph(sessionId),
-                                      self._create_orchestration_config(sessionId))
+    def _create_orchestration_graph(self, session_id) -> OrchestratorAgentGraph:
+        return OrchestratorAgentGraph(self._create_state_graph(session_id),
+                                      self._create_orchestration_config(session_id))
 
-    def _create_state_graph(self, sessionId) -> StateGraph:
+    def _create_state_graph(self, session_id) -> StateGraph:
         state_graph = StateGraph(MessagesState)
         state_graph.add_node(self.orchestrator_agent.agent_name,
-                             lambda state: self.next_node(self.orchestrator_agent, state, sessionId))
+                             lambda state: self.next_node(self.orchestrator_agent, state, session_id))
 
         for agent_name, agent in self.agents.items():
-            state_graph.add_node(agent_name, lambda state: self.next_node(agent.agent, state, sessionId))
+            state_graph.add_node(agent_name, lambda state: self.next_node(agent.agent, state, session_id))
 
         state_graph.set_entry_point(self.orchestrator_agent.agent_name)
         return state_graph
@@ -246,7 +253,7 @@ class StateGraphA2AOrchestrator(A2AAgentOrchestrator, abc.ABC):
         a = self._create_orchestration_graph(sessionId)
         config = a.config
         state_graph = a.state_graph
-        graph = state_graph.compile()
+        graph = state_graph.compile(checkpointer=MemorySaver())
         graph.invoke({"messages": [("user", query)]}, config)
         return config, graph
 

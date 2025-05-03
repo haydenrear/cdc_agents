@@ -1,5 +1,8 @@
+import abc
 import typing
 from typing import Union, Any
+
+from langchain_core.messages import ToolCall
 from pydantic import BaseModel, Field, TypeAdapter
 from typing import Literal, List, Annotated, Optional
 from datetime import datetime
@@ -172,7 +175,6 @@ class SendTaskStreamingRequest(JSONRPCRequest):
 class SendTaskStreamingResponse(JSONRPCResponse):
     result: TaskStatusUpdateEvent | TaskArtifactUpdateEvent | None = None
 
-
 class GetTaskRequest(JSONRPCRequest):
     method: Literal["tasks/get"] = "tasks/get"
     params: TaskQueryParams
@@ -223,7 +225,6 @@ class GetTaskPushNotificationRequest(JSONRPCRequest):
     method: Literal["tasks/pushNotification/get",] = "tasks/pushNotification/get"
     params: TaskIdParams
 
-
 class GetTaskPushNotificationResponse(JSONRPCResponse):
     result: TaskPushNotificationConfig | None = None
 
@@ -231,6 +232,18 @@ class TaskResubscriptionRequest(JSONRPCRequest):
     method: Literal["tasks/resubscribe",] = "tasks/resubscribe"
     params: TaskIdParams
 
+class ToolCallAdapter(BaseModel, abc.ABC):
+    @abc.abstractmethod
+    def to_tool_call(self) -> ToolCall:
+        pass
+
+class ToolCallJson(ToolCallAdapter):
+
+    tool: str
+    tool_input: typing.Dict[str, Any]
+
+    def to_tool_call(self) -> ToolCall:
+        return ToolCall(name=self.tool, args=self.tool_input, id=str(uuid4()))
 
 A2ARequest = TypeAdapter(
     Annotated[

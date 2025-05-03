@@ -1,6 +1,8 @@
 import abc
 
-from cdc_agents.agent.agent import A2AAgent, StateGraphA2AOrchestrator, OrchestratedAgent, A2AOrchestratorAgent, \
+from langchain.agents import create_react_agent
+
+from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, A2AOrchestratorAgent, \
     BaseAgent
 import dataclasses
 import enum
@@ -43,7 +45,7 @@ def call_a_friend():
     Returns:
 
     """
-    raise NotImplementedError()
+    raise NotImplementedError
 
 @component(bind_to=[A2AAgent])
 @injectable()
@@ -76,7 +78,11 @@ class DeepCodeAgent(A2AOrchestratorAgent, DeepResearchOrchestrated):
 
     def invoke(self, query, sessionId) -> str:
         config = {"configurable": {"thread_id": sessionId}}
-        self.graph.invoke({"messages": [("user", query)]}, config)
+        if isinstance(query, dict) and "messages" in query.keys():
+            self.graph.invoke(query, config)
+        else:
+            self.graph.invoke({"messages": [{"content": query}]}, config)
+
         return self.get_agent_response(config)
 
     async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
@@ -90,17 +96,18 @@ class DeepCodeAgent(A2AOrchestratorAgent, DeepResearchOrchestrated):
 
 @component(bind_to=[A2AAgent])
 @injectable()
-class DeepCodeOrchestrator(StateGraphA2AOrchestrator):
+class DeepCodeOrchestrator(StateGraphOrchestrator):
 
     @injector.inject
     def __init__(self,
                  agents: typing.List[DeepResearchOrchestrated],
                  orchestrator_agent: DeepCodeAgent,
                  props: AgentConfigProps):
-        StateGraphA2AOrchestrator.__init__(self,
-                                           {a.agent_name: OrchestratedAgent(a) for a in agents if
+        StateGraphOrchestrator.__init__(self,
+                                        {a.agent_name: OrchestratedAgent(a) for a in agents if
                                             isinstance(a, A2AAgent)},
-                                           orchestrator_agent, props)
+                                        orchestrator_agent, props)
+
     @property
     def agent_name(self) -> str:
         return f'Graph orchestrator agent; {self.orchestrator_agent.agent_name}'

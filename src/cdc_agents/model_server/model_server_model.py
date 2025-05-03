@@ -1,21 +1,26 @@
 import abc
 import dataclasses
+import json
 import threading
 import typing
 from typing import Optional, Any
 
 import injector
+from langchain.agents.output_parsers import ReActSingleInputOutputParser, JSONAgentOutputParser
+from langchain_core.agents import AgentAction
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models import LanguageModelInput, LanguageModelOutput, BaseChatModel
-from langchain_core.messages import BaseMessage, MessageLikeRepresentation
-from langchain_core.outputs import ChatGenerationChunk
+from langchain_core.language_models.base import LanguageModelOutputVar
+from langchain_core.messages import BaseMessage, MessageLikeRepresentation, AIMessage, ToolCall
+from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_core.prompt_values import PromptValue
-from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableSerializable
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from aisuite.framework import ChatCompletionResponse
 from aisuite.framework.choice import Choice
+from cdc_agents.common.types import ToolCallJson, ToolCallAdapter
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps, ModelServerModelProps
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
@@ -53,37 +58,40 @@ class ModelServerValidationEndpoint(ModelServerInput):
     to_embed: str
     model: str
 
-class ModelServerExecutor(abc.ABC):
+class ModelServerExecutor(BaseModel, abc.ABC):
 
     @abc.abstractmethod
-    def __call__(self, model_server_input: ModelServerInput,
+    def call(self, model_server_input: ModelServerInput,
                  tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None,
                  *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         pass
 
-    @property
     @abc.abstractmethod
-    def config_props(self) -> ModelServerConfigProps:
+    def get_config_props(self) -> ModelServerConfigProps:
         pass
 
 @component(bind_to=[ModelServerExecutor], profile='test', scope=profile_scope)
 @injectable()
 class LoggingModelServerExecutor(ModelServerExecutor):
 
+    config_props: ModelServerConfigProps
+
     @property
-    def config_props(self) -> ModelServerConfigProps:
-        return self._model_props
+    def get_config_props(self) -> ModelServerConfigProps:
+        return self.config_props
 
     @injector.inject
     def __init__(self, model_props: ModelServerConfigProps):
-        self._model_props = model_props
+        BaseModel.__init__(self, config_props=model_props)
 
-    def __call__(self, model_server_input: ModelServerInput,
+    def call(self, model_server_input: ModelServerInput,
                  tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None,
                  *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         LoggerFacade.info("Called model server executor")
         if isinstance(model_server_input, ModelServerChatInput):
-            return ChatCompletionResponse.create_completion_response([Choice.create_choice(c) for c in model_server_input.messages])
+            return ChatCompletionResponse.create_completion_response([
+                Choice.create_choice(Message(content=c.content.replace("Action", "")))
+                for c in model_server_input.messages])
         else:
             return "hello!"
 
@@ -91,18 +99,20 @@ class LoggingModelServerExecutor(ModelServerExecutor):
 @injectable()
 class RestModelServerExecutor(ModelServerExecutor):
 
+    config_props: ModelServerConfigProps
+
     @injector.inject
     def __init__(self, model_props: ModelServerConfigProps):
-        self._model_props = model_props
+        BaseModel.__init__(self, config_props=model_props)
 
-    def __call__(self, model_server_input: ModelServerInput,
+    def call(self, model_server_input: ModelServerInput,
                  tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None,
                  *args, **kwargs) -> typing.Union[ChatCompletionResponse, str]:
         pass
 
     @property
-    def config_props(self) -> ModelServerConfigProps:
-        return self._model_props
+    def get_config_props(self) -> ModelServerConfigProps:
+        return self.config_props
 
 def parse_role(in_value: typing.Union[PromptValue, str, dict[str, Any], BaseMessage, MessageLikeRepresentation]) -> str:
     if isinstance(in_value, str):
@@ -124,31 +134,52 @@ def parse_to_message(in_value: typing.Union[PromptValue, str, dict[str, Any], Ba
     if isinstance(in_value, str):
         return [Message(content=in_value)]
     elif isinstance(in_value, typing.Dict):
-        return [Message(content=parse_content(in_value), role=parse_role(in_value))]
+        return _to_messages(parse_content(in_value), parse_role(in_value))
     elif isinstance(in_value, PromptValue):
         return [m for f in in_value.to_messages() for m in parse_to_message(f)]
     elif isinstance(in_value, BaseMessage):
-        return [Message(content=parse_content(in_value), role=parse_role(in_value))]
+        return _to_messages(parse_content(in_value), parse_role(in_value))
     elif isinstance(in_value, MessageLikeRepresentation):
-        return [Message(content=parse_content(in_value), role=parse_role(in_value))]
+        return _to_messages(parse_content(in_value), parse_role(in_value))
     elif isinstance(in_value, list | tuple):
         return [m for f in in_value for m in parse_to_message(f)]
+
+
+
+def _to_messages(content, role2):
+    if isinstance(content, list):
+        return [Message(content=m, role=role2) for m in content]
+    return [Message(content=content, role=role2)]
+
 
 bind_tools_lock = threading.RLock()
 
 @prototype_scope_bean()
-class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput], BaseChatModel):
+class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModelOutputVar]):
+
+    config_props: ModelServerConfigProps
+    executor: ModelServerExecutor
+    model_props: typing.Optional[ModelServerModelProps] = None
+    bound_tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, BaseTool]]] = None
+    tool_choice: typing.Optional[str] = None
+    tool_call_schema: typing.Any = None
 
     @prototype_factory()
     def __init__(self,
                  model_server_config_props: ModelServerConfigProps,
                  executor: ModelServerExecutor,
-                 model_props: ModelServerModelProps):
+                 model_props: ModelServerModelProps,
+                 tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, BaseTool]]] = None,
+                 tool_choice: typing.Optional[str] = None,
+                 tool_call_schema: typing.Optional[typing.Any] = ToolCallJson):
+        BaseChatModel.__init__(self, config_props=model_server_config_props, executor=executor, model_props=model_props,
+                               bound_tools=tools, tool_choice=tool_choice)
+        self.tool_call_schema = tool_call_schema
         self.executor = executor
         self.model_props = model_props
-        self.model_server_config_props = model_server_config_props
-        self.bound_tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None
-        self.tool_choice: typing.Optional[str] = None
+        self.config_props = model_server_config_props
+        self.bound_tools = tools
+        self.tool_choice = tool_choice
 
     @classmethod
     def convert_to_model_server(cls,
@@ -161,25 +192,83 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput], BaseCh
         elif isinstance(model_input, typing.Sequence):
             return ModelServerChatInput(messages = [m for f in model_input for m in parse_to_message(f)])
 
-    @classmethod
-    def convert_to_language_model_output(cls,
+    def convert_to_language_model_output(self,
                                          model_input: typing.Union[ChatCompletionResponse, str],
                                          config: Optional[RunnableConfig], **kwargs: Any) -> typing.Optional[LanguageModelOutput]:
         if isinstance(model_input, str):
-            return model_input
+            converted = self._convert_to_lm_output_inner(model_input)
+            tools = []
+            content = []
+            self.parse_for_ai_message(model_input, content, converted, tools)
+            if model_input not in content:
+                content.append(model_input)
+
+            return self._to_ai_message(content, tools)
         else:
-            return BaseMessage(content=[c.message.content for c in model_input.choices], type="chat")
+            tools = []
+            content = []
+            for c in model_input.choices:
+                converted = self._convert_to_lm_output_inner(c.message.content)
+                self.parse_for_ai_message(c.message.content, content, converted, tools)
+                if c.message.content not in content:
+                    content.append(c.message.content)
+
+            return self._to_ai_message(content, tools)
+
+    def _to_ai_message(self, content, tools):
+        m = AIMessage(content=content)
+        m.tool_calls = tools
+        return m
+
+    def parse_for_ai_message(self, c, content, converted, tools):
+        if isinstance(converted, list):
+            for converted_item in converted:
+                self.parse_for_ai_message(c, content, converted_item, tools)
+        elif isinstance(converted, dict) and 'name' in converted.keys() and 'args' in converted.keys():
+            tools.append(converted)
+        else:
+            content.append(converted)
+
+    def _convert_to_lm_output_inner(self, model_input):
+        try:
+            parsed = ReActSingleInputOutputParser().invoke(model_input)
+            return self.get_tool_call(parsed)
+        except:
+            try:
+                parsed = JSONAgentOutputParser().invoke(model_input)
+                return self.get_tool_call(parsed)
+            except:
+                return self.get_tool_call(model_input)
+
+    def get_tool_call(self, value: typing.Union[str, dict[str, Any], typing.List, AgentAction]) -> typing.Optional[typing.List[ToolCall]]:
+        if isinstance(value, dict):
+            try:
+                self.tool_call_schema(**value).to_tool_call()
+            except:
+                pass
+        elif isinstance(value, typing.List):
+            return [f for v in value for f in self.get_tool_call(v)]
+        elif isinstance(value, AgentAction):
+            return [ToolCall(name=value.tool, args={} if not value.tool_input or len(value.tool_input) else value.tool_input, id=''.join(value.lc_id()))]
+        else:
+            try:
+                return self.get_tool_call(json.loads(value))
+            except:
+                pass
+
+        return value
 
     @injector.synchronized(bind_tools_lock)
     def invoke(self, model_input: LanguageModelInput,
                config: Optional[RunnableConfig] = None, **kwargs: Any) -> LanguageModelOutput:
-        executed_on_model_server = self.executor(self.convert_to_model_server(model_input, config))
-        return self.convert_to_language_model_output(executed_on_model_server, config)
+        executed_on_model_server = self.executor.call(self.convert_to_model_server(model_input, config))
+        out = self.convert_to_language_model_output(executed_on_model_server, config)
+        return out
 
     @injector.synchronized(bind_tools_lock)
     def bind_tools(
             self,
-            tools: typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]],
+            tools: typing.Sequence[typing.Union[typing.Dict[str, Any], type, BaseTool]],
             *,
             tool_choice: Optional[typing.Union[str]] = None,
             **kwargs: Any,
@@ -193,17 +282,16 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput], BaseCh
         Returns:
             A Runnable that returns a message.
         """
-        LoggerFacade.info("Model server needs to add tools to prompt.")
         if self.bound_tools is not None:
             if tools != self.bound_tools:
                 LoggerFacade.error(f"Attempted to rebind tools for {self}")
 
-        self.bound_tools = tools
-        self.tool_choice = tool_choice
+        # self.bound_tools = tools
+        # self.tool_choice = tool_choice
 
-        assert self.tool_choice == "Any" or not self.tool_choice, \
-            ("tool choice should be either Any or None at this point."
-             "Future state is return immutable new ModelServerModel each time if this changes.")
+        # assert self.tool_choice.lower() == "any" or not self.tool_choice, \
+        #     ("tool choice should be either Any or None at this point. "
+        #      "Future state is return immutable new ModelServerModel each time if this changes.")
 
         return self
 
@@ -216,3 +304,12 @@ class ModelServerModel(Runnable[LanguageModelInput, LanguageModelOutput], BaseCh
             **kwargs: Any,
     ) -> typing.Iterator[ChatGenerationChunk]:
         raise NotImplementedError
+
+    @property
+    def _llm_type(self) -> str:
+        raise NotImplementedError
+
+    def _generate(self, messages: list[BaseMessage], stop: Optional[list[str]] = None,
+                  run_manager: Optional[CallbackManagerForLLMRun] = None, **kwargs: Any) -> ChatResult:
+        raise NotImplementedError
+

@@ -3,7 +3,6 @@ asyncio>=3.4.3
 click>=8.1.8
 httpx>=0.28.1
 httpx-sse>=0.4.0
-langgraph>=0.3.18
 pydantic==2.11.3
 sse-starlette>=2.2.1
 starlette>=0.46.1
@@ -15,5 +14,9 @@ jwcrypto>=1.5.6
 pyjwt>=2.10.1
 injector==0.22.0
 networkx==3.1
-lanchain==0.2.43
+langgraph>=0.3.18
 rerankers==0.8.0
+langchain==0.3.24
+langchain-mcp-adapters==0.0.9
+langgraph==0.3.34
+langchain-ollama==0.3.2

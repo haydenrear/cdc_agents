@@ -1,4 +1,5 @@
 agent_config:
+  orchestrator_max_recurs: 10
   initialize_server: false
   agents:
     CdcCodegenAgent:
