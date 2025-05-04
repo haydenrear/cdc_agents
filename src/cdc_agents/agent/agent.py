@@ -22,8 +22,6 @@ from cdc_agents.common.types import PushTaskEvent, PushTaskEventResponseItem
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool
 from python_util.logger.logger import LoggerFacade
 
-memory = MemorySaver()
-
 class TaskEventHook(abc.ABC):
     @abc.abstractmethod
     def do_on_event(self, request: PushTaskEvent, *args, **kwargs) -> PushTaskEventResponseItem:
@@ -60,6 +58,7 @@ class BaseAgent(abc.ABC):
 
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_instruction=None,
+                 memory: MemorySaver = MemorySaver(),
                  task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
         self._task_event_hooks = task_event_hooks
         self.model = model
@@ -148,15 +147,17 @@ class A2AAgent(BaseAgent, abc.ABC):
 class A2AReactAgent(A2AAgent, abc.ABC):
 
     def __init__(self, model, tools, system_instruction,
+                 memory: MemorySaver,
                  task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
         A2AAgent.__init__(self, model, tools, system_instruction, task_event_hooks)
+        self.memory = memory
         if isinstance(model, str):
             if model.startswith('ollama_text://'):
                 self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
             if model.startswith('ollama_chat://'):
                 self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
         self.graph = create_react_agent(
-            self.model, tools=self.tools, checkpointer=memory,
+            self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
@@ -167,7 +168,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
             async with MultiServerMCPClient({s.name: s.tool_options for k,s in additional_tools.items()}) as client:
                 self.tools.extend(client.get_tools())
             self.graph = create_react_agent(
-                self.model, tools=self.tools, checkpointer=memory,
+                self.model, tools=self.tools, checkpointer=self.memory,
                 prompt = self.system_instruction)
 
 class OrchestratorAgent(A2AReactAgent, abc.ABC):
@@ -208,12 +209,14 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     """
     def __init__(self, agents: typing.Dict[str, OrchestratedAgent],
                  orchestrator_agent: OrchestratorAgent,
-                 props: AgentConfigProps):
+                 props: AgentConfigProps,
+                 memory: MemorySaver):
         """
         :param agents: agents being orchestrated
         :param orchestrator_agent: agent doing orchestration
         """
         A2AAgent.__init__(self)
+        self.memory = memory
         self.props = props
         self.orchestrator_agent = orchestrator_agent
         self.agents = agents

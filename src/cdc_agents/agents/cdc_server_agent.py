@@ -5,6 +5,7 @@ from typing import Any, Dict, AsyncIterable
 
 import injector
 from langchain_core.tools import tool
+from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
@@ -128,13 +129,13 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
     )
 
     @injector.inject
-    def __init__(self, agent_config: AgentConfigProps):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
         code_search_agent = "CdcCodeSearchAgent"
         A2AReactAgent.__init__(self,
                                agent_config.agents[
                                    code_search_agent].agent_descriptor.model if code_search_agent in agent_config.agents.keys() else None,
                                [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
-                               self.SYSTEM_INSTRUCTION)
+                               self.SYSTEM_INSTRUCTION, memory_saver)
         self.agent_config: AgentCardItem = agent_config.agents[code_search_agent] \
             if code_search_agent in agent_config.agents.keys() else None
 
@@ -180,12 +181,12 @@ class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
     )
 
     @injector.inject
-    def __init__(self, agent_config: AgentConfigProps):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
         cdc_codegen_agent = "CdcCodegenAgent"
         A2AReactAgent.__init__(self,
                           agent_config.agents[cdc_codegen_agent].agent_descriptor.model if cdc_codegen_agent in agent_config.agents.keys() else None,
                           [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
-                          self.SYSTEM_INSTRUCTION)
+                          self.SYSTEM_INSTRUCTION, memory_saver)
         self.agent_config: AgentCardItem = agent_config.agents[cdc_codegen_agent] \
             if cdc_codegen_agent in agent_config.agents.keys() else None
 

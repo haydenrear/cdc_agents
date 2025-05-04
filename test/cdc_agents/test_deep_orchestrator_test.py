@@ -11,6 +11,7 @@ from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage
 from langchain_core.prompt_values import PromptValue, ChatPromptValue
 from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import BaseTool, tool
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
 from aisuite.framework import ChatCompletionResponse
@@ -37,6 +38,7 @@ class ModelServerModelTest(unittest.TestCase):
     ai_suite: AgentConfigProps
     server: DeepCodeOrchestrator
     model: ModelServerModel
+    memory: MemorySaver
 
 
     @test_inject(profile='test')
@@ -44,7 +46,9 @@ class ModelServerModelTest(unittest.TestCase):
     def construct(self,
                   ai_suite: AgentConfigProps,
                   server: DeepCodeOrchestrator,
-                  model: ModelServerModel):
+                  model: ModelServerModel,
+                  memory_saver: MemorySaver):
+        ModelServerModelTest.memory = memory_saver
         ModelServerModelTest.ai_suite = ai_suite
         ModelServerModelTest.server = server
         ModelServerModelTest.model = model
@@ -123,8 +127,8 @@ class ModelServerModelTest(unittest.TestCase):
         server.agents = copy.copy(server.agents)
         server.get_agent_response = self._agent_response
         server.agents.clear()
-        server.orchestrator_agent = TestOrchestratorAgent(model, [call_a_friend_in], "test")
-        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(model, [call_a_friend_in], "test"))
+        server.orchestrator_agent = TestOrchestratorAgent(model, [call_a_friend_in], "test", self.memory)
+        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(model, [call_a_friend_in], "test", self.memory))
         invoked = server.invoke("hello", "test")
 
         assert len(invoked) != 0

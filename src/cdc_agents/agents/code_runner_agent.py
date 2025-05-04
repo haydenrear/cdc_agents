@@ -1,6 +1,7 @@
 from typing import Any, Dict, AsyncIterable
 
 import injector
+from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
@@ -51,12 +52,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
     )
 
     # @injector.inject
-    def __init__(self, agent_config: AgentConfigProps):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
         cdc_codegen_agent = str(CodeRunnerAgent)
         A2AReactAgent.__init__(self,
                           agent_config.agents[cdc_codegen_agent].agent_descriptor.model if cdc_codegen_agent in agent_config.agents.keys() else None,
                           [perform_git_operation, perform_browser_operation, perform_docker_operation, perform_local_file_operation],
-                          self.SYSTEM_INSTRUCTION)
+                          self.SYSTEM_INSTRUCTION, memory_saver)
         self.agent_config: AgentCardItem = agent_config.agents[cdc_codegen_agent] \
             if cdc_codegen_agent in agent_config.agents.keys() else None
 

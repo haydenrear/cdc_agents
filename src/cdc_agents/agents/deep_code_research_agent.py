@@ -1,6 +1,7 @@
 import abc
 
 from langchain.agents import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, OrchestratorAgent, \
     BaseAgent, NextAgentResponse, A2AReactAgent
@@ -62,13 +63,13 @@ class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
     )
 
     @injector.inject
-    def __init__(self, agent_config: AgentConfigProps):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
         agent = 'DeepCodeAgent'
         A2AReactAgent.__init__(self,
                           agent_config.agents[agent].agent_descriptor.model
                           if agent in agent_config.agents.keys() else None,
                           [call_a_friend],
-                          self.SYSTEM_INSTRUCTION)
+                          self.SYSTEM_INSTRUCTION, memory_saver)
         self.agent_config: AgentCardItem = agent_config.agents[agent] \
             if agent in agent_config.agents.keys() else None
 
@@ -102,11 +103,12 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
     def __init__(self,
                  agents: typing.List[DeepResearchOrchestrated],
                  orchestrator_agent: DeepCodeAgent,
-                 props: AgentConfigProps):
+                 props: AgentConfigProps,
+                 memory_saver: MemorySaver):
         StateGraphOrchestrator.__init__(self,
                                         {a.agent_name: OrchestratedAgent(a) for a in agents if
                                             isinstance(a, A2AAgent)},
-                                        orchestrator_agent, props)
+                                        orchestrator_agent, props, memory_saver)
 
     @property
     def agent_name(self) -> str:
