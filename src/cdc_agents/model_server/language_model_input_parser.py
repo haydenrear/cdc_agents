@@ -9,7 +9,7 @@ from langchain_core.language_models import LanguageModelOutput
 from langchain_core.messages import ToolCall, AIMessage
 
 from aisuite.framework import ChatCompletionResponse
-from cdc_agents.common.types import ToolCallJson
+from cdc_agents.common.types import ToolCallJson, ToolCallAdapter
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_util.logger.logger import LoggerFacade
@@ -113,14 +113,14 @@ class SimpleLanguageModelOutputModelParser(LanguageModelOutputParser):
 class ToolCallSchemaProvider(abc.ABC):
 
     @abc.abstractmethod
-    def try_parse_from_tool_call_schema(self, value: dict) -> typing.Optional:
+    def try_parse_from_tool_call_schema(self, value: dict) -> typing.Optional[ToolCallAdapter]:
         pass
 
 @component(bind_to=[ToolCallSchemaProvider])
 @injectable()
 class DefaultToolCallSchemaProvider(ToolCallSchemaProvider):
 
-    def try_parse_from_tool_call_schema(self, value: dict) -> typing.Optional:
+    def try_parse_from_tool_call_schema(self, value: dict) -> typing.Optional[ToolCallAdapter]:
         try:
             return ToolCallJson(**value)
         except Exception as e:
@@ -139,8 +139,13 @@ class ToolCallSchemaModelParser(LanguageModelOutputParser):
         if isinstance(llm_output_to_parse, dict):
             for s in self.schema_provider:
                 try:
-                    s.try_parse_from_tool_call_schema(llm_output_to_parse)
-                except:
+                    created = s.try_parse_from_tool_call_schema(llm_output_to_parse)
+                    if created:
+                        called = created.to_tool_call()
+                        if called:
+                            return [called]
+                except Exception as e:
+                    LoggerFacade.debug(f'Error: {e}')
                     continue
         try:
             loaded = json.loads(llm_output_to_parse)
