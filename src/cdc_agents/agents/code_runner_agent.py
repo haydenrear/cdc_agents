@@ -2,7 +2,7 @@ from typing import Any, Dict, AsyncIterable
 
 import injector
 
-from cdc_agents.agent.agent import A2AAgent
+from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_di.configs.autowire import injectable
@@ -33,9 +33,9 @@ def perform_browser_operation():
     """
     pass
 
-# @component(bind_to=[DeepResearchOrchestrated])
+# @component(bind_to=[DeepResearchOrchestrated, A2AReactAgent])
 # @injectable()
-class CodeRunnerAgent(DeepResearchOrchestrated, A2AAgent):
+class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
@@ -53,7 +53,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AAgent):
     # @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         cdc_codegen_agent = str(CodeRunnerAgent)
-        A2AAgent.__init__(self,
+        A2AReactAgent.__init__(self,
                           agent_config.agents[cdc_codegen_agent].agent_descriptor.model if cdc_codegen_agent in agent_config.agents.keys() else None,
                           [perform_git_operation, perform_browser_operation, perform_docker_operation, perform_local_file_operation],
                           self.SYSTEM_INSTRUCTION)

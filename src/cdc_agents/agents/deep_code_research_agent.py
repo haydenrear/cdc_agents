@@ -3,7 +3,7 @@ import abc
 from langchain.agents import create_react_agent
 
 from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, OrchestratorAgent, \
-    BaseAgent, NextAgentResponse
+    BaseAgent, NextAgentResponse, A2AReactAgent
 import dataclasses
 import enum
 import typing
@@ -47,7 +47,7 @@ def call_a_friend():
     """
     raise NotImplementedError
 
-@component(bind_to=[A2AAgent])
+@component(bind_to=[A2AReactAgent])
 @injectable()
 class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
 
@@ -64,7 +64,7 @@ class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         agent = 'DeepCodeAgent'
-        A2AAgent.__init__(self,
+        A2AReactAgent.__init__(self,
                           agent_config.agents[agent].agent_descriptor.model
                           if agent in agent_config.agents.keys() else None,
                           [call_a_friend],

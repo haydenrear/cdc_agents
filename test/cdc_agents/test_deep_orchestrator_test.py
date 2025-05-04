@@ -14,7 +14,7 @@ from langchain_core.tools import BaseTool, tool
 from langgraph.graph.state import CompiledStateGraph
 
 from aisuite.framework import ChatCompletionResponse
-from cdc_agents.agent.agent import A2AAgent, OrchestratedAgent, OrchestratorAgent
+from cdc_agents.agent.agent import A2AAgent, OrchestratedAgent, OrchestratorAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import call_a_friend, DeepCodeOrchestrator
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
@@ -86,7 +86,7 @@ class ModelServerModelTest(unittest.TestCase):
 
         model = self._mock_executor_call()
 
-        class TestAgent(A2AAgent) :
+        class TestAgent(A2AReactAgent) :
 
             did_call = False
 

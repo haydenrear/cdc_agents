@@ -6,7 +6,7 @@ from typing import Any, Dict, AsyncIterable
 import injector
 from langchain_core.tools import tool
 
-from cdc_agents.agent.agent import A2AAgent
+from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_di.configs.autowire import injectable
@@ -110,9 +110,9 @@ def retrieve_next_code_commit():
     """
     pass
 
-@component(bind_to=[DeepResearchOrchestrated, A2AAgent])
+@component(bind_to=[DeepResearchOrchestrated, A2AReactAgent])
 @injectable()
-class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AAgent):
+class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
@@ -130,10 +130,11 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AAgent):
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         code_search_agent = "CdcCodeSearchAgent"
-        A2AAgent.__init__(self,
-                          agent_config.agents[code_search_agent].agent_descriptor.model if code_search_agent in agent_config.agents.keys() else None,
-                          [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
-                          self.SYSTEM_INSTRUCTION)
+        A2AReactAgent.__init__(self,
+                               agent_config.agents[
+                                   code_search_agent].agent_descriptor.model if code_search_agent in agent_config.agents.keys() else None,
+                               [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
+                               self.SYSTEM_INSTRUCTION)
         self.agent_config: AgentCardItem = agent_config.agents[code_search_agent] \
             if code_search_agent in agent_config.agents.keys() else None
 
@@ -161,9 +162,9 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AAgent):
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 
 
-@component(bind_to=[DeepResearchOrchestrated, A2AAgent])
+@component(bind_to=[DeepResearchOrchestrated, A2AReactAgent])
 @injectable()
-class CdcCodegenAgent(DeepResearchOrchestrated, A2AAgent):
+class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
@@ -181,7 +182,7 @@ class CdcCodegenAgent(DeepResearchOrchestrated, A2AAgent):
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps):
         cdc_codegen_agent = "CdcCodegenAgent"
-        A2AAgent.__init__(self,
+        A2AReactAgent.__init__(self,
                           agent_config.agents[cdc_codegen_agent].agent_descriptor.model if cdc_codegen_agent in agent_config.agents.keys() else None,
                           [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
                           self.SYSTEM_INSTRUCTION)

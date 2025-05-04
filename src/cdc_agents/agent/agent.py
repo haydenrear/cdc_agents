@@ -58,37 +58,15 @@ class BaseAgent(abc.ABC):
     def message_contains(self, last_message, answer) -> bool:
         return answer in last_message.content or any([answer in c for c in last_message.content])
 
-
 class A2AAgent(BaseAgent, abc.ABC):
-
-    def __init__(self, model, tools, system_instruction,
+    def __init__(self, model=None, tools=None, system_instruction=None,
                  task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
         self._task_event_hooks = task_event_hooks
         self.model = model
         self.tools = tools
         self.system_instruction = system_instruction
-        if isinstance(model, str):
-            if model.startswith('ollama_text://'):
-                self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
-            if model.startswith('ollama_chat://'):
-                self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
         self.mem = memory
-        self.graph = create_react_agent(
-            self.model, tools=self.tools, checkpointer=memory,
-            prompt = self.system_instruction)
-
         self._agent_name = self.__class__.__name__
-
-    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
-        asyncio.run(self.add_mcp_tools_async(additional_tools))
-
-    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
-        if additional_tools is not None:
-            async with MultiServerMCPClient({s.name: s.tool_options for k,s in additional_tools.items()}) as client:
-                self.tools.extend(client.get_tools())
-            self.graph = create_react_agent(
-                self.model, tools=self.tools, checkpointer=memory,
-                prompt = self.system_instruction)
 
     @property
     def task_event_hooks(self) -> list[TaskEventHook]:
@@ -167,9 +145,33 @@ class A2AAgent(BaseAgent, abc.ABC):
                     "content": "Processing the exchange rates..",
                 }
 
-class OrchestratorAgent(A2AAgent, abc.ABC):
-    pass
+class A2AReactAgent(A2AAgent, abc.ABC):
 
+    def __init__(self, model, tools, system_instruction,
+                 task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+        A2AAgent.__init__(self, model, tools, system_instruction, task_event_hooks)
+        if isinstance(model, str):
+            if model.startswith('ollama_text://'):
+                self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
+            if model.startswith('ollama_chat://'):
+                self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
+        self.graph = create_react_agent(
+            self.model, tools=self.tools, checkpointer=memory,
+            prompt = self.system_instruction)
+
+    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        asyncio.run(self.add_mcp_tools_async(additional_tools))
+
+    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        if additional_tools is not None:
+            async with MultiServerMCPClient({s.name: s.tool_options for k,s in additional_tools.items()}) as client:
+                self.tools.extend(client.get_tools())
+            self.graph = create_react_agent(
+                self.model, tools=self.tools, checkpointer=memory,
+                prompt = self.system_instruction)
+
+class OrchestratorAgent(A2AReactAgent, abc.ABC):
+    pass
 
 @dataclasses.dataclass(init=True)
 class NextAgentResponse:
@@ -211,6 +213,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         :param agents: agents being orchestrated
         :param orchestrator_agent: agent doing orchestration
         """
+        A2AAgent.__init__(self)
         self.props = props
         self.orchestrator_agent = orchestrator_agent
         self.agents = agents
