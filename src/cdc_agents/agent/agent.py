@@ -17,9 +17,10 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 from pydantic import BaseModel
+from pydantic_core.core_schema import model_field, model_schema
 
 from cdc_agents.common.types import PushTaskEvent, PushTaskEventResponseItem
-from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool
+from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
 from python_util.logger.logger import LoggerFacade
 
 class TaskEventHook(abc.ABC):
@@ -64,7 +65,7 @@ class A2AAgent(BaseAgent, abc.ABC):
         self.model = model
         self.tools = tools
         self.system_instruction = system_instruction
-        self.mem = memory
+        self.memory = memory
         self._agent_name = self.__class__.__name__
 
     @property
@@ -89,6 +90,59 @@ class A2AAgent(BaseAgent, abc.ABC):
     @abc.abstractmethod
     def get_agent_response(self, config, graph):
         pass
+
+class A2ASmolAgent(A2AAgent, abc.ABC):
+    def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
+                 memory: MemorySaver, model = None, task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+        this_agent_name = self.__class__.__name__
+        model = agent_config.agents[this_agent_name].agent_descriptor.model \
+            if this_agent_name in agent_config.agents.keys() else None \
+            if model is None else model
+        A2AAgent.__init__(self, model, tools, system_instruction, memory, task_event_hooks)
+#       TODO: create different types of SmolAgent, and then stream result as in above - can be streamed to langgraph
+#           graph the same, but can have python code calling instead of tool calling, and can have multi-agent.
+
+
+class A2AReactAgent(A2AAgent, abc.ABC):
+
+    def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
+                 memory: MemorySaver, model = None, task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+        this_agent_name = self.__class__.__name__
+        model = agent_config.agents[this_agent_name].agent_descriptor.model \
+            if this_agent_name in agent_config.agents.keys() else None \
+            if model is None else model
+        A2AAgent.__init__(self, model, tools, system_instruction, memory, task_event_hooks)
+        if isinstance(self.model, str):
+            if self.model.startswith('ollama_text://'):
+                self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
+            if self.model.startswith('ollama_chat://'):
+                self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
+        self.graph = create_react_agent(
+            self.model, tools=self.tools, checkpointer=self.memory,
+            prompt = self.system_instruction)
+        self.agent_config: AgentCardItem = agent_config.agents[this_agent_name] \
+            if this_agent_name in agent_config.agents.keys() else None
+
+    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        asyncio.run(self.add_mcp_tools_async(additional_tools))
+
+    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        if additional_tools is not None:
+            async with MultiServerMCPClient({s.name: s.tool_options for k,s in additional_tools.items()}) as client:
+                self.tools.extend(client.get_tools())
+            self.graph = create_react_agent(
+                self.model, tools=self.tools, checkpointer=self.memory,
+                prompt = self.system_instruction)
+
+    def invoke(self, query, sessionId):
+        config = {"configurable": {"thread_id": sessionId}}
+        return self.graph.invoke(query, config)
+
+    async def stream(self, query, session_id, graph=None) -> AsyncIterable[Dict[str, Any]]:
+        return self.stream_agent_response_graph(query, session_id, self.graph)
+
+    def get_agent_response(self, config, graph=None):
+        return self.get_agent_response_graph(config, self.graph)
 
     @staticmethod
     def get_agent_response_graph(config, graph):
@@ -144,32 +198,6 @@ class A2AAgent(BaseAgent, abc.ABC):
                     "content": "Processing the exchange rates..",
                 }
 
-class A2AReactAgent(A2AAgent, abc.ABC):
-
-    def __init__(self, model, tools, system_instruction,
-                 memory: MemorySaver,
-                 task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
-        A2AAgent.__init__(self, model, tools, system_instruction, task_event_hooks)
-        self.memory = memory
-        if isinstance(model, str):
-            if model.startswith('ollama_text://'):
-                self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
-            if model.startswith('ollama_chat://'):
-                self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
-        self.graph = create_react_agent(
-            self.model, tools=self.tools, checkpointer=self.memory,
-            prompt = self.system_instruction)
-
-    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
-        asyncio.run(self.add_mcp_tools_async(additional_tools))
-
-    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
-        if additional_tools is not None:
-            async with MultiServerMCPClient({s.name: s.tool_options for k,s in additional_tools.items()}) as client:
-                self.tools.extend(client.get_tools())
-            self.graph = create_react_agent(
-                self.model, tools=self.tools, checkpointer=self.memory,
-                prompt = self.system_instruction)
 
 class OrchestratorAgent(A2AReactAgent, abc.ABC):
     pass
@@ -195,6 +223,9 @@ class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
     pass
 
 class OrchestratedAgent:
+    """
+    Contains any arbitrary A2AAgent that can call invoke.
+    """
     def __init__(self, agent: A2AAgent):
         self.agent = agent
 
@@ -207,10 +238,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     """
     Facilitate multi-agent through lang-graph state graph. This means multiple models, each with smaller prompt from lower number of tools.
     """
-    def __init__(self, agents: typing.Dict[str, OrchestratedAgent],
-                 orchestrator_agent: OrchestratorAgent,
-                 props: AgentConfigProps,
-                 memory: MemorySaver):
+    def __init__(self, agents: typing.Dict[str, OrchestratedAgent], orchestrator_agent: OrchestratorAgent,
+                 props: AgentConfigProps, memory: MemorySaver):
         """
         :param agents: agents being orchestrated
         :param orchestrator_agent: agent doing orchestration

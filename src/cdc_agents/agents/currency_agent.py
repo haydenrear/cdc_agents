@@ -56,16 +56,4 @@ class CurrencyAgent(A2AAgent):
     def __init__(self):
         A2AAgent.__init__(self, None, [get_exchange_rate], self.SYSTEM_INSTRUCTION)
 
-    def invoke(self, query, sessionId) -> str:
-        config = {"configurable": {"thread_id": sessionId}}
-        self.graph.invoke({"messages": [("user", query)]}, config)
-        return self.get_agent_response(config)
-
-    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
-        return self.stream_agent_response_graph(query, sessionId, self.graph)
-
-
-    def get_agent_response(self, config, graph=None):
-        return self.get_agent_response_graph(config, self.graph)
-
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]

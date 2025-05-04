@@ -94,16 +94,9 @@ class ModelServerModelTest(unittest.TestCase):
 
             did_call = False
 
-            async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
-                pass
-
-            def get_agent_response(self, config, graph):
-                pass
-
             def invoke(self, query, sessionId) -> str:
                 self.did_call = True
-                found = self.graph.invoke(query)
-                return found
+                return A2AReactAgent.invoke(self, query, sessionId)
 
 
 
@@ -111,24 +104,17 @@ class ModelServerModelTest(unittest.TestCase):
 
             did_call = False
 
-            async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
-                pass
-
-            def get_agent_response(self, config, graph):
-                pass
-
             def invoke(self, query, sessionId) -> str:
                 self.did_call = True
-                i = self.graph.invoke(query)
-                return i
+                return A2AReactAgent.invoke(self, query, sessionId)
 
 
         server = copy.copy(self.server)
         server.agents = copy.copy(server.agents)
         server.get_agent_response = self._agent_response
         server.agents.clear()
-        server.orchestrator_agent = TestOrchestratorAgent(model, [call_a_friend_in], "test", self.memory)
-        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(model, [call_a_friend_in], "test", self.memory))
+        server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, model)
+        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, model))
         invoked = server.invoke("hello", "test")
 
         assert len(invoked) != 0

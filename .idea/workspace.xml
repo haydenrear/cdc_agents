@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="externalize memory into singleton bean">
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/config/agent_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/config/agent_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/model_server/model_server_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/model_server/model_server_model.py" afterDir="false" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="model output parser decoupled for extensibility">
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -219,7 +217,7 @@
       <updated>1745703736849</updated>
       <workItem from="1745703737854" duration="14760000" />
       <workItem from="1745780386975" duration="37033000" />
-      <workItem from="1746111852805" duration="64854000" />
+      <workItem from="1746111852805" duration="65473000" />
     </task>
     <task id="LOCAL-00001" summary="git ignore">
       <option name="closed" value="true" />
@@ -421,7 +419,31 @@
       <option name="project" value="LOCAL" />
       <updated>1746377505382</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="model output parser decoupled for extensibility">
+      <option name="closed" value="true" />
+      <created>1746381663522</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1746381663522</updated>
+    </task>
+    <task id="LOCAL-00027" summary="model output parser decoupled for extensibility">
+      <option name="closed" value="true" />
+      <created>1746381697807</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1746381697807</updated>
+    </task>
+    <task id="LOCAL-00028" summary="model output parser decoupled for extensibility">
+      <option name="closed" value="true" />
+      <created>1746381784698</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1746381784698</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -435,7 +457,8 @@
     <MESSAGE value="tool calling stup" />
     <MESSAGE value="agent graph" />
     <MESSAGE value="externalize memory into singleton bean" />
-    <option name="LAST_COMMIT_MESSAGE" value="externalize memory into singleton bean" />
+    <MESSAGE value="model output parser decoupled for extensibility" />
+    <option name="LAST_COMMIT_MESSAGE" value="model output parser decoupled for extensibility" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -473,13 +496,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py</url>
-          <line>110</line>
+          <line>106</line>
           <option name="timeStamp" value="202" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py</url>
-          <line>71</line>
-          <option name="timeStamp" value="204" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -494,7 +512,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746381582758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746381773914" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1745775417270" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>

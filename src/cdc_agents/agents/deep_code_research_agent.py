@@ -48,7 +48,7 @@ def call_a_friend():
     """
     raise NotImplementedError
 
-@component(bind_to=[A2AReactAgent])
+@component(bind_to=[A2AAgent, A2AReactAgent])
 @injectable()
 class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
 
@@ -64,14 +64,7 @@ class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
-        agent = 'DeepCodeAgent'
-        A2AReactAgent.__init__(self,
-                          agent_config.agents[agent].agent_descriptor.model
-                          if agent in agent_config.agents.keys() else None,
-                          [call_a_friend],
-                          self.SYSTEM_INSTRUCTION, memory_saver)
-        self.agent_config: AgentCardItem = agent_config.agents[agent] \
-            if agent in agent_config.agents.keys() else None
+        A2AReactAgent.__init__(self, agent_config, [call_a_friend], self.SYSTEM_INSTRUCTION, memory_saver)
 
     @property
     def orchestrator_prompt(self):
@@ -95,7 +88,7 @@ class DeepCodeAgent(OrchestratorAgent, DeepResearchOrchestrated):
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 
 
-@component(bind_to=[A2AAgent])
+@component(bind_to=[A2AAgent, A2AReactAgent])
 @injectable()
 class DeepCodeOrchestrator(StateGraphOrchestrator):
 

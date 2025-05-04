@@ -3,7 +3,7 @@ from typing import Any, Dict, AsyncIterable
 import injector
 from langgraph.checkpoint.memory import MemorySaver
 
-from cdc_agents.agent.agent import A2AAgent
+from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_di.configs.autowire import injectable
@@ -52,9 +52,9 @@ def search_maven_repo_for_sources():
     """
     pass
 
-# @component(bind_to=[DeepResearchOrchestrated])
+# @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 # @injectable()
-class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AAgent):
+class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
@@ -71,13 +71,10 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AAgent):
 
     # @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
-        cdc_codegen_agent = str(LibraryEnumerationAgent)
-        A2AAgent.__init__(self,
-                          agent_config.agents[cdc_codegen_agent].agent_descriptor.model if cdc_codegen_agent in agent_config.agents.keys() else None,
+        A2AReactAgent.__init__(self,
+                          agent_config,
                           [perform_git_operation, perform_browser_operation, perform_local_file_operation],
                           self.SYSTEM_INSTRUCTION, memory_saver)
-        self.agent_config: AgentCardItem = agent_config.agents[cdc_codegen_agent] \
-            if cdc_codegen_agent in agent_config.agents.keys() else None
 
     @property
     def orchestrator_prompt(self):
@@ -86,18 +83,6 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AAgent):
         code and code history in the context, and returns a mechanism for how those dependencies can be downloaded to be 
         used in the downstream tasks. 
         """
-
-    def invoke(self, query, sessionId) -> str:
-        config = {"configurable": {"thread_id": sessionId}}
-        self.graph.invoke({"messages": [("user", query)]}, config)
-        return self.get_agent_response(config)
-
-    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
-        return self.stream_agent_response_graph(query, sessionId, self.graph)
-
-    def get_agent_response(self, config, graph=None):
-        return self.get_agent_response_graph(config, self.graph)
-
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 
