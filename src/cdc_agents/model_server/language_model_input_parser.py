@@ -9,8 +9,10 @@ from langchain_core.language_models import LanguageModelOutput
 from langchain_core.messages import ToolCall, AIMessage
 
 from aisuite.framework import ChatCompletionResponse
+from cdc_agents.common.types import ToolCallJson
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
+from python_util.logger.logger import LoggerFacade
 
 LlmOutput = typing.Optional[typing.List[typing.Union[ToolCall, str]]]
 
@@ -119,7 +121,10 @@ class ToolCallSchemaProvider(abc.ABC):
 class DefaultToolCallSchemaProvider(ToolCallSchemaProvider):
 
     def try_parse_from_tool_call_schema(self, value: dict) -> typing.Optional:
-        return None
+        try:
+            return ToolCallJson(**value)
+        except Exception as e:
+            LoggerFacade.debug(f'Error: {e}')
 
 
 @component(bind_to=[LanguageModelOutputParser])
