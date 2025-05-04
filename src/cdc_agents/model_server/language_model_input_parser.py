@@ -36,12 +36,6 @@ class LanguageModelOutputParser(abc.ABC):
         return m
 
     @classmethod
-    def convert_to_ai_response_from(cls, content, tools=None) -> typing.Optional[LanguageModelOutput]:
-        m = AIMessage(content=content)
-        m.tool_calls = tools
-        return m
-
-    @classmethod
     def parse_for_ai_message(cls, original, converted: LlmOutput) -> typing.Optional[LanguageModelOutput]:
         if not converted:
             return cls.convert_to_ai_response(original)
