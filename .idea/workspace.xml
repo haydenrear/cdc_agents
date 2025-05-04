@@ -4,12 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="agent graph">
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/deep_code_research_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/deep_code_research_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/config/agent_config_props.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/config/agent_config_props.py" afterDir="false" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="externalize memory into singleton bean">
+      <change afterPath="$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/config/agent_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/config/agent_config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cdc_agents/model_server/model_server_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/model_server/model_server_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/cdc_agents/test_deep_orchestrator_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents/test_deep_orchestrator_test.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,8 +17,8 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Python Script" />
         <option value="Python Unit Test" />
+        <option value="Python Script" />
       </list>
     </option>
   </component>
@@ -221,7 +219,7 @@
       <updated>1745703736849</updated>
       <workItem from="1745703737854" duration="14760000" />
       <workItem from="1745780386975" duration="37033000" />
-      <workItem from="1746111852805" duration="56139000" />
+      <workItem from="1746111852805" duration="64854000" />
     </task>
     <task id="LOCAL-00001" summary="git ignore">
       <option name="closed" value="true" />
@@ -375,7 +373,55 @@
       <option name="project" value="LOCAL" />
       <updated>1746306173731</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="agent graph">
+      <option name="closed" value="true" />
+      <created>1746312271417</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1746312271417</updated>
+    </task>
+    <task id="LOCAL-00021" summary="agent graph">
+      <option name="closed" value="true" />
+      <created>1746313282141</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1746313282141</updated>
+    </task>
+    <task id="LOCAL-00022" summary="agent graph">
+      <option name="closed" value="true" />
+      <created>1746313430948</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1746313430948</updated>
+    </task>
+    <task id="LOCAL-00023" summary="agent graph">
+      <option name="closed" value="true" />
+      <created>1746313669295</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1746313669295</updated>
+    </task>
+    <task id="LOCAL-00024" summary="agent graph">
+      <option name="closed" value="true" />
+      <created>1746320962598</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1746320962598</updated>
+    </task>
+    <task id="LOCAL-00025" summary="externalize memory into singleton bean">
+      <option name="closed" value="true" />
+      <created>1746377505382</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1746377505382</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -388,24 +434,25 @@
     <MESSAGE value="discover agents" />
     <MESSAGE value="tool calling stup" />
     <MESSAGE value="agent graph" />
-    <option name="LAST_COMMIT_MESSAGE" value="agent graph" />
+    <MESSAGE value="externalize memory into singleton bean" />
+    <option name="LAST_COMMIT_MESSAGE" value="externalize memory into singleton bean" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/cdc_agents/agents/library_enumeration_agent.py</url>
-          <line>72</line>
+          <line>73</line>
           <option name="timeStamp" value="23" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/cdc_agents/agents/human_delegate_agent.py</url>
-          <line>49</line>
+          <line>50</line>
           <option name="timeStamp" value="24" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py</url>
-          <line>54</line>
+          <line>55</line>
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -413,16 +460,6 @@
           <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/inject_context_di.py</url>
           <line>60</line>
           <option name="timeStamp" value="61" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/scopes/composite_scope.py</url>
-          <line>38</line>
-          <option name="timeStamp" value="66" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/scopes/composite_scope.py</url>
-          <line>43</line>
-          <option name="timeStamp" value="67" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/.cdc_agents/lib/python3.10/site-packages/langchain_core/runnables/passthrough.py</url>
@@ -435,9 +472,14 @@
           <option name="timeStamp" value="97" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/test/cdc_agents/test_deep_orchestrator_test.py</url>
-          <line>100</line>
-          <option name="timeStamp" value="198" />
+          <url>file://$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py</url>
+          <line>110</line>
+          <option name="timeStamp" value="202" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/cdc_agents/model_server/language_model_input_parser.py</url>
+          <line>71</line>
+          <option name="timeStamp" value="204" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -452,7 +494,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746312243124" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746381582758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1745775417270" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>

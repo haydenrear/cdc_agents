@@ -22,6 +22,7 @@ from aisuite.framework import ChatCompletionResponse
 from aisuite.framework.choice import Choice
 from cdc_agents.common.types import ToolCallJson, ToolCallAdapter
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps, ModelServerModelProps
+from cdc_agents.model_server.language_model_input_parser import LanguageModelOutputParser
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_di.configs.prototype import prototype_scope_bean, prototype_factory
@@ -161,16 +162,20 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
     tool_choice: typing.Optional[str] = None
     tool_call_schema: typing.Any = None
 
+    __parsers__: typing.List[LanguageModelOutputParser]
+
     @prototype_factory()
     def __init__(self,
                  model_server_config_props: ModelServerConfigProps,
                  executor: ModelServerExecutor,
                  model_props: ModelServerModelProps,
+                 parsers: typing.List[LanguageModelOutputParser],
                  tools: typing.Optional[typing.Sequence[typing.Union[typing.Dict[str, Any], type, BaseTool]]] = None,
                  tool_choice: typing.Optional[str] = None,
                  tool_call_schema: typing.Optional[typing.Any] = ToolCallJson):
         BaseChatModel.__init__(self, config_props=model_server_config_props, executor=executor, model_props=model_props,
                                bound_tools=tools, tool_choice=tool_choice)
+        self.__parsers__ = sorted(parsers, key=lambda p: p.ordering())
         self.tool_call_schema = tool_call_schema
         self.executor = executor
         self.model_props = model_props
@@ -247,65 +252,35 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
     def convert_to_language_model_output(self,
                                          model_input: typing.Union[ChatCompletionResponse, str],
                                          config: Optional[RunnableConfig], **kwargs: Any) -> typing.Optional[LanguageModelOutput]:
-        if isinstance(model_input, str):
-            converted = self._convert_to_lm_output_inner(model_input)
-            tools = []
-            content = []
-            self.parse_for_ai_message(model_input, content, converted, tools)
-            if model_input not in content:
-                content.append(model_input)
+        tools_list = []
+        content_list = []
+        for i, m in enumerate(self.__parsers__):
+            if isinstance(model_input, ChatCompletionResponse):
+                choices_values = [s.message.content for s in model_input.choices]
+                self._deconstruct_add_ai_values(choices_values, content_list, m, model_input, tools_list)
+            elif isinstance(model_input, typing.List):
+                self._deconstruct_add_ai_values(model_input, content_list, m, model_input, tools_list)
+            else:
+                llm_out = m.do_convert(model_input)
+                if not llm_out:
+                    continue
+                tools, content = m.deconstruct_ai_messages(model_input, llm_out)
+                if tools:
+                    tools_list.extend(tools)
+                if content:
+                    content_list.extend(content)
 
-            return self._to_ai_message(content, tools)
-        else:
-            tools = []
-            content = []
-            for c in model_input.choices:
-                converted = self._convert_to_lm_output_inner(c.message.content)
-                self.parse_for_ai_message(c.message.content, content, converted, tools)
-                if c.message.content not in content:
-                    content.append(c.message.content)
+        return LanguageModelOutputParser.convert_to_ai_response(content_list, tools_list)
 
-            return self._to_ai_message(content, tools)
 
-    def _to_ai_message(self, content, tools):
-        m = AIMessage(content=content)
-        m.tool_calls = tools
-        return m
+    def _deconstruct_add_ai_values(self, choices_values, content_list, m, model_input, tools_list):
+        for s in choices_values:
+            llm_out = m.do_convert(s)
+            if not llm_out:
+                continue
 
-    def parse_for_ai_message(self, c, content, converted, tools):
-        if isinstance(converted, list):
-            for converted_item in converted:
-                self.parse_for_ai_message(c, content, converted_item, tools)
-        elif isinstance(converted, dict) and 'name' in converted.keys() and 'args' in converted.keys():
-            tools.append(converted)
-        else:
-            content.append(converted)
-
-    def _convert_to_lm_output_inner(self, model_input):
-        try:
-            parsed = ReActSingleInputOutputParser().invoke(model_input)
-            return self.get_tool_call(parsed)
-        except:
-            try:
-                parsed = JSONAgentOutputParser().invoke(model_input)
-                return self.get_tool_call(parsed)
-            except:
-                return self.get_tool_call(model_input)
-
-    def get_tool_call(self, value: typing.Union[str, dict[str, Any], typing.List, AgentAction]) -> typing.Optional[typing.List[ToolCall]]:
-        if isinstance(value, dict):
-            try:
-                self.tool_call_schema(**value).to_tool_call()
-            except:
-                pass
-        elif isinstance(value, typing.List):
-            return [f for v in value for f in self.get_tool_call(v)]
-        elif isinstance(value, AgentAction):
-            return [ToolCall(name=value.tool, args={} if not value.tool_input or len(value.tool_input) else value.tool_input, id=''.join(value.lc_id()))]
-        else:
-            try:
-                return self.get_tool_call(json.loads(value))
-            except:
-                pass
-
-        return value
+            tools, content = m.deconstruct_ai_messages(model_input, llm_out)
+            if tools:
+                tools_list.extend(tools)
+            if content:
+                content_list.extend(content)
