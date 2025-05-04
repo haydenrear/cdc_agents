@@ -16,6 +16,7 @@ from python_util.logger.logger import LoggerFacade
 
 LlmOutput = typing.Optional[typing.List[typing.Union[ToolCall, str]]]
 
+
 class LanguageModelOutputParser(abc.ABC):
     """
     There will be different parsers for different models, for instance...
@@ -46,7 +47,8 @@ class LanguageModelOutputParser(abc.ABC):
         return cls.convert_to_ai_response(content, tools)
 
     @classmethod
-    def deconstruct_ai_messages(cls, original, converted: LlmOutput) -> typing.Tuple[typing.List[ToolCall], typing.List[typing.Any]]:
+    def deconstruct_ai_messages(cls, original, converted: LlmOutput) -> typing.Tuple[
+        typing.List[ToolCall], typing.List[typing.Any]]:
         tools = []
         content = []
 
@@ -65,7 +67,9 @@ class LanguageModelOutputParser(abc.ABC):
 
     @classmethod
     def parse_agent_action(cls, value: AgentAction) -> ToolCall:
-        return ToolCall(name=value.tool, args={} if not value.tool_input or len(value.tool_input) == 0 else value.tool_input, id=''.join(value.lc_id()))
+        return ToolCall(name=value.tool,
+                        args={} if not value.tool_input or len(value.tool_input) == 0 else value.tool_input,
+                        id=''.join(value.lc_id()))
 
 
 @component(bind_to=[LanguageModelOutputParser])
@@ -99,6 +103,7 @@ class ActionActionInputLanguageModelParser(LanguageModelOutputParser):
             except:
                 pass
 
+
 @component(bind_to=[LanguageModelOutputParser])
 @injectable()
 class SimpleLanguageModelOutputModelParser(LanguageModelOutputParser):
@@ -110,11 +115,13 @@ class SimpleLanguageModelOutputModelParser(LanguageModelOutputParser):
     def ordering(self) -> int:
         return 100000
 
+
 class ToolCallSchemaProvider(abc.ABC):
 
     @abc.abstractmethod
     def try_parse_from_tool_call_schema(self, value: dict) -> typing.Optional[ToolCallAdapter]:
         pass
+
 
 @component(bind_to=[ToolCallSchemaProvider])
 @injectable()
