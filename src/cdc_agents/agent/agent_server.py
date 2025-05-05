@@ -50,12 +50,6 @@ class AgentServerRunner:
         if agent_config_props.initialize_server:
             self.run_server()
 
-    def _to_discoverable_agent(self, a):
-        if a.agent_name in self.agent_config_props.agents.keys():
-            return self.agent_config_props.agents[a.agent_name].agent_card
-        LoggerFacade.error(f"Could not find agent card in agent config props for agent {a.agent_name}."
-                           f"Will not be discoverable.")
-
     # def start_dynamic_agent_cards(self):
     #     DynamicA2AServer(self.agent_config_props, agents=self.agents).start() # TODO:
 
@@ -103,6 +97,7 @@ class AgentServerRunner:
                 port=port,
                 starlette=starlette)
 
+        # Be able for server/client to discover all available A2A agents for a task
         starlette.add_route('/discover_agents',
                             lambda req: create_json_response(DiscoverAgents(agent_cards=self._parse_discoverable())),
                             methods=['GET'])
@@ -112,3 +107,8 @@ class AgentServerRunner:
     def _parse_discoverable(self):
         return [discoverable_agent.agent_card for discoverable_agent in self.agents.values()]
 
+    def _to_discoverable_agent(self, a):
+        if a.agent_name in self.agent_config_props.agents.keys():
+            return self.agent_config_props.agents[a.agent_name].agent_card
+        LoggerFacade.error(f"Could not find agent card in agent config props for agent {a.agent_name}."
+                           f"Will not be discoverable.")

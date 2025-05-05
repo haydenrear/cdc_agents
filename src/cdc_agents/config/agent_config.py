@@ -6,7 +6,6 @@ from cdc_agents.agents.cdc_server_agent import CdcCodeSearchAgent
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator, DeepCodeAgent
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
-from cdc_agents.model_server.language_model_input_parser import LanguageModelOutputParser
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.model_server.model_server_model import ModelServerModel
 from python_di.configs.bean import bean
@@ -17,8 +16,8 @@ from python_di.configs.enable_configuration_properties import enable_configurati
 
 @configuration()
 @enable_configuration_properties(config_props=[AgentConfigProps, ModelServerConfigProps])
-@component_scan(base_classes=[ModelServerModel, AgentServerRunner, CdcCodeSearchAgent, DeepCodeAgent, DeepCodeOrchestrator,
-                              ModelProvider])
+@component_scan(base_classes=[ModelServerModel, AgentServerRunner, CdcCodeSearchAgent, DeepCodeAgent,
+                              DeepCodeOrchestrator, ModelProvider])
 class AgentConfig:
 
     @bean()
