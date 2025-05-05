@@ -94,6 +94,12 @@ class A2AAgent(BaseAgent, abc.ABC):
 
     @abc.abstractmethod
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        """
+        MCP tools are descriptors of external tools that a particular agent to use.
+        append them to the list of tools available to this particular agent.
+        :param additional_tools: tools to be appended
+        :return:
+        """
         pass
 
     @abc.abstractmethod
