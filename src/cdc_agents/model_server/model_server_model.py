@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from aisuite.framework import ChatCompletionResponse
 from aisuite.framework.choice import Choice
 from cdc_agents.common.types import ToolCallJson, ToolCallAdapter
+from cdc_agents.config.agent_config_props import AgentCardItem
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps, ModelServerModelProps
 from cdc_agents.model_server.language_model_input_parser import LanguageModelOutputParser
 from python_di.configs.autowire import injectable
@@ -182,6 +183,9 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
         self.config_props = model_server_config_props
         self.bound_tools = tools
         self.tool_choice = tool_choice
+
+    def initialize(self, agent_card: AgentCardItem):
+        pass
 
     @injector.synchronized(bind_tools_lock)
     def invoke(self, model_input: LanguageModelInput,

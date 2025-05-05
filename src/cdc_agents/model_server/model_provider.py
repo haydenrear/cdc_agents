@@ -42,4 +42,5 @@ class ModelServerModelProvider(ModelProvider):
         'agent_card': InjectionDescriptor(injection_ty=InjectionType.Provided)
     })
     def build_model(self, model_server_model: ModelServerModel, agent_card: AgentCardItem):
+        model_server_model.initialize(agent_card)
         return model_server_model
