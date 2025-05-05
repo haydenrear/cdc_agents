@@ -23,6 +23,10 @@ class AgentConfig:
 
     @bean()
     def memory(self) -> MemorySaver:
+        """
+        Decouple the memory here into a database for stateless services...
+        :return:
+        """
         return MemorySaver()
 
     @bean()
