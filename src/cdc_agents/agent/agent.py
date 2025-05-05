@@ -21,6 +21,7 @@ from pydantic_core.core_schema import model_field, model_schema
 
 from cdc_agents.common.types import PushTaskEvent, PushTaskEventResponseItem
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
+from cdc_agents.model_server.model_provider import ModelProvider
 from python_util.logger.logger import LoggerFacade
 
 class TaskEventHook(abc.ABC):
@@ -91,6 +92,14 @@ class A2AAgent(BaseAgent, abc.ABC):
     def get_agent_response(self, config, graph):
         pass
 
+    @abc.abstractmethod
+    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        pass
+
+    @abc.abstractmethod
+    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
+        pass
+
 class A2ASmolAgent(A2AAgent, abc.ABC):
     def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
                  memory: MemorySaver, model = None, task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
@@ -106,17 +115,13 @@ class A2ASmolAgent(A2AAgent, abc.ABC):
 class A2AReactAgent(A2AAgent, abc.ABC):
 
     def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
-                 memory: MemorySaver, model = None, task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+                 memory: MemorySaver, model_server_provider: ModelProvider, model = None,
+                 task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+        self.model_server_provider = model_server_provider
         this_agent_name = self.__class__.__name__
-        model = agent_config.agents[this_agent_name].agent_descriptor.model \
-            if this_agent_name in agent_config.agents.keys() else None \
-            if model is None else model
-        A2AAgent.__init__(self, model, tools, system_instruction, memory, task_event_hooks)
-        if isinstance(self.model, str):
-            if self.model.startswith('ollama_text://'):
-                self.model = OllamaLLM(model = model.replace("ollama_text://", ""))
-            if self.model.startswith('ollama_chat://'):
-                self.model = ChatOllama(model = model.replace("ollama_chat://", ""))
+        self.model = self.model_server_provider.retrieve_model(
+            agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
+        A2AAgent.__init__(self, self.model, tools, system_instruction, memory, task_event_hooks)
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)

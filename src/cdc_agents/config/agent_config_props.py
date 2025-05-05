@@ -1,6 +1,6 @@
 import typing
 
-from cdc_agents.common.types import AgentCard, AgentSkill, AgentDescriptor
+from cdc_agents.common.types import AgentCard, AgentSkill, AgentDescriptor, AgentType
 from python_di.env.base_module_config_props import ConfigurationProperties
 from python_di.properties.configuration_properties_decorator import configuration_properties
 from pydantic.main import BaseModel
@@ -14,6 +14,7 @@ class AgentCardItem(BaseModel):
     agent_descriptor: typing.Optional[AgentDescriptor] = None
     agent_clazz: typing.Optional[str] = None
     mcp_tools: typing.Dict[str, AgentMcpTool] = None
+    agent_type: AgentType = AgentType.LangChainReact
 
 @configuration_properties(prefix_name='agent_config')
 class AgentConfigProps(ConfigurationProperties):

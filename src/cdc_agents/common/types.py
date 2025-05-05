@@ -1,4 +1,5 @@
 import abc
+import enum
 import typing
 from typing import Union, Any
 
@@ -349,13 +350,23 @@ class AgentCode(BaseModel):
     code: str
     py_file: str
 
+class ModelDescriptor(BaseModel):
+    model_name: str
+    api_key: str
+    headers: dict[str, str] = None
+    model_endpoint: str
+
 class AgentDescriptor(BaseModel):
-    model: str
+    model: typing.Union[str, ModelDescriptor]
     agent_name: str
     system_instruction: str = None
     tools: typing.List[str] = None
 
 AgentCardForward = typing.ForwardRef("AgentCard")
+
+class AgentType(enum.Enum):
+    LangChainReact = 0
+    SmolAgents = 1
 
 class AgentCard(BaseModel):
     name: str

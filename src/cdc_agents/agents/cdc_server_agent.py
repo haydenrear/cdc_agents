@@ -10,6 +10,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
+from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 
@@ -111,38 +112,62 @@ def retrieve_next_code_commit():
     """
     pass
 
+@tool
+def apply_code_commit():
+    """
+    """
+    pass
+
+@tool
+def retrieve_and_apply_code_commit():
+    """
+    """
+    pass
+
+@tool
+def retrieve_current_repository_state():
+    """
+    """
+    pass
+
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
 class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
-        You are a specialized assistant for code context information.
-        # Your sole purpose is to use the 'get_exchange_rate' tool to answer questions about currency exchange rates.
-        # If the user asks about anything other than currency conversion or exchange rates,
-        # politely state that you cannot help with that topic and can only assist with currency-related queries. 
-        # Do not attempt to answer unrelated questions or use tools for other purposes.
-        # Set response status to input_required if the user needs to provide more information.
-        # Set response status to error if there is an error while processing the request.
-        # Set response status to completed if the request is complete.
+        You are a specialized assistant for searching for code context information.
+        Your overall goal is to provide context for code generation across multiple repositories, within the context of
+        the history of the development of that software. In order to achieve your purpose, you have access to some tools.
+        The tools you have facilitate performing operations on git repositories, including adding git diffs for repositories
+        and branches to the vector database, removing git diffs for repositories and branches from the vector database,
+        and retrieving files from the vector database with their history by a code snippet or commit message. You can 
+        also parse the repository history with respect to an input, such as a code snippet or a message, and add diffs
+        from the blame tree with respect to this code snippet or message.  
+        
+        If you do not have enough 
+        information to perform your request, you can return a request for that information. Examples of this would be,
+        for instance, if you need to include the code from one of the libraries. Then you could request for the URL
+        for the git repository for that library. At that point, another agent will retrieve that information for you and 
+        you can then perform your function to better inform your operations.
         """
     )
 
     @injector.inject
-    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
-        A2AReactAgent.__init__(self,
-                               agent_config,
-                               [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
-                               self.SYSTEM_INSTRUCTION,
-                               memory_saver)
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
+        A2AReactAgent.__init__(self, agent_config, [retrieve_commit_diff_code_context, perform_git_actions],
+                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
 
     @property
     def orchestrator_prompt(self):
         return """
-        An agent that can add git repositories to an embedding database with history. It provides a mechanism to search
-        multiple repositories with respect to code history to provide contextual information by first embedding the 
-        git diffs for the repositories in a database, and then parsing the diffs backwards to add more diffs using 
-        code ranking through git blame tree.
+        An agent that can add git repositories to an embedding database with history. This agent has a mechanism to 
+        provide contextual information from the git repositories. This agent has access to an embedding database, so 
+        he embeds the commit history as git commit diffs, and then interfaces with these repositories, returning 
+        relevant files to the queries in the context with their history in an XML format that can be parsed by downstream
+        codegen processes. It can also parse repositories with respect to particular queries, adding commit diffs to the 
+        repository with respect to particular code, so it can be used to produce more relevant contextual information,
+        using the git blame tree mechanism.
         """
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
@@ -154,28 +179,21 @@ class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
-        You are a specialized assistant for code context information.
-        # Your sole purpose is to use the 'get_exchange_rate' tool to answer questions about currency exchange rates.
-        # If the user asks about anything other than currency conversion or exchange rates,
-        # politely state that you cannot help with that topic and can only assist with currency-related queries. 
-        # Do not attempt to answer unrelated questions or use tools for other purposes.
-        # Set response status to input_required if the user needs to provide more information.
-        # Set response status to error if there is an error while processing the request.
-        # Set response status to completed if the request is complete.
+        You are a specialized assistant for generating commits for implementation of software projects.
+        You request the generation of a full git commit, with respect to a commit message and other contextual information 
+        provided to you. 
         """
     )
 
     @injector.inject
-    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
-        A2AReactAgent.__init__(self,agent_config,
-                          [retrieve_commit_diff_code_context, perform_git_actions, retrieve_next_code_commit],
-                          self.SYSTEM_INSTRUCTION, memory_saver)
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
+        A2AReactAgent.__init__(self,agent_config, [retrieve_next_code_commit, apply_code_commit, retrieve_and_apply_code_commit],
+                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
 
     @property
     def orchestrator_prompt(self):
         return """
-        An agent that generates code modifications using the history of diffs added with the CdcEmbeddingAgent.
+        An agent that generates code modifications using the history of diffs added with the CdcCodeSearchAgent.
         """
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
-

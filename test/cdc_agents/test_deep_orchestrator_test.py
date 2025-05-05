@@ -20,6 +20,7 @@ from cdc_agents.agents.deep_code_research_agent import call_a_friend, DeepCodeOr
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
+from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.model_server.model_server_model import ModelServerModel, LoggingModelServerExecutor, \
     ModelServerExecutor, ModelServerInput
 from python_di.configs.bean import test_inject
@@ -39,6 +40,7 @@ class ModelServerModelTest(unittest.TestCase):
     server: DeepCodeOrchestrator
     model: ModelServerModel
     memory: MemorySaver
+    model_provider: ModelProvider
 
 
     @test_inject(profile='test')
@@ -47,11 +49,13 @@ class ModelServerModelTest(unittest.TestCase):
                   ai_suite: AgentConfigProps,
                   server: DeepCodeOrchestrator,
                   model: ModelServerModel,
-                  memory_saver: MemorySaver):
+                  memory_saver: MemorySaver,
+                  model_provider: ModelProvider):
         ModelServerModelTest.memory = memory_saver
         ModelServerModelTest.ai_suite = ai_suite
         ModelServerModelTest.server = server
         ModelServerModelTest.model = model
+        ModelServerModelTest.model_provider = model_provider
 
 
     def test_model_server_model(self):
@@ -113,8 +117,8 @@ class ModelServerModelTest(unittest.TestCase):
         server.agents = copy.copy(server.agents)
         server.get_agent_response = self._agent_response
         server.agents.clear()
-        server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, model)
-        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, model))
+        server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, self.model_provider, model)
+        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, self.model_provider, model))
         invoked = server.invoke("hello", "test")
 
         assert len(invoked) != 0

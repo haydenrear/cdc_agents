@@ -6,6 +6,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
+from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from langchain_core.tools import tool
@@ -47,11 +48,11 @@ class HumanDelegateAgent(DeepResearchOrchestrated, A2AReactAgent):
     )
 
     # @injector.inject
-    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
         cdc_codegen_agent = str(HumanDelegateAgent)
         A2AReactAgent.__init__(self, agent_config,
                                [bootstrap_ai_character, message_human_delegate, check_human_delegate_messages],
-                               self.SYSTEM_INSTRUCTION, memory_saver)
+                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
         self.agent_config: AgentCardItem = agent_config.agents[cdc_codegen_agent] \
             if cdc_codegen_agent in agent_config.agents.keys() else None
 

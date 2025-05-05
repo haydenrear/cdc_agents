@@ -5,6 +5,7 @@ import typing
 
 import injector
 import uvicorn
+from langgraph.checkpoint.memory import MemorySaver
 from starlette.applications import Starlette
 
 from cdc_agents.agent.agent import A2AAgent
@@ -14,6 +15,7 @@ from cdc_agents.common.server.server import DynamicA2AServer, create_json_respon
 from cdc_agents.common.types import DiscoverAgents, AgentCard
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.config.agent_config_props import AgentConfigProps
+from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_util.logger.logger import LoggerFacade
@@ -33,7 +35,11 @@ class AgentServerRunner:
     @injector.inject
     def __init__(self,
                  agent_config_props: AgentConfigProps,
+                 memory: MemorySaver,
+                 model_server_provider: ModelProvider,
                  agents: typing.List[A2AAgent] = None):
+        self.model_server_provider = model_server_provider
+        self.memory = memory
         self.agent_config_props = agent_config_props
         self.agents: typing.Dict[str, DiscoverableAgent] = {
             next_agent.agent_name: DiscoverableAgent(next_agent, self._to_discoverable_agent(next_agent))
@@ -77,9 +83,10 @@ class AgentServerRunner:
                         f"Could not find agent {name} in injected. Looks like it's not being injected. Attempting to create it using reflection.")
                     agent: typing.Type[A2AAgent] = typing.cast(importlib.import_module(a.agent_clazz),
                                                                typing.Type[A2AAgent])
+                    model = self.model_server_provider.retrieve_model(a)
                     self.agents[name] = DiscoverableAgent(
-                        agent(a.agent_descriptor.model, [importlib.import_module(t) for t in a.tools],
-                              a.agent_descriptor.system_instruction, []),
+                        agent(model, [importlib.import_module(t) for t in a.tools],
+                              a.agent_descriptor.system_instruction, self.memory, []),
                         agent_card)
                     self.agents[name].agent.add_mcp_tools(a.mcp_tools)
                 except Exception as e:
