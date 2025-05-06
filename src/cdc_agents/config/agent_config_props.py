@@ -10,6 +10,8 @@ class AgentMcpTool(BaseModel):
     name: typing.Optional[str] = None
     tool_prompt: typing.Optional[str] = None
     stop_tool: typing.Optional[str] = None
+    # TODO: should be able to keep it running and call exec instead
+    # exec_tool_options: typing.Optional[typing.Any] = None
 
 class AgentCardItem(BaseModel):
     agent_card: typing.Optional[AgentCard] = None
@@ -26,3 +28,4 @@ class AgentConfigProps(ConfigurationProperties):
     host: typing.Optional[str] = "0.0.0.0"
     port: typing.Optional[int] = 50000
     initialize_server: typing.Optional[bool] = True
+    max_tokens_message_state: int = 20000

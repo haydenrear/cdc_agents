@@ -26,6 +26,13 @@ agent_config:
           stop_tool: docker stop $(docker ps | grep mcp/code-runner-git | cut -d' ' -f1)
           name: git
           tool_prompt: "Use git tool"
+#          exec_tool_options:
+#            command: docker
+#            args:
+#              - exec
+#              - -i
+#              - mcp/code-runner-git
+#            env:
           tool_options:
             command: docker
             args:
@@ -58,7 +65,7 @@ agent_config:
               - -i
               - --rm
               - -v
-              - unix:///Users/hayde/.docker/run/docker.sock:/var/run/docker.sock
+              - /var/run/docker.sock:/var/run/docker.sock
               - mcp/code-runner-docker
             env:
     CdcCodegenAgent:

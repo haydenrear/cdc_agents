@@ -47,6 +47,7 @@ class AgentServerRunner:
         _add_all_managed_agents(self.agent_config_props)
         # self.start_dynamic_agent_cards() # TODO:
         self.starlette = self.load_server(agent_config_props.host, agent_config_props.port)
+
         if agent_config_props.initialize_server:
             self.run_server()
 
@@ -82,12 +83,12 @@ class AgentServerRunner:
                         agent(model, [importlib.import_module(t) for t in a.tools],
                               a.agent_descriptor.system_instruction, self.memory, []),
                         agent_card)
-                    self.agents[name].agent.add_mcp_tools(a.mcp_tools)
+                    # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
                 except Exception as e:
                     LoggerFacade.error(f"Error resolving agent: {e}. Skipping the agent.")
                     continue
 
-            self.agents[name].agent.add_mcp_tools(a.mcp_tools)
+            # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
 
             A2AServer(
                 agent_card=agent_card,

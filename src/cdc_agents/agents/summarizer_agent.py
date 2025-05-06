@@ -1,7 +1,9 @@
 from typing import Any, Dict, AsyncIterable
 
 import injector
+from langchain_core.messages import BaseMessage
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import MessagesState
 
 from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
@@ -29,9 +31,20 @@ class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
     @property
     def orchestrator_prompt(self):
         return """
-        An agent that facilitates the running of the code after making code changes, to validate code changes with respect
-        for particular tickets, bug changes, or any other unit of work.
+        An agent that summarizes the information to be provided. Used when there is too much data in the context to 
+        provide to the agent, and then this information can be summarized or compactified so as to reduce the burden
+        on the next agents. 
         """
+
+    def do_collapse(self, message_state: list[BaseMessage]) -> list[BaseMessage]:
+        """
+        This agent would return a collapsed message, summarizing all messages previously. So then the graph provides
+        all messages including and up to that one. In this case, the SummarizerAgent retrieves the messages to be kept
+        from the summarization message.
+        :param message_state: all messages in the graph
+        :return: the messages to exist in the graph after applying summarization - naively would pop the last.
+        """
+        return message_state
 
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 

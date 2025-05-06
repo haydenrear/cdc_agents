@@ -4,19 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="model server provider model_provider.py">
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/agents/summarizer_agent.py" afterDir="false" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="McpSyncAdapter">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/idea_run/python_tests.run.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/resources/application-test.yml" beforeDir="false" afterPath="$PROJECT_DIR$/resources/application-test.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/resources/application.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/agent.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/agent_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/agent_server.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/currency_agent.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/client/client.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/client/client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/server/server.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/server/server.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/types.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/summarizer_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/summarizer_agent.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cdc_agents/config/agent_config_props.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/config/agent_config_props.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/cdc_agents/test_imports_work.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents/test_imports_work.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +80,7 @@
     "Python tests.Python tests in test_cdc_agent_start_test.py.executor": "Run",
     "Python tests.Python tests in test_cdc_agent_test.executor": "Run",
     "Python tests.Python tests individual.executor": "Debug",
-    "Python tests.Python tests.executor": "Run",
+    "Python tests.Python tests.executor": "Debug",
     "Python.cdc_agents_main.executor": "Run",
     "Python.cdc_server_agent.executor": "Run",
     "Python.model_server_main.executor": "Run",
@@ -213,7 +209,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;python -m unittest discover -s test -p \u0027*test_agent_config_props*\u0027&quot;" />
+      <option name="_new_target" value="&quot;python -m unittest discover -s test -p \u0027.*test_model_server_model.*\u0027&quot;" />
       <option name="_new_targetType" value="&quot;CUSTOM&quot;" />
       <method v="2" />
     </configuration>
@@ -228,19 +224,19 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props" />
+        <item itemvalue="Python tests.Python tests in cdc_agents" />
         <item itemvalue="Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_with_react_agent" />
         <item itemvalue="Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model" />
-        <item itemvalue="Python tests.Python tests in cdc_agents" />
         <item itemvalue="Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body" />
+        <item itemvalue="Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-9823dce3aa75-125ca727e0f0-intellij.indexing.shared.core-IU-243.23654.189" />
-        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-IU-243.23654.189" />
+        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.23774.435" />
+        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-IU-251.23774.435" />
       </set>
     </attachedChunks>
   </component>
@@ -255,7 +251,9 @@
       <workItem from="1745703737854" duration="14760000" />
       <workItem from="1745780386975" duration="37033000" />
       <workItem from="1746111852805" duration="71527000" />
-      <workItem from="1746461050827" duration="16182000" />
+      <workItem from="1746461050827" duration="29427000" />
+      <workItem from="1746571445420" duration="178000" />
+      <workItem from="1746571975593" duration="3321000" />
     </task>
     <task id="LOCAL-00001" summary="git ignore">
       <option name="closed" value="true" />
@@ -561,7 +559,31 @@
       <option name="project" value="LOCAL" />
       <updated>1746475485914</updated>
     </task>
-    <option name="localTasksCounter" value="39" />
+    <task id="LOCAL-00039" summary="McpSyncAdapter">
+      <option name="closed" value="true" />
+      <created>1746560722086</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1746560722086</updated>
+    </task>
+    <task id="LOCAL-00040" summary="McpSyncAdapter">
+      <option name="closed" value="true" />
+      <created>1746560971336</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1746560971336</updated>
+    </task>
+    <task id="LOCAL-00041" summary="McpSyncAdapter">
+      <option name="closed" value="true" />
+      <created>1746563001435</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1746563001435</updated>
+    </task>
+    <option name="localTasksCounter" value="42" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -589,7 +611,8 @@
     <MESSAGE value="model output parser decoupled for extensibility" />
     <MESSAGE value="pullng out for any agents, including A2A calling agents" />
     <MESSAGE value="model server provider model_provider.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="model server provider model_provider.py" />
+    <MESSAGE value="McpSyncAdapter" />
+    <option name="LAST_COMMIT_MESSAGE" value="McpSyncAdapter" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -627,8 +650,8 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
-    <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746549707804" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1745775417270" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746575066440" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test/cdc_agents" />
+    <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>

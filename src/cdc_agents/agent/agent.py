@@ -44,7 +44,7 @@ class ResponseFormat(BaseModel):
 class BaseAgent(abc.ABC):
 
     @abc.abstractmethod
-    def invoke(self, query, sessionId) -> str:
+    def invoke(self, query, sessionId):
         pass
 
     @property
@@ -165,7 +165,6 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
                         self.tools.append(await self._next_tool(loop, t, k, v))
 
-
                     if v.stop_tool:
                         subprocess.run(v.stop_tool, shell=True)
                         atexit.register(lambda: subprocess.run(v.stop_tool, shell=True))
@@ -203,6 +202,12 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                                 return await tool.arun(tool_input, verbose, start_color, color, callbacks, **kwargs)
                             else:
                                 return await tool.arun(tags, metadata, run_name, run_id, config, tool_call_id, **kwargs)
+
+                    return ToolMessage(
+                        content=f"Failed to run tool. Could not find matching tools for {self.name}",
+                        name=self.name,
+                        tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
+                        status="error")
 
             def run(
                     self,
@@ -395,8 +400,14 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.orchestrator_agent = orchestrator_agent
         self.agents = agents
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
+        from cdc_agents.agents.summarizer_agent import SummarizerAgent
+        self.summarizer_agent = agents.get(SummarizerAgent.__name__)
 
-    def get_next_node(self, last_executed_agent: BaseAgent, last_message: typing.Union[BaseMessage, NextAgentResponse], state):
+    def get_next_node(self, last_executed_agent: BaseAgent, last_message: typing.Union[BaseMessage, NextAgentResponse],
+                      state: MessagesState):
+        if self.do_perform_summary(state):
+            from cdc_agents.agents.summarizer_agent import SummarizerAgent
+            return SummarizerAgent.__name__
         if isinstance(last_message, BaseMessage):
             is_last_message = last_executed_agent.is_terminate_node(last_message, state)
             if is_last_message:
@@ -410,9 +421,29 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         elif isinstance(last_message, NextAgentResponse):
             return last_message.next_agent
 
+        raise NotImplementedError
+
+    #  TODO: for example, if too many messages
+    def do_perform_summary(self, state: MessagesState) -> bool:
+        if self.summarizer_agent is None:
+            return False
+
+        return False
+
+    #  TODO: for example, if too many messages
+    def do_collapse_summary_state(self, state: list[BaseMessage], agent: BaseAgent) -> list[BaseMessage]:
+        from cdc_agents.agents.summarizer_agent import SummarizerAgent
+        if isinstance(agent, SummarizerAgent):
+            return agent.do_collapse(state)
+
+        return state
+
     def next_node(self, agent: BaseAgent, state: MessagesState, session_id)-> Command[typing.Union[str, END]] :
         result = agent.invoke(state, session_id)
-        last_message: BaseMessage = result["messages"][-1]
+
+        result['messages'] = self.do_collapse_summary_state(result['messages'], agent)
+
+        last_message: BaseMessage = result['messages'][-1]
 
         last_message = HumanMessage(content=last_message.content, name=agent.agent_name)
 

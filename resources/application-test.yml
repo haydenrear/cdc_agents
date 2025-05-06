@@ -43,26 +43,20 @@ agent_config:
 #              - mcp/code-runner-filesystem
 #              - /Users/hayde
 #            env:
-#        docker:
-#          tool_prompt: "Use docker to build the container. Please note the directory provided by the user."
-#          name: docker
-#          tool_options:
-#            command: docker
-#            args:
-#              - run
-#              - -i
-#              - --rm
-#              - -v
-#              - unix:///Users/hayde/.docker/run/docker.sock:/var/run/docker.sock
-#              - mcp/code-runner-docker
-#            env:
-#      agent_card:
-#        name: CodeRunnerAgent
-#        path: /coderunner
-#        version: 0.0.1
-#      agent_descriptor:
-#        model: ollama_chat://ollama_chat/hermes3:3b
-#        agent_name: CdcCodeSearchAgent
+#    docker:
+#      tool_prompt: "Use docker to build the container. Please note the directory provided by the user."
+#      name: docker
+#      tool_options:
+#        command: docker
+#        args:
+#          - run
+#          - -i
+#          - --rm
+#          - -v
+#          - /var/run/docker.sock:/var/run/docker.sock
+#          - mcp/code-runner-docker
+#        env:
+
     CdcCodegenAgent:
       agent_card:
         name: CdcCodegenAgent
