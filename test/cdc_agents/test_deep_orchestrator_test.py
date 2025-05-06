@@ -1,32 +1,36 @@
+import asyncio
 import copy
+import json
 import logging
 import typing
 import unittest
 import unittest.mock
-from typing import Any, AsyncIterable, Dict
+import unittest.mock
+import uuid
+from typing import Any
 
-from langchain.agents import create_react_agent
-from langchain_core.language_models import LanguageModelInput
-from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage
-from langchain_core.prompt_values import PromptValue, ChatPromptValue
-from langchain_core.prompts import PromptTemplate
+from langchain_core.callbacks import Callbacks
+from langchain_core.messages import ToolMessage, HumanMessage
+from langchain_core.runnables.config import RunnableConfig
 from langchain_core.tools import BaseTool, tool
+from langchain_core.tools import StructuredTool
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
 from aisuite.framework import ChatCompletionResponse
-from cdc_agents.agent.agent import A2AAgent, OrchestratedAgent, OrchestratorAgent, A2AReactAgent
-from cdc_agents.agents.deep_code_research_agent import call_a_friend, DeepCodeOrchestrator
+from cdc_agents.agent.agent import OrchestratedAgent, OrchestratorAgent, A2AReactAgent
+from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
-from cdc_agents.model_server.model_server_model import ModelServerModel, LoggingModelServerExecutor, \
-    ModelServerExecutor, ModelServerInput
+from cdc_agents.model_server.model_server_model import ModelServerModel, ModelServerInput
 from python_di.configs.bean import test_inject
 from python_di.configs.test import test_booter, boot_test
 from python_di.inject.profile_composite_injector.inject_context_di import autowire_fn
 from python_util.logger.log_level import LogLevel
+from python_util.logger.logger import LoggerFacade
 
 LogLevel.set_log_level(logging.DEBUG)
 
@@ -35,7 +39,7 @@ class ServerRunnerBoot:
     pass
 
 @boot_test(ctx=ServerRunnerBoot)
-class ModelServerModelTest(unittest.TestCase):
+class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
     ai_suite: AgentConfigProps
     server: DeepCodeOrchestrator
     model: ModelServerModel
@@ -56,7 +60,6 @@ class ModelServerModelTest(unittest.TestCase):
         ModelServerModelTest.server = server
         ModelServerModelTest.model = model
         ModelServerModelTest.model_provider = model_provider
-
 
     def test_model_server_model(self):
 
@@ -102,8 +105,6 @@ class ModelServerModelTest(unittest.TestCase):
                 self.did_call = True
                 return A2AReactAgent.invoke(self, query, sessionId)
 
-
-
         class TestOrchestratorAgent(OrchestratorAgent):
 
             did_call = False
@@ -117,8 +118,15 @@ class ModelServerModelTest(unittest.TestCase):
         server.agents = copy.copy(server.agents)
         server.get_agent_response = self._agent_response
         server.agents.clear()
-        server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, self.model_provider, model)
-        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, [call_a_friend_in], "test", self.memory, self.model_provider, model))
+
+        in_ = [call_a_friend_in]
+
+        server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model)
+        server.orchestrator_agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
+
+        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model))
+        server.agents['TestAgent'].agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
+
         invoked = server.invoke("hello", "test")
 
         assert len(invoked) != 0
@@ -147,6 +155,10 @@ class ModelServerModelTest(unittest.TestCase):
             """
             Action: call_a_friend_in
             Action Input: 
+            """,
+            """
+            Action: query
+            Action Input: { "sql": "SELECT * FROM COMMIT_DIFF" }
             """,
             "NEXT AGENT: TestAgent",
             "okay",

@@ -371,7 +371,7 @@ class AgentType(enum.Enum):
 class AgentCard(BaseModel):
     name: str
     description: str | None = None
-    url: str
+    path: str
     provider: AgentProvider | None = None
     version: str
     documentationUrl: str | None = None

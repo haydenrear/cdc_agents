@@ -95,7 +95,8 @@ class AgentServerRunner:
                                               notification_sender_auth=notification_sender_auth),
                 host=host,
                 port=port,
-                starlette=starlette)
+                starlette=starlette,
+                endpoint=agent_card.path)
 
         # Be able for server/client to discover all available A2A agents for a task
         starlette.add_route('/discover_agents',

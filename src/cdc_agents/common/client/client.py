@@ -25,7 +25,7 @@ import json
 class A2AClient:
     def __init__(self, agent_card: AgentCard = None, url: str = None):
         if agent_card:
-            self.url = agent_card.url
+            self.url = agent_card.path
         elif url:
             self.url = url
         else:

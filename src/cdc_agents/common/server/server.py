@@ -89,14 +89,14 @@ class A2AServer:
     ):
         self.host = host
         self.port = port
-        self.endpoint = f'/{agent_card.name}/{endpoint}'
+        self.endpoint = endpoint
         self.task_manager = task_manager
         self.agent_card = agent_card
         self.app = Starlette() if not starlette else starlette
         self.app.add_route(self.endpoint, self._process_request, methods=["POST"])
         self.app.add_route(
-            f"/{agent_card.name}/.well-known/agent.json", self._get_agent_card, methods=["GET"])
-        self.app.add_route(f"/{agent_card.name}/tasks/pushEvent", self.receive_event, methods=["POST", "GET", "PUT"])
+            f"/{endpoint}/.well-known/agent.json", self._get_agent_card, methods=["GET"])
+        self.app.add_route(f"/{endpoint}/tasks/pushEvent", self.receive_event, methods=["POST", "GET", "PUT"])
 
     def start(self):
         if self.agent_card is None:

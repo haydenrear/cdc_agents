@@ -55,6 +55,12 @@ class LanguageModelOutputParser(abc.ABC):
         if isinstance(converted, list):
             for converted_item in converted:
                 if cls.is_tool_response(converted_item):
+                    try:
+                        if isinstance(converted_item['args'], str):
+                            args = json.loads(converted_item['args'])
+                            converted_item['args'] = args
+                    except Exception:
+                        pass
                     tools.append(converted_item)
                 elif converted_item is not None:
                     content.append(converted_item)

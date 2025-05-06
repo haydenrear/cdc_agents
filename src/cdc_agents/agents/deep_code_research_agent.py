@@ -163,9 +163,4 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
     def orchestration_prompt(self):
         pass
 
-    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
-        raise NotImplementedError
-
-    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None):
-        raise NotImplementedError
 

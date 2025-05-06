@@ -8,6 +8,8 @@ from pydantic.main import BaseModel
 class AgentMcpTool(BaseModel):
     tool_options: typing.Any
     name: typing.Optional[str] = None
+    tool_prompt: typing.Optional[str] = None
+    stop_tool: typing.Optional[str] = None
 
 class AgentCardItem(BaseModel):
     agent_card: typing.Optional[AgentCard] = None
