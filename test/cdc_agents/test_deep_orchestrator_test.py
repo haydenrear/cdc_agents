@@ -158,7 +158,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             """,
             """
             Action: query
-            Action Input: { "sql": "SELECT * FROM COMMIT_DIFF" }
+            Action Input: { "sql": "SELECT * FROM commit_diff" }
             """,
             "NEXT AGENT: TestAgent",
             "okay",

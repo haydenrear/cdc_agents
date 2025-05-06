@@ -226,7 +226,8 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 try:
                     asyncio.get_running_loop()
                     return ToolMessage(
-                        content="Failed to run tool. MCP tools cannot run inside already running event loop. Must have called sync inside async, and cannot then call async.",
+                        content="Failed to run tool. MCP tools cannot run inside already running event loop. "
+                                "Must have called sync inside async, and cannot then call async.",
                         name=self.name,
                         tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
                         status="error")
@@ -253,6 +254,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
                 if close_loop:
                     to_run_loop.close()
+                    asyncio.set_event_loop(None)
 
                 if isinstance(ran, str):
                     ran = json.loads(ran)
