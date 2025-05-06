@@ -2,67 +2,67 @@ agent_config:
   orchestrator_max_recurs: 10
   initialize_server: false
   agents:
-    CodeRunnerAgent:
-      agent_clazz: cdc_agents.agent.agent.code_runner_agent.CodeRunnerAgent
-      mcp_tools:
-        postgres:
-          name: postgres
-          tool_prompt: "Use postgres tool"
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - mcp/code-runner-postgres
-              - postgresql://postgres:postgres@host.docker.internal:5450/postgres
-            env:
-        git:
-          stop_tool: docker stop $(docker ps | grep mcp/code-runner-git | cut -d' ' -f1)
-          name: git
-          tool_prompt: "Use git tool"
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - --mount type=bind,src=/Users/
-              - mcp/code-runner-git
-            env:
-        filesystem:
-          name: filesystem
-          tool_prompt: "Use file system tool to search the file system for repositories, paths, or other data."
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - --mount type=bind,src=/Users/
-              - mcp/code-runner-filesystem
-              - /Users/hayde
-            env:
-        docker:
-          tool_prompt: "Use docker to build the container. Please note the directory provided by the user."
-          name: docker
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - unix:///Users/hayde/.docker/run/docker.sock:/var/run/docker.sock
-              - mcp/code-runner-docker
-            env:
-      agent_card:
-        name: CodeRunnerAgent
-        path: /coderunner
-        version: 0.0.1
-      agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
-        agent_name: CdcCodeSearchAgent
+#    CodeRunnerAgent:
+#      agent_clazz: cdc_agents.agent.agent.code_runner_agent.CodeRunnerAgent
+#      mcp_tools:
+#        postgres:
+#          name: postgres
+#          tool_prompt: "Use postgres tool"
+#          tool_options:
+#            command: docker
+#            args:
+#              - run
+#              - -i
+#              - --rm
+#              - mcp/code-runner-postgres
+#              - postgresql://postgres:postgres@host.docker.internal:5450/postgres
+#            env:
+#        git:
+#          stop_tool: docker stop $(docker ps | grep mcp/code-runner-git | cut -d' ' -f1)
+#          name: git
+#          tool_prompt: "Use git tool"
+#          tool_options:
+#            command: docker
+#            args:
+#              - run
+#              - -i
+#              - --rm
+#              - --mount type=bind,src=/Users/
+#              - mcp/code-runner-git
+#            env:
+#        filesystem:
+#          name: filesystem
+#          tool_prompt: "Use file system tool to search the file system for repositories, paths, or other data."
+#          tool_options:
+#            command: docker
+#            args:
+#              - run
+#              - -i
+#              - --rm
+#              - --mount type=bind,src=/Users/
+#              - mcp/code-runner-filesystem
+#              - /Users/hayde
+#            env:
+#        docker:
+#          tool_prompt: "Use docker to build the container. Please note the directory provided by the user."
+#          name: docker
+#          tool_options:
+#            command: docker
+#            args:
+#              - run
+#              - -i
+#              - --rm
+#              - -v
+#              - unix:///Users/hayde/.docker/run/docker.sock:/var/run/docker.sock
+#              - mcp/code-runner-docker
+#            env:
+#      agent_card:
+#        name: CodeRunnerAgent
+#        path: /coderunner
+#        version: 0.0.1
+#      agent_descriptor:
+#        model: ollama_chat://ollama_chat/hermes3:3b
+#        agent_name: CdcCodeSearchAgent
     CdcCodegenAgent:
       agent_card:
         name: CdcCodegenAgent
