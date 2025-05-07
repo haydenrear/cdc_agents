@@ -19,7 +19,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
 from aisuite.framework import ChatCompletionResponse
-from cdc_agents.agent.agent import OrchestratedAgent, OrchestratorAgent, A2AReactAgent
+from cdc_agents.agent.agent import A2AReactAgent
+from cdc_agents.agent.agent_orchestrator import OrchestratorAgent, OrchestratedAgent
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps

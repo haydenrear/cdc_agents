@@ -2,11 +2,11 @@ import abc
 import typing
 from typing import AsyncIterable, Dict, Any
 
+from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.types import Interrupt
 
 from cdc_agents.common.server import TaskManager
-from cdc_agents.common.types import  Message
+from cdc_agents.common.types import Message
 from cdc_agents.config.agent_config_props import AgentMcpTool
 
 
@@ -41,6 +41,15 @@ class A2AAgent(BaseAgent, abc.ABC):
         self.system_instruction = system_instruction
         self.memory = memory
         self._agent_name = self.__class__.__name__
+
+    def peek_task_history(self, session_id) -> typing.Optional[Message]:
+        if not self.task_manager:
+            return None
+        t = self.task_manager.task(session_id)
+        if t and len(t.history) != 0:
+            return t.history[0]
+
+        return None
 
     def pop_task_history(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
@@ -92,3 +101,57 @@ class A2AAgent(BaseAgent, abc.ABC):
         :return:
         """
         pass
+
+    @staticmethod
+    def get_agent_response_graph(config, graph):
+        current_state = graph.get_state(config)
+        structured_response = current_state.values.get('messages')
+        if structured_response and isinstance(structured_response, ResponseFormat):
+            if structured_response.status == "input_required":
+                return {
+                    "is_task_complete": False,
+                    "require_user_input": True,
+                    "content": structured_response.message
+                }
+            elif structured_response.status == "error":
+                return {
+                    "is_task_complete": False,
+                    "require_user_input": True,
+                    "content": structured_response.message
+                }
+            elif structured_response.status == "completed":
+                return {
+                    "is_task_complete": True,
+                    "require_user_input": False,
+                    "content": structured_response.message
+                }
+
+        return {
+            "is_task_complete": False,
+            "require_user_input": True,
+            "content": "We are unable to process your request at the moment. Please try again.",
+        }
+
+    @staticmethod
+    async def stream_agent_response_graph(query, sessionId, graph) -> AsyncIterable[Dict[str, Any]]:
+        inputs = {"messages": [("user", query)]}
+        config = {"configurable": {"thread_id": sessionId}}
+
+        for item in graph.stream(inputs, config, stream_mode="values"):
+            message = item["messages"][-1]
+            if (
+                    isinstance(message, AIMessage)
+                    and message.tool_calls
+                    and len(message.tool_calls) > 0
+            ):
+                yield {
+                    "is_task_complete": False,
+                    "require_user_input": False,
+                    "content": "Looking up the exchange rates...",
+                }
+            elif isinstance(message, ToolMessage):
+                yield {
+                    "is_task_complete": False,
+                    "require_user_input": False,
+                    "content": "Processing the exchange rates..",
+                }
