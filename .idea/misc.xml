@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="phx" />
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_23" project-jdk-name="Python 3.10 (cdc_agents)" project-jdk-type="Python SDK">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_23" project-jdk-name="uv (cdc_agents)" project-jdk-type="Python SDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
 </project>

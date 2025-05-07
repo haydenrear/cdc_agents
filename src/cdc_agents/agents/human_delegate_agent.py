@@ -3,7 +3,8 @@ from typing import Any, Dict, AsyncIterable
 import injector
 from langgraph.checkpoint.memory import MemorySaver
 
-from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
+from cdc_agents.agent.agent import A2AReactAgent
+from cdc_agents.agent.a2a import A2AAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
@@ -30,6 +31,16 @@ def check_human_delegate_messages():
     """
     pass
 
+@tool
+def read_human_delegate_screen():
+    """
+    :return:
+    """
+    pass
+
+def interrupt():
+    pass
+
 # @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 # @injectable()
 class HumanDelegateAgent(DeepResearchOrchestrated, A2AReactAgent):
@@ -52,7 +63,7 @@ class HumanDelegateAgent(DeepResearchOrchestrated, A2AReactAgent):
         cdc_codegen_agent = str(HumanDelegateAgent)
         A2AReactAgent.__init__(self, agent_config,
                                [bootstrap_ai_character, message_human_delegate, check_human_delegate_messages],
-                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
+                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider, task_event_hooks=[])
         self.agent_config: AgentCardItem = agent_config.agents[cdc_codegen_agent] \
             if cdc_codegen_agent in agent_config.agents.keys() else None
 

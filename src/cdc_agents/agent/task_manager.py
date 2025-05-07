@@ -1,5 +1,13 @@
-import abc
+import logging
+import traceback
 from typing import AsyncIterable
+from typing import Union
+
+import asyncio
+
+import cdc_agents.common.server.utils as utils
+from cdc_agents.agent.a2a import A2AAgent
+from cdc_agents.common.server.task_manager import InMemoryTaskManager
 from cdc_agents.common.types import (
     SendTaskRequest,
     TaskSendParams,
@@ -18,22 +26,10 @@ from cdc_agents.common.types import (
     Task,
     TaskIdParams,
     PushNotificationConfig,
-    SetTaskPushNotificationRequest,
-    SetTaskPushNotificationResponse,
-    TaskPushNotificationConfig,
-    TaskNotFoundError,
     InvalidParamsError,
     # PushTaskEvent,
-    GetTaskResponse, PushTaskEvent, PushTaskEventResponseItem, JSONRPCError, aggregate_errs, PushTaskEventResponse,
 )
-from cdc_agents.common.server.task_manager import InMemoryTaskManager
-from cdc_agents.agent.agent import A2AAgent
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
-import cdc_agents.common.server.utils as utils
-from typing import Union
-import asyncio
-import logging
-import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +41,6 @@ class AgentTaskManager(InMemoryTaskManager):
         super().__init__()
         self.agent = agent
         self.notification_sender_auth = notification_sender_auth
-
-    async def on_push_task_event(self, request: PushTaskEvent) -> PushTaskEventResponse:
-        results = [t.do_on_event(request) for t in self.agent.task_event_hooks]
-        res = {"result": results}
-        aggregate_errs(res, results)
-        return PushTaskEventResponse(**res)
 
     async def _run_streaming_agent(self, request: SendTaskStreamingRequest):
         task_send_params: TaskSendParams = request.params

@@ -3,8 +3,9 @@ import abc
 from langchain.agents import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
-from cdc_agents.agent.agent import A2AAgent, StateGraphOrchestrator, OrchestratedAgent, OrchestratorAgent, \
-    BaseAgent, NextAgentResponse, A2AReactAgent
+from cdc_agents.agent.agent import StateGraphOrchestrator, OrchestratedAgent, OrchestratorAgent, \
+    NextAgentResponse, A2AReactAgent
+from cdc_agents.agent.a2a import BaseAgent, A2AAgent
 import dataclasses
 import enum
 import typing
@@ -150,7 +151,7 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
         return f'Graph orchestrator agent; {self.orchestrator_agent.agent_name}'
 
     def parse_orchestration_response(self, last_message: BaseMessage) -> typing.Union[BaseMessage, NextAgentResponse]:
-        found = list(filter(lambda x: 'NEXT AGENT:' in x, last_message.content if isinstance(last_message.content, list) else [last_message.content]))
+        found: typing.List[str] = list(filter(lambda x: 'NEXT AGENT:' in x, last_message.content if isinstance(last_message.content, list) else [last_message.content]))
         if len(found) == 0:
             return last_message
         else:

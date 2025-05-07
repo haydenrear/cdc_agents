@@ -12,6 +12,9 @@ from uuid import uuid4
 from enum import Enum
 from typing_extensions import Self
 
+from langchain_core.messages import BaseMessage
+from langgraph.types import Interrupt
+
 
 class TaskState(str, Enum):
     SUBMITTED = "submitted"
@@ -28,6 +31,10 @@ class TextPart(BaseModel):
     text: str
     metadata: dict[str, Any] | None = None
 
+class TaskHookMessage(BaseMessage):
+    agent_name: str
+    interrupt: Interrupt
+    session_id: str
 
 class FileContent(BaseModel):
     name: str | None = None
@@ -60,12 +67,11 @@ class DataPart(BaseModel):
 
 Part = Annotated[Union[TextPart, FilePart, DataPart], Field(discriminator="type")]
 
-
 class Message(BaseModel):
     role: Literal["user", "agent"]
     parts: List[Part]
     metadata: dict[str, Any] | None = None
-
+    agent_route: typing.Optional[str] = None
 
 class TaskStatus(BaseModel):
     state: TaskState
@@ -180,26 +186,8 @@ class GetTaskRequest(JSONRPCRequest):
     method: Literal["tasks/get"] = "tasks/get"
     params: TaskQueryParams
 
-class TaskEventBody(BaseModel):
-    body_value: typing.Any = None
-    session_id: str
-
-class PushTaskEvent(JSONRPCRequest):
-    """
-    Bit different from updating the history - instead the agent can choose how to respond to particular events
-    """
-    method: Literal["tasks/pushEvent"] = "tasks/pushEvent"
-    body: TaskEventBody
-
 class TaskEventResult(BaseModel):
     body_value: typing.Any = None
-
-class PushTaskEventResponseItem(BaseModel):
-    body: typing.Optional[TaskEventResult] = None
-    error: typing.Optional[JSONRPCError] = None
-
-class PushTaskEventResponse(JSONRPCResponse):
-     result: typing.List[PushTaskEventResponseItem] = None
 
 class GetTaskResponse(JSONRPCResponse):
     result: Task | None = None

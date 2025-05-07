@@ -1,6 +1,9 @@
 import abc
 import asyncio
 import atexit
+
+from cdc_agents.agent.a2a import BaseAgent, A2AAgent
+from cdc_agents.common.types import TaskHookMessage, Message
 import dataclasses
 import json
 import subprocess
@@ -22,108 +25,25 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from cdc_agents.common.types import PushTaskEvent, PushTaskEventResponseItem
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_util.logger.logger import LoggerFacade
 
-
-class TaskEventHook(abc.ABC):
-    @abc.abstractmethod
-    def do_on_event(self, request: PushTaskEvent, *args, **kwargs) -> PushTaskEventResponseItem:
-        pass
-
-    def __call__(self, request: PushTaskEvent, *args, **kwargs) -> PushTaskEventResponseItem:
-        return self.do_on_event(*args, **kwargs)
 
 class ResponseFormat(BaseModel):
     """Respond to the user in this format."""
     status: Literal["input_required", "completed", "error"] = "input_required"
     message: str
 
-class BaseAgent(abc.ABC):
-
-    @abc.abstractmethod
-    def invoke(self, query, sessionId):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def agent_name(self) -> str:
-        pass
-
-    @property
-    def terminal_string(self) -> str:
-        return "FINAL ANSWER"
-
-    def is_terminate_node(self, last_message, state) -> bool:
-        return self.message_contains(last_message, self.terminal_string)
-
-    def message_contains(self, last_message, answer) -> bool:
-        return answer in last_message.content or any([answer in c for c in last_message.content])
-
-class A2AAgent(BaseAgent, abc.ABC):
-    def __init__(self, model=None, tools=None, system_instruction=None,
-                 memory: MemorySaver = MemorySaver(),
-                 task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
-        self._task_event_hooks = task_event_hooks
-        self.model = model
-        self.tools = tools
-        self.system_instruction = system_instruction
-        self.memory = memory
-        self._agent_name = self.__class__.__name__
-
-    @property
-    def task_event_hooks(self) -> list[TaskEventHook]:
-        return self._task_event_hooks
-
-    @property
-    def supported_content_types(self) -> list[str]:
-        if not hasattr(self, 'SUPPORTED_CONTENT_TYPES'):
-            raise NotImplementedError("Could not find supported content.")
-
-        return getattr(self, 'SUPPORTED_CONTENT_TYPES')
-
-    @property
-    def agent_name(self) -> str:
-        return self._agent_name
-
-    @abc.abstractmethod
-    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
-        pass
-
-    @abc.abstractmethod
-    def get_agent_response(self, config, graph):
-        pass
-
-    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
-        """
-        MCP tools are descriptors of external tools for a particular agent to use.
-        Append these tools to the list of tools available for this particular agent.
-        :param additional_tools: tools to be appended
-        :param loop: used mostly for testing ???
-        :return:
-        """
-        pass
-
-    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
-        """
-        MCP tools are descriptors of external tools for a particular agent to use.
-        Append these tools to the list of tools available for this particular agent.
-        :param additional_tools: tools to be appended
-        :param loop: used mostly for testing ???
-        :return:
-        """
-        pass
 
 class A2ASmolAgent(A2AAgent, abc.ABC):
     def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
-                 memory: MemorySaver, model = None, task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+                 memory: MemorySaver, model = None):
         this_agent_name = self.__class__.__name__
         model = agent_config.agents[this_agent_name].agent_descriptor.model \
             if this_agent_name in agent_config.agents.keys() else None \
             if model is None else model
-        A2AAgent.__init__(self, model, tools, system_instruction, memory, task_event_hooks)
+        A2AAgent.__init__(self, model, tools, system_instruction, memory)
 #       TODO: create different types of SmolAgent, and then stream result as in above - can be streamed to langgraph
 #           graph the same, but can have python code calling instead of tool calling, and can have multi-agent.
 
@@ -131,13 +51,12 @@ class A2ASmolAgent(A2AAgent, abc.ABC):
 class A2AReactAgent(A2AAgent, abc.ABC):
 
     def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
-                 memory: MemorySaver, model_server_provider: ModelProvider, model = None,
-                 task_event_hooks: typing.Optional[typing.List[TaskEventHook]] = None):
+                 memory: MemorySaver, model_server_provider: ModelProvider, model = None):
         self.model_server_provider = model_server_provider
         this_agent_name = self.__class__.__name__
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
-        A2AAgent.__init__(self, self.model, tools, system_instruction, memory, task_event_hooks)
+        A2AAgent.__init__(self, self.model, tools, system_instruction, memory)
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
@@ -148,7 +67,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         if loop:
             loop.run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
         else:
-            asyncio.run(self.add_mcp_tools_async(additional_tools, loop))
+            asyncio.get_event_loop().run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
 
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
@@ -404,10 +323,16 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.summarizer_agent = agents.get(SummarizerAgent.__name__)
 
     def get_next_node(self, last_executed_agent: BaseAgent, last_message: typing.Union[BaseMessage, NextAgentResponse],
-                      state: MessagesState):
+                      state: MessagesState, session_id, message: typing.Optional[Message] = None):
+        if message is not None and message.agent_route is not None:
+            if message.agent_route not in self.agents.keys():
+                LoggerFacade.error(f"Found message route {message.agent_route} not in keys {self.agents.keys()}")
+            return message.agent_route
+
         if self.do_perform_summary(state):
             from cdc_agents.agents.summarizer_agent import SummarizerAgent
             return SummarizerAgent.__name__
+
         if isinstance(last_message, BaseMessage):
             is_last_message = last_executed_agent.is_terminate_node(last_message, state)
             if is_last_message:
@@ -451,15 +376,38 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         last_message = self.parse_orchestration_response(last_message)
 
-        goto = self.get_next_node(agent, last_message, state)
-
-        if goto == self.orchestrator_agent.agent_name and agent.agent_name == self.orchestrator_agent.agent_name:
-            last_message.content.append(f"Did not receive a {self.terminal_string} delimited with {self.terminal_string} or which agent to forward to. "
-                                        f"Please either summarize into a {self.terminal_string} or delegate to one of you're agents who will.")
+        goto = self._goto_node(agent, last_message, result, session_id, state)
 
         return Command(
             update={"messages": result["messages"]},
             goto=goto)
+
+    def _goto_node(self, agent, last_message, result, session_id, state):
+        if self.task_manager:
+            recent = self.pop_task_history(session_id)
+            if recent is not None:
+                content = self._parse_content(recent)
+                result['messages'].append(HumanMessage(content=content, name="pushed task"))
+                goto = self.get_next_node(agent, last_message, state, session_id, recent)
+            else:
+                goto = self.get_next_node(agent, last_message, state, session_id)
+        else:
+            goto = self.get_next_node(agent, last_message, state, session_id)
+        if goto == self.orchestrator_agent.agent_name and agent.agent_name == self.orchestrator_agent.agent_name:
+            last_message.content.append(
+                f"Did not receive a {self.terminal_string} delimited with {self.terminal_string} or which agent to forward to. "
+                f"Please either summarize into a {self.terminal_string} or delegate to one of you're agents who will.")
+        return goto
+
+    def _parse_content(self, recent):
+        content = []
+        for p in recent.parts:
+            if p.type is not None and p.type != 'text':
+                LoggerFacade.error(f"Found unknown message type, {p.type}")
+            else:
+                content.append(p.text)
+
+        return content
 
     def _create_orchestration_graph(self, session_id) -> OrchestratorAgentGraph:
         return OrchestratorAgentGraph(self._create_state_graph(session_id),

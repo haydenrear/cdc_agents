@@ -8,7 +8,7 @@ import uvicorn
 from langgraph.checkpoint.memory import MemorySaver
 from starlette.applications import Starlette
 
-from cdc_agents.agent.agent import A2AAgent
+from cdc_agents.agent.a2a import A2AAgent
 from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.common.server import A2AServer
 from cdc_agents.common.server.server import DynamicA2AServer, create_json_response, _add_all_managed_agents
@@ -90,10 +90,11 @@ class AgentServerRunner:
 
             # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
 
+            task_manager = AgentTaskManager(agent=self.agents[name].agent, notification_sender_auth=notification_sender_auth)
+            self.agents[name].agent.set_task_manager(task_manager)
             A2AServer(
                 agent_card=agent_card,
-                task_manager=AgentTaskManager(agent=self.agents[name].agent,
-                                              notification_sender_auth=notification_sender_auth),
+                task_manager=task_manager,
                 host=host,
                 port=port,
                 starlette=starlette,

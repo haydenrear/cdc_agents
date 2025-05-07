@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Project script: run-cdc-agents" type="insyncwithfoo.ryecharm.uv" factoryName="insyncwithfoo.ryecharm.uv.projectscript">
+    <option name="scriptName" value="run-cdc-agents" />
+    <method v="2" />
+  </configuration>
+</component>

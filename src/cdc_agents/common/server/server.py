@@ -9,7 +9,6 @@ from sse_starlette.sse import EventSourceResponse
 from starlette.requests import Request
 
 import python_util.io_utils.file_dirs
-from cdc_agents.agent.agent import A2AAgent
 from cdc_agents.common.types import (
     A2ARequest,
     JSONRPCResponse,
@@ -23,7 +22,7 @@ from cdc_agents.common.types import (
     InternalError,
     AgentCard,
     TaskResubscriptionRequest,
-    SendTaskStreamingRequest, PostAgentResponse, AgentPosted, AgentCode, AgentDescriptor, PushTaskEvent,
+    SendTaskStreamingRequest, PostAgentResponse, AgentPosted, AgentCode, AgentDescriptor
 )
 from pydantic import ValidationError
 import json
@@ -97,7 +96,6 @@ class A2AServer:
         self.app.add_route(self.endpoint, self._process_request, methods=["POST"])
         self.app.add_route(
             f"/{endpoint}/.well-known/agent.json", self._get_agent_card, methods=["GET"])
-        self.app.add_route(f"/{endpoint}/tasks/pushEvent", self.receive_event, methods=["POST", "GET", "PUT"])
 
     def start(self):
         if self.agent_card is None:
@@ -109,19 +107,6 @@ class A2AServer:
         import uvicorn
 
         uvicorn.run(self.app, host=self.host, port=self.port)
-
-    async def receive_event(self, request: Request):
-        try:
-            body = await request.json()
-            evt = PushTaskEvent(**body)
-            return await self.on_receive_event(evt)
-        except Exception as e:
-            return _handle_exception(e)
-
-    async def on_receive_event(self, request: PushTaskEvent) -> JSONResponse:
-        LoggerFacade.debug("Received event.")
-        res = await self.task_manager.on_push_task_event(request)
-        return create_json_response(res)
 
     def _get_agent_card(self, request: Request) -> JSONResponse:
         return JSONResponse(self.agent_card.model_dump(exclude_none=True))
@@ -147,8 +132,7 @@ class A2AServer:
                 result = await self.task_manager.on_get_task_push_notification(json_rpc_request)
             elif isinstance(json_rpc_request, TaskResubscriptionRequest):
                 result = await self.task_manager.on_resubscribe_to_task(
-                    json_rpc_request
-                )
+                    json_rpc_request)
             else:
                 logger.warning(f"Unexpected request type: {type(json_rpc_request)}")
                 raise ValueError(f"Unexpected request type: {type(request)}")
@@ -217,6 +201,7 @@ class DynamicA2AServer:
             notification_sender_auth.generate_jwk()
 
             for k, v in loaded.__dict__.items():
+                from cdc_agents.agent.a2a import A2AAgent
                 if isinstance(v, type) and reflection_utils.is_type_instance_of(A2AAgent, v):
                     agent: A2AAgent = v(model, tools, system_instructions)
                     importlib.import_module(agent_code.code)

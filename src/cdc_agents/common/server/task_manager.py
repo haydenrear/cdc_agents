@@ -1,6 +1,8 @@
+import abc
+import typing
 from abc import ABC, abstractmethod
 from typing import Union, AsyncIterable, List
-from cdc_agents.common.types import Task, PushTaskEvent
+from cdc_agents.common.types import Task
 from cdc_agents.common.types import (
     JSONRPCResponse,
     TaskIdParams,
@@ -40,10 +42,6 @@ logger = logging.getLogger(__name__)
 class TaskManager(ABC):
 
     @abstractmethod
-    async def on_push_task_event(self, request: PushTaskEvent) -> GetTaskResponse:
-        pass
-
-    @abstractmethod
     async def on_get_task(self, request: GetTaskRequest) -> GetTaskResponse:
         pass
 
@@ -79,6 +77,10 @@ class TaskManager(ABC):
     ) -> Union[AsyncIterable[SendTaskResponse], JSONRPCResponse]:
         pass
 
+    @abstractmethod
+    def task(self, session_id) -> typing.Optional[Task]:
+        pass
+
 
 class InMemoryTaskManager(TaskManager):
     def __init__(self):
@@ -87,6 +89,9 @@ class InMemoryTaskManager(TaskManager):
         self.lock = asyncio.Lock()
         self.task_sse_subscribers: dict[str, List[asyncio.Queue]] = {}
         self.subscriber_lock = asyncio.Lock()
+
+    def task(self, session_id) -> typing.Optional[Task]:
+        return self.tasks.get(session_id)
 
     async def on_get_task(self, request: GetTaskRequest) -> GetTaskResponse:
         logger.info(f"Getting task {request.params.id}")
@@ -98,8 +103,7 @@ class InMemoryTaskManager(TaskManager):
                 return GetTaskResponse(id=request.id, error=TaskNotFoundError())
 
             task_result = self.append_task_history(
-                task, task_query_params.historyLength
-            )
+                task, task_query_params.historyLength)
 
         return GetTaskResponse(id=request.id, result=task_result)
 
