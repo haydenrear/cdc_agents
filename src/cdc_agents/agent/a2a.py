@@ -43,6 +43,8 @@ class A2AAgent(BaseAgent, abc.ABC):
         self._agent_name = self.__class__.__name__
 
     def pop_task_history(self, session_id) -> typing.Optional[Message]:
+        if not self.task_manager:
+            return None
         t = self.task_manager.task(session_id)
         if t and len(t.history) != 0:
             return t.history.pop(0)
