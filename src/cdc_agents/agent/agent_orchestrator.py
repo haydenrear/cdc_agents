@@ -157,6 +157,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                     # ignore that message for now, keep it in TaskManager, and don't replace recent for the get_next_node
                     # call for below
                     if self.do_perform_summary(result['messages']):
+                        # pop the message we just added to check if it pushes over token limit for summary
                         result['messages'].pop()
                         break
                     else:
