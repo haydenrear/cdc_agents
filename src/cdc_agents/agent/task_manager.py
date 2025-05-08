@@ -131,7 +131,7 @@ class AgentTaskManager(InMemoryTaskManager):
 
         await self.upsert_task(request.params)
 
-        async with self.lock:
+        async with self.task_locks[request.id]:
             prev_task = self.task(request.id)
             if prev_task.status == TaskState.WORKING:
                 # Task already working - will catch the messages below
@@ -145,16 +145,15 @@ class AgentTaskManager(InMemoryTaskManager):
         task_send_params: TaskSendParams = request.params
         query = self.get_user_query(task_send_params)
         try:
-            async with self.lock:
+            async with self.task_locks[request.id]:
                 task = self.task(request.id)
-            agent_response = self.agent.invoke(query, task_send_params.sessionId)
-            # loop until stop receiving messages for this agent.
-            while task and len(task.to_process)  != 0:
-                query = self.get_user_query_message(next(iter(task.to_process)))
                 agent_response = self.agent.invoke(query, task_send_params.sessionId)
-                async with self.lock:
+                # loop until stop receiving messages for this agent.
+                while task and len(task.to_process)  != 0:
+                    query = self.get_user_query_message(next(iter(task.to_process)))
+                    agent_response = self.agent.invoke(query, task_send_params.sessionId)
                     task = self.task(request.id)
-            return await self._process_agent_response(request, agent_response)
+                return await self._process_agent_response(request, agent_response)
         except Exception as e:
             LoggerFacade.error(f"Error invoking agent: {e}")
             raise ValueError(f"Error invoking agent: {e}")
@@ -168,16 +167,17 @@ class AgentTaskManager(InMemoryTaskManager):
             if error:
                 return error
 
-            async with self.lock:
+
+            await self.upsert_task(request.params)
+
+            async with self.task_locks[request.id]:
                 prev_task = self.task(request.id)
-                if prev_task.status.state == TaskState.WORKING:
+                if prev_task is not None and prev_task.status.state == TaskState.WORKING:
                     return JSONRPCResponse(
                         id=request.id,
                         error=InvalidRequestError(
                             message="Cannot stream task that has already started. "
                                     "Must send a task message or wait until task is completed."))
-
-            await self.upsert_task(request.params)
 
             if request.params.pushNotification:
                 if not await self.set_push_notification_info(request.params.id, request.params.pushNotification):
