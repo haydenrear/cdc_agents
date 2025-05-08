@@ -247,7 +247,7 @@ class InMemoryTaskManager(TaskManager):
                     messages=[task_send_params.message],
                     status=TaskStatus(state=TaskState.SUBMITTED),
                     history=[task_send_params.message],
-                    to_process=[task_send_params.message]
+                    to_process=[]
                 )
                 self.tasks[task_send_params.id] = task
             else:
