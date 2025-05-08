@@ -233,9 +233,10 @@ class InMemoryTaskManager(TaskManager):
 
     async def upsert_task(self, task_send_params: TaskSendParams) -> Task:
         logger.info(f"Upserting task {task_send_params.id}")
-        async with self.lock:
-            if task_send_params.id not in self.task_locks.keys():
-                self.task_locks[task_send_params.id] = asyncio.Lock()
+        if task_send_params.id not in self.task_locks.keys():
+            async with self.lock:
+                if task_send_params.id not in self.task_locks.keys():
+                    self.task_locks[task_send_params.id] = asyncio.Lock()
         async with self.task_locks[task_send_params.id]:
             task = self.tasks.get(task_send_params.id)
 
@@ -263,13 +264,14 @@ class InMemoryTaskManager(TaskManager):
     async def update_store(
         self, task_id: str, status: TaskStatus, artifacts: list[Artifact]
     ) -> Task:
-        async with self.lock:
-            if task_id not in self.tasks.keys():
-                logger.error(f"Task {task_id} not found for updating the task")
-                raise ValueError(f"Task {task_id} not found")
+        if task_id not in self.tasks.keys():
+            async with self.lock:
+                if task_id not in self.tasks.keys():
+                    logger.error(f"Task {task_id} not found for updating the task")
+                    raise ValueError(f"Task {task_id} not found")
 
-            if task_id not in self.task_locks.keys():
-                self.task_locks[task_id] = asyncio.Lock()
+                if task_id not in self.task_locks.keys():
+                    self.task_locks[task_id] = asyncio.Lock()
         async with self.task_locks[task_id]:
             task = self.tasks.get(task_id)
             task.status = status
