@@ -139,10 +139,14 @@ class InMemoryTaskManager(TaskManager):
         logger.info(f"Getting task {request.params.id}")
         task_query_params: TaskQueryParams = request.params
 
-        async with self.lock:
+        await self.insert_lock(request.id)
+
+        async with self.task_locks[request.id]:
             task = self.tasks.get(task_query_params.id)
             if task is None:
-                return GetTaskResponse(id=request.id, error=TaskNotFoundError())
+                async with self.lock:
+                    del self.task_locks[request.id]
+                    return GetTaskResponse(id=request.id, error=TaskNotFoundError())
 
             task_result = self.append_task_history(
                 task, task_query_params.historyLength)
@@ -153,10 +157,14 @@ class InMemoryTaskManager(TaskManager):
         logger.info(f"Cancelling task {request.params.id}")
         task_id_params: TaskIdParams = request.params
 
-        async with self.lock:
+        await self.insert_lock(request.id)
+
+        async with self.task_locks[request.id]:
             task = self.tasks.get(task_id_params.id)
             if task is None:
-                return CancelTaskResponse(id=request.id, error=TaskNotFoundError())
+                async with self.lock:
+                    del self.task_locks[request.id]
+                    return CancelTaskResponse(id=request.id, error=TaskNotFoundError())
 
         return CancelTaskResponse(id=request.id, error=TaskNotCancelableError())
 
@@ -171,30 +179,33 @@ class InMemoryTaskManager(TaskManager):
         pass
 
     async def set_push_notification_info(self, task_id: str, notification_config: PushNotificationConfig):
-        async with self.lock:
+        await self.insert_lock(task_id)
+        async with self.task_locks[task_id]:
             task = self.tasks.get(task_id)
             if task is None:
-                raise ValueError(f"Task not found for {task_id}")
+                async with self.lock:
+                    del self.task_locks[task_id]
+                    raise ValueError(f"Task not found for {task_id}")
 
             self.push_notification_infos[task_id] = notification_config
 
         return
     
     async def get_push_notification_info(self, task_id: str) -> PushNotificationConfig:
-        async with self.lock:
+        await self.insert_lock(task_id)
+        async with self.task_locks[task_id]:
             task = self.tasks.get(task_id)
             if task is None:
-                raise ValueError(f"Task not found for {task_id}")
+                async with self.lock:
+                    del self.task_locks[task_id]
+                    raise ValueError(f"Task not found for {task_id}")
 
             return self.push_notification_infos[task_id]
             
-        return
-    
     async def has_push_notification_info(self, task_id: str) -> bool:
         async with self.lock:
             return task_id in self.push_notification_infos
             
-
     async def on_set_task_push_notification(
         self, request: SetTaskPushNotificationRequest
     ) -> SetTaskPushNotificationResponse:
