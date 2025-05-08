@@ -252,11 +252,11 @@ class InMemoryTaskManager(TaskManager):
 
             return task
 
-    async def insert_lock(self, task_send_params):
-        if task_send_params.id not in self.task_locks.keys():
+    async def insert_lock(self, task_id):
+        if task_id not in self.task_locks.keys():
             async with self.lock:
-                if task_send_params.id not in self.task_locks.keys():
-                    self.task_locks[task_send_params.id] = asyncio.Lock()
+                if task_id not in self.task_locks.keys():
+                    self.task_locks[task_id] = asyncio.Lock()
 
     async def on_resubscribe_to_task(
         self, request: TaskResubscriptionRequest
@@ -266,15 +266,12 @@ class InMemoryTaskManager(TaskManager):
     async def update_store(
         self, task_id: str, status: TaskStatus, artifacts: list[Artifact] = None
     ) -> Task:
-        if task_id not in self.tasks.keys():
-            async with self.lock:
-                if task_id not in self.tasks.keys():
-                    logger.error(f"Task {task_id} not found for updating the task")
-                    raise ValueError(f"Task {task_id} not found")
-
-                if task_id not in self.task_locks.keys():
-                    self.task_locks[task_id] = asyncio.Lock()
+        await self.insert_lock(task_id)
         async with self.task_locks[task_id]:
+            if task_id not in self.tasks.keys():
+                logger.error(f"Task {task_id} not found for updating the task")
+                raise ValueError(f"Task {task_id} not found")
+
             task = self.tasks.get(task_id)
             task.status = status
 
