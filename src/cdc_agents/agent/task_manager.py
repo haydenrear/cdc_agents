@@ -178,10 +178,9 @@ class AgentTaskManager(InMemoryTaskManager):
                         error=InvalidRequestError(
                             message="Cannot stream task that has already started. "
                                     "Must send a task message or wait until task is completed."))
-                elif prev_task is not None and prev_task.status.state == TaskState.SUBMITTED:
-                    # must update the store in the same lock here - otherwise it fails.
-                    await self.update_store(
-                        request.params.id, TaskStatus(state=TaskState.WORKING), None)
+                # must update the store in the same lock here - otherwise it fails.
+                prev_task = await self.update_store(
+                    request.params.id, TaskStatus(state=TaskState.WORKING), None)
 
 
             if request.params.pushNotification:
