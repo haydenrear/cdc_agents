@@ -26,7 +26,7 @@ from cdc_agents.common.types import (
     Task,
     TaskIdParams,
     PushNotificationConfig,
-    InvalidParamsError, Part,
+    InvalidParamsError, Part, InvalidRequestError,
     # PushTaskEvent,
 )
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
@@ -45,7 +45,7 @@ class AgentTaskManager(InMemoryTaskManager):
 
     async def _run_streaming_agent(self, request: SendTaskStreamingRequest):
         task_send_params: TaskSendParams = request.params
-        query = self._get_user_query(task_send_params)
+        query = self.get_user_query(task_send_params)
 
         try:
             async for item in self.agent.stream(query, task_send_params.sessionId):
@@ -168,6 +168,15 @@ class AgentTaskManager(InMemoryTaskManager):
             if error:
                 return error
 
+            async with self.lock:
+                prev_task = self.task(request.id)
+                if prev_task.status.state == TaskState.WORKING:
+                    return JSONRPCResponse(
+                        id=request.id,
+                        error=InvalidRequestError(
+                            message="Cannot stream task that has already started. "
+                                    "Must send a task message or wait until task is completed."))
+
             await self.upsert_task(request.params)
 
             if request.params.pushNotification:
@@ -189,8 +198,7 @@ class AgentTaskManager(InMemoryTaskManager):
                 id=request.id,
                 error=InternalError(
                     message="An error occurred while streaming the response"
-                ),
-            )
+                ))
 
     async def _process_agent_response(
         self, request: SendTaskRequest, agent_response: dict
