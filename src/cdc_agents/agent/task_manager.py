@@ -139,7 +139,7 @@ class AgentTaskManager(InMemoryTaskManager):
 
             # must update the store in the same lock here - otherwise it fails.
             task = await self.update_store(
-                request.params.id, TaskStatus(state=TaskState.WORKING), None)
+                request.params.id, TaskStatus(state=TaskState.WORKING))
 
         await self.send_task_notification(task)
 
@@ -180,7 +180,7 @@ class AgentTaskManager(InMemoryTaskManager):
                                     "Must send a task message or wait until task is completed."))
                 # must update the store in the same lock here - otherwise it fails.
                 prev_task = await self.update_store(
-                    request.params.id, TaskStatus(state=TaskState.WORKING), None)
+                    request.params.id, TaskStatus(state=TaskState.WORKING))
 
 
             if request.params.pushNotification:

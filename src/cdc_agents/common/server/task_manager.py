@@ -264,7 +264,7 @@ class InMemoryTaskManager(TaskManager):
         return new_not_implemented_error(request.id)
 
     async def update_store(
-        self, task_id: str, status: TaskStatus, artifacts: list[Artifact]
+        self, task_id: str, status: TaskStatus, artifacts: list[Artifact] = None
     ) -> Task:
         if task_id not in self.tasks.keys():
             async with self.lock:
