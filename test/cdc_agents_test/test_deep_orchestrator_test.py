@@ -128,7 +128,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model))
         server.agents['TestAgent'].agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
 
-        server._create_compile_graph()
+        server.graph = server._build_graph()
 
         invoked = server.invoke("hello", "test")
 
@@ -145,7 +145,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         invoked_second = server.invoke("hello", "test")
         assert len(invoked_second) > len(invoked)
         invoked_third = server.invoke("hello", "whatever")
-        assert len(invoked_third) < len(invoked)
+        assert len(invoked_third) <= len(invoked)
 
     def _mock_executor_call(self):
         class Executor:

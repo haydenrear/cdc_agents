@@ -77,7 +77,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
         from cdc_agents.agents.summarizer_agent import SummarizerAgent
         self.summarizer_agent = agents.get(SummarizerAgent.__name__)
-        self.graph = self._create_compile_graph()
+        self.graph = self._build_graph()
 
     def get_next_node(self, last_executed_agent: BaseAgent, last_message: typing.Union[BaseMessage, NextAgentResponse],
                       state: MessagesState, config, message: typing.Optional[Message] = None):
@@ -210,18 +210,21 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             "configurable": {"thread_id": sessionId},
             "recursion_limit": self.max_recurs}
 
-
     def _create_invoke_graph(self, query, sessionId):
-        # graph = self._create_compile_graph()
+        self.graph = self._create_compile_graph()
         config = self._create_orchestration_config(sessionId)
         self.graph.invoke({"messages": [("user", query)]}, config)
         return config, self.graph
 
     def _create_compile_graph(self):
+        if self.graph is None:
+            self.graph = self._build_graph()
+        return self.graph
+
+    def _build_graph(self):
         a = self._create_orchestration_graph()
         state_graph = a.state_graph
-        self.graph = state_graph.compile(checkpointer=self.memory)
-        return self.graph
+        return state_graph.compile(checkpointer=self.memory)
 
     def get_agent_response(self, config, graph=None):
         if graph is None:

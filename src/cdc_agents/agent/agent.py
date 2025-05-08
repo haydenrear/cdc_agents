@@ -110,10 +110,9 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 async with MultiServerMCPClient({k: v.tool_options}) as c:
                     for tool in c.get_tools():
                         if self.name == tool.name:
-                            if tool_input is not None:
-                                return await tool.arun(tool_input, verbose, start_color, color, callbacks, **kwargs)
-                            else:
-                                return await tool.arun(tags, metadata, run_name, run_id, config, tool_call_id, **kwargs)
+                            return await tool.arun(tool_input, verbose, start_color, color, callbacks, tags=tags,
+                                                   metadata=metadata,run_name=run_name, run_id=run_id,config=config,
+                                                   tool_call_id=tool_call_id, **kwargs)
 
                     return ToolMessage(
                         content=f"Failed to run tool. Could not find matching tools for {self.name}",
@@ -162,12 +161,10 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                         except:
                             pass
 
-                if tool_input is not None:
-                    ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
-                                                                   color, callbacks, **kwargs))
-                else:
-                    ran = to_run_loop.run_until_complete(self.arun(tags, metadata, run_name, run_id,
-                                                                   config, tool_call_id, **kwargs))
+                ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
+                                                               color, callbacks, tags=tags, metadata=metadata,
+                                                               run_name=run_name, run_id=run_id,
+                                                               config=config, tool_call_id=tool_call_id, **kwargs))
 
                 if close_loop:
                     to_run_loop.close()
