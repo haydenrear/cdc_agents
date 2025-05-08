@@ -129,16 +129,17 @@ class AgentTaskManager(InMemoryTaskManager):
             if not await self.set_push_notification_info(request.params.id, request.params.pushNotification):
                 return SendTaskResponse(id=request.id, error=InvalidParamsError(message="Push notification URL is invalid"))
 
-        await self.upsert_task(request.params)
+        await self.insert_lock(request.params)
 
         async with self.task_locks[request.id]:
-            prev_task = self.task(request.id)
+            prev_task = await self.upsert_task(request.params)
             if prev_task.status == TaskState.WORKING:
                 # Task already working - will catch the messages below
                 return SendTaskResponse(id=request.id, result=prev_task)
 
-        task = await self.update_store(
-            request.params.id, TaskStatus(state=TaskState.WORKING), None)
+            # must update the store in the same lock here - otherwise it fails.
+            task = await self.update_store(
+                request.params.id, TaskStatus(state=TaskState.WORKING), None)
 
         await self.send_task_notification(task)
 
@@ -167,17 +168,21 @@ class AgentTaskManager(InMemoryTaskManager):
             if error:
                 return error
 
-
-            await self.upsert_task(request.params)
+            await self.insert_lock(request.params)
 
             async with self.task_locks[request.id]:
-                prev_task = self.task(request.id)
+                prev_task = await self.upsert_task(request.params)
                 if prev_task is not None and prev_task.status.state == TaskState.WORKING:
                     return JSONRPCResponse(
                         id=request.id,
                         error=InvalidRequestError(
                             message="Cannot stream task that has already started. "
                                     "Must send a task message or wait until task is completed."))
+                elif prev_task is not None and prev_task.status.state == TaskState.SUBMITTED:
+                    # must update the store in the same lock here - otherwise it fails.
+                    await self.update_store(
+                        request.params.id, TaskStatus(state=TaskState.WORKING), None)
+
 
             if request.params.pushNotification:
                 if not await self.set_push_notification_info(request.params.id, request.params.pushNotification):

@@ -233,13 +233,9 @@ class InMemoryTaskManager(TaskManager):
 
     async def upsert_task(self, task_send_params: TaskSendParams) -> Task:
         logger.info(f"Upserting task {task_send_params.id}")
-        if task_send_params.id not in self.task_locks.keys():
-            async with self.lock:
-                if task_send_params.id not in self.task_locks.keys():
-                    self.task_locks[task_send_params.id] = asyncio.Lock()
+        await self.insert_lock(task_send_params)
         async with self.task_locks[task_send_params.id]:
             task = self.tasks.get(task_send_params.id)
-
             if task is None:
                 task = Task(
                     id=task_send_params.id,
@@ -255,6 +251,12 @@ class InMemoryTaskManager(TaskManager):
                 task.to_process.append(task_send_params.message)
 
             return task
+
+    async def insert_lock(self, task_send_params):
+        if task_send_params.id not in self.task_locks.keys():
+            async with self.lock:
+                if task_send_params.id not in self.task_locks.keys():
+                    self.task_locks[task_send_params.id] = asyncio.Lock()
 
     async def on_resubscribe_to_task(
         self, request: TaskResubscriptionRequest
