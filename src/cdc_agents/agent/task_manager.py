@@ -30,6 +30,7 @@ from cdc_agents.common.types import (
     # PushTaskEvent,
 )
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
+from python_util.logger.logger import LoggerFacade
 
 logger = logging.getLogger(__name__)
 
@@ -129,25 +130,33 @@ class AgentTaskManager(InMemoryTaskManager):
                 return SendTaskResponse(id=request.id, error=InvalidParamsError(message="Push notification URL is invalid"))
 
         await self.upsert_task(request.params)
+
+        async with self.lock:
+            prev_task = self.task(request.id)
+            if prev_task.status == TaskState.WORKING:
+                # Task already working - will catch the messages below
+                return SendTaskResponse(id=request.id, result=prev_task)
+
         task = await self.update_store(
             request.params.id, TaskStatus(state=TaskState.WORKING), None)
 
         await self.send_task_notification(task)
 
         task_send_params: TaskSendParams = request.params
-        query = self._get_user_query(task_send_params)
+        query = self.get_user_query(task_send_params)
         try:
-            task = self.task(request.id)
+            async with self.lock:
+                task = self.task(request.id)
             agent_response = self.agent.invoke(query, task_send_params.sessionId)
             # loop until stop receiving messages for this agent.
             while task and len(task.to_process)  != 0:
-                query = self._get_user_query_message(next(iter(task.to_process)))
+                query = self.get_user_query_message(next(iter(task.to_process)))
                 agent_response = self.agent.invoke(query, task_send_params.sessionId)
-                task = self.task(request.id)
-            return await self._process_agent_response(
-                request, agent_response)
+                async with self.lock:
+                    task = self.task(request.id)
+            return await self._process_agent_response(request, agent_response)
         except Exception as e:
-            logger.error(f"Error invoking agent: {e}")
+            LoggerFacade.error(f"Error invoking agent: {e}")
             raise ValueError(f"Error invoking agent: {e}")
 
 

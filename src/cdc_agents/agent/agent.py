@@ -205,7 +205,6 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
         return invoked
 
-
     async def stream(self, query, session_id, graph=None) -> AsyncIterable[Dict[str, Any]]:
         return self.stream_agent_response_graph(query, session_id, self.graph)
 
