@@ -274,7 +274,7 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
                 if content:
                     content_list.extend(content)
 
-        return LanguageModelOutputParser.convert_to_ai_response(content_list, tools_list)
+        return LanguageModelOutputParser.convert_to_ai_response(content_list, tools_list, config)
 
 
     def _deconstruct_add_ai_values(self, choices_values, content_list, m, model_input, tools_list):

@@ -182,7 +182,8 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 return ToolMessage(
                     content=ran,
                     name=self.name,
-                    tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
+                    tool_call_id=tool_call_id if tool_call_id else tool_input.get("id")
+                    if isinstance(tool_input, dict) else None,
                     status="success" if isinstance(ran, dict) else "error")
 
         s = SynchronousMcpAdapter(t, loop)

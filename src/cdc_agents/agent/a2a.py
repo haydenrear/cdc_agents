@@ -25,6 +25,18 @@ class BaseAgent(abc.ABC):
     def terminal_string(self) -> str:
         return "FINAL ANSWER"
 
+    @property
+    def completed(self) -> str:
+        return "completed"
+
+    @property
+    def needs_input_string(self) -> str:
+        return "input_needed"
+
+    @property
+    def has_error_string(self) -> str:
+        return "error"
+
     def is_terminate_node(self, last_message, state) -> bool:
         return self.message_contains(last_message, self.terminal_string)
 
@@ -102,24 +114,24 @@ class A2AAgent(BaseAgent, abc.ABC):
         """
         pass
 
-    @staticmethod
-    def get_agent_response_graph(config, graph):
+    def get_agent_response_graph(self, config, graph):
         current_state = graph.get_state(config)
         structured_response = current_state.values.get('messages')
+        from cdc_agents.agent.agent import ResponseFormat
         if structured_response and isinstance(structured_response, ResponseFormat):
-            if structured_response.status == "input_required":
+            if structured_response.status == self.needs_input_string:
                 return {
                     "is_task_complete": False,
                     "require_user_input": True,
                     "content": structured_response.message
                 }
-            elif structured_response.status == "error":
+            elif structured_response.status == self.has_error_string:
                 return {
                     "is_task_complete": False,
                     "require_user_input": True,
                     "content": structured_response.message
                 }
-            elif structured_response.status == "completed":
+            elif structured_response.status == self.completed:
                 return {
                     "is_task_complete": True,
                     "require_user_input": False,

@@ -128,10 +128,12 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model))
         server.agents['TestAgent'].agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
 
+        server._create_compile_graph()
+
         invoked = server.invoke("hello", "test")
 
         assert len(invoked) != 0
-        assert any([isinstance(i, ToolMessage) for i in invoked])
+        assert any([isinstance(i, ToolMessage) and i.status == 'success' for i in invoked])
         assert any([i.content[-1] == 'okay' for i in invoked if isinstance(i, HumanMessage)])
         assert any([i.content == 'hello...' for i in invoked if isinstance(i, ToolMessage)])
         assert any([i.content[-1] == 'FINAL ANSWER: hello!' for i in invoked if isinstance(i, HumanMessage)])
@@ -140,6 +142,10 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
 
         TestOrchestratorAgent.did_call = True
         OrchestratedAgent.did_call = True
+        invoked_second = server.invoke("hello", "test")
+        assert len(invoked_second) > len(invoked)
+        invoked_third = server.invoke("hello", "whatever")
+        assert len(invoked_third) < len(invoked)
 
     def _mock_executor_call(self):
         class Executor:
@@ -160,6 +166,20 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             """
             Action: query
             Action Input: { "sql": "SELECT * FROM commit_diff" }
+            """,
+            "NEXT AGENT: TestAgent",
+            "okay",
+            "FINAL ANSWER: hello!",
+            """
+            Action: call_a_friend_in
+            Action Input: 
+            """,
+            "NEXT AGENT: TestAgent",
+            "okay",
+            "FINAL ANSWER: hello!",
+            """
+            Action: call_a_friend_in
+            Action Input: 
             """,
             "NEXT AGENT: TestAgent",
             "okay",

@@ -33,9 +33,11 @@ class LanguageModelOutputParser(abc.ABC):
         pass
 
     @classmethod
-    def convert_to_ai_response(cls, content, tools=None) -> typing.Optional[LanguageModelOutput]:
+    def convert_to_ai_response(cls, content, tools=None, config = None) -> typing.Optional[LanguageModelOutput]:
         m = AIMessage(content=content)
         m.tool_calls = tools
+        if config is not None and 'configurable' in config.keys():
+            m.response_metadata['session_id'] = config['configurable']['thread_id']
         return m
 
     @classmethod

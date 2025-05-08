@@ -37,11 +37,12 @@ class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
         on the next agents. 
         """
 
-    def do_collapse(self, message_state: list[BaseMessage]) -> list[BaseMessage]:
+    def do_collapse(self, message_state: list[BaseMessage], config) -> list[BaseMessage]:
         """
         This agent would return a collapsed message, summarizing all messages previously. So then the graph provides
         all messages including and up to that one. In this case, the SummarizerAgent retrieves the messages to be kept
         from the summarization message.
+        :param config:
         :param message_state: all messages in the graph
         :return: the messages to exist in the graph after applying summarization - naively would pop the last.
         """

@@ -51,20 +51,21 @@ class ModelServerModelTest(unittest.TestCase):
         assert self.server.config_props.host is not None
         assert self.server.config_props.port is not None
 
-        found = self.server.invoke("hello")
+        test_ = {'configurable': {'thread_id': 'test'}}
+        found = self.server.invoke("hello", test_)
         assert found.content == ["hello"]
 
         message = BaseMessage(content="whatever", type="chat")
-        found = self.server.invoke(ChatPromptValue(messages=[message]))
+        found = self.server.invoke(ChatPromptValue(messages=[message]), test_)
         assert found.content == ["whatever"]
 
         message = BaseMessage(content="ok", type="chat")
-        found = self.server.invoke([message])
+        found = self.server.invoke([message], test_)
         assert found.content == ["ok"]
 
         message = BaseMessage(content="ok", type="chat")
         message_w = BaseMessage(content="do", type="chat")
-        found = self.server.invoke([message, message_w])
+        found = self.server.invoke([message, message_w], test_)
         assert found.content == ["ok", "do"]
 
     def test_with_react_agent(self):
@@ -108,5 +109,6 @@ class ModelServerModelTest(unittest.TestCase):
                                        partial_variables={"tools": [call_a_friend], "agent_scratchpad": "",
                                                           "input": "???"}))
 
-        a = agent.invoke({"content": "hello!", "intermediate_steps": []})
+        test_ = {'configurable': {'thread_id': 'test'}}
+        a = agent.invoke({"content": "hello!", "intermediate_steps": []}, test_)
         assert a

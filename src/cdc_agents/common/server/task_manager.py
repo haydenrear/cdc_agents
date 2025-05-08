@@ -19,7 +19,6 @@ from cdc_agents.common.types import (
     SendTaskResponse,
     SetTaskPushNotificationResponse,
     GetTaskPushNotificationResponse,
-    PushNotificationNotSupportedError,
     TaskSendParams,
     TaskStatus,
     TaskState,
