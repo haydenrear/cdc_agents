@@ -115,7 +115,8 @@ class InMemoryTaskManager(TaskManager):
         self.subscriber_lock = asyncio.Lock()
 
     async def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
-        async with self.lock:
+        await self.insert_lock(session_id)
+        async with self.task_locks[session_id]:
             t = self.task(session_id)
             if t and len(t.to_process) != 0:
                 return t.to_process[0]
@@ -123,7 +124,8 @@ class InMemoryTaskManager(TaskManager):
             return None
 
     async def pop_to_process_task(self, session_id) -> typing.Optional[Message]:
-        async with self.lock:
+        await self.insert_lock(session_id)
+        async with self.task_locks[session_id]:
             t = self.task(session_id)
             if t and len(t.to_process) != 0:
                 return t.to_process.pop(0)
