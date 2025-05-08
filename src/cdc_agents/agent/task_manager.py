@@ -208,17 +208,6 @@ class AgentTaskManager(InMemoryTaskManager):
         task_result = self.append_task_history(task, history_length)
         await self.send_task_notification(task)
         return SendTaskResponse(id=request.id, result=task_result)
-    
-    def _get_user_query(self, task_send_params: TaskSendParams) -> str:
-        return self._get_user_query_message(task_send_params.message)
-
-    def _get_user_query_message(self, task_send_params: Message) -> str:
-        return '\n'.join([self._get_user_query_part(p) for p in task_send_params.parts])
-
-    def _get_user_query_part(self, part: Part) -> str:
-        if not isinstance(part, TextPart):
-            raise ValueError("Only text parts are supported")
-        return part.text
 
     async def send_task_notification(self, task: Task):
         if not await self.has_push_notification_info(task.id):

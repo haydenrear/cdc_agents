@@ -2,7 +2,7 @@ import abc
 import typing
 from abc import ABC, abstractmethod
 from typing import Union, AsyncIterable, List
-from cdc_agents.common.types import Task, Message
+from cdc_agents.common.types import Task, Message, Part, TextPart
 from cdc_agents.common.types import (
     JSONRPCResponse,
     TaskIdParams,
@@ -90,6 +90,20 @@ class TaskManager(ABC):
 
     def on_complete_task(self, session_id):
         raise NotImplementedError
+
+    @classmethod
+    def get_user_query(cls, task_send_params: TaskSendParams) -> str:
+        return cls.get_user_query_message(task_send_params.message)
+
+    @classmethod
+    def get_user_query_message(cls, task_send_params: Message) -> str:
+        return '\n'.join([cls.get_user_query_part(p) for p in task_send_params.parts])
+
+    @classmethod
+    def get_user_query_part(cls, part: Part) -> str:
+        if not isinstance(part, TextPart):
+            raise ValueError("Only text parts are supported")
+        return part.text
 
 class InMemoryTaskManager(TaskManager):
     def __init__(self):
