@@ -100,6 +100,7 @@ class Task(BaseModel):
     artifacts: List[Artifact] | None = None
     history: List[Message] | None = None
     metadata: dict[str, Any] | None = None
+    to_process: List[Message] | None = None
 
 class AgentPosted(BaseModel):
     success: bool

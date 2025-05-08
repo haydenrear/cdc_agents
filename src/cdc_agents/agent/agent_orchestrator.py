@@ -145,14 +145,14 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         if self.do_perform_summary(result, config):
             goto = self.get_next_node(agent, last_message, state, session_id)
         elif self.task_manager:
-            recent = self.pop_task_history(session_id)
+            recent = self.pop_to_process_task(session_id)
             if recent is not None:
                 # only route to a single agent at a time, but can add as many other messages to the context
                 result['messages'].append(HumanMessage(content=self._parse_content(recent), name="pushed task"))
 
                 while recent is not None and recent.agent_route is not None:
                     result['messages'].append(
-                        HumanMessage(content=self._parse_content(self.peek_task_history(session_id)),
+                        HumanMessage(content=self._parse_content(self.peek_to_process_task(session_id)),
                                      name="pushed task"))
                     # if the next message appended, no matter what it is, pushes number of tokens too big, then
                     # ignore that message for now, keep it in TaskManager, and don't replace recent for the get_next_node
@@ -164,7 +164,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                     else:
                         # pop already appended to result, but still in task manager queue, remove from task manager
                         # queue here and set to recent to check if go out of loop now.
-                        recent = self.pop_task_history(session_id)
+                        recent = self.pop_to_process_task(session_id)
 
             goto = self.get_next_node(agent, last_message, state, session_id, recent)
         else:

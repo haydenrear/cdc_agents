@@ -2,7 +2,7 @@ import abc
 import typing
 from abc import ABC, abstractmethod
 from typing import Union, AsyncIterable, List
-from cdc_agents.common.types import Task
+from cdc_agents.common.types import Task, Message
 from cdc_agents.common.types import (
     JSONRPCResponse,
     TaskIdParams,
@@ -39,6 +39,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TaskManager(ABC):
+
+    @abc.abstractmethod
+    def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
+        pass
+
+    @abc.abstractmethod
+    def pop_to_process_task(self, session_id) -> typing.Optional[Message]:
+        pass
 
     @abstractmethod
     async def on_get_task(self, request: GetTaskRequest) -> GetTaskResponse:
@@ -80,6 +88,8 @@ class TaskManager(ABC):
     def task(self, session_id) -> typing.Optional[Task]:
         pass
 
+    def on_complete_task(self, session_id):
+        raise NotImplementedError
 
 class InMemoryTaskManager(TaskManager):
     def __init__(self):
@@ -88,6 +98,22 @@ class InMemoryTaskManager(TaskManager):
         self.lock = asyncio.Lock()
         self.task_sse_subscribers: dict[str, List[asyncio.Queue]] = {}
         self.subscriber_lock = asyncio.Lock()
+
+    async def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
+        async with self.lock:
+            t = self.task(session_id)
+            if t and len(t.to_process) != 0:
+                return t.to_process[0]
+
+            return None
+
+    async def pop_to_process_task(self, session_id) -> typing.Optional[Message]:
+        async with self.lock:
+            t = self.task(session_id)
+            if t and len(t.to_process) != 0:
+                return t.to_process.pop(0)
+
+            return None
 
     def task(self, session_id) -> typing.Optional[Task]:
         return self.tasks.get(session_id)
@@ -201,10 +227,12 @@ class InMemoryTaskManager(TaskManager):
                     messages=[task_send_params.message],
                     status=TaskStatus(state=TaskState.SUBMITTED),
                     history=[task_send_params.message],
+                    to_process=[task_send_params.message]
                 )
                 self.tasks[task_send_params.id] = task
             else:
                 task.history.append(task_send_params.message)
+                task.to_process.append(task_send_params.message)
 
             return task
 
@@ -227,6 +255,7 @@ class InMemoryTaskManager(TaskManager):
 
             if status.message is not None:
                 task.history.append(status.message)
+                task.to_process.append(status.message)
 
             if artifacts is not None:
                 if task.artifacts is None:

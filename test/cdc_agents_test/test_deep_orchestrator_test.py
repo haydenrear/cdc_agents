@@ -21,6 +21,7 @@ from langgraph.graph.state import CompiledStateGraph
 from aisuite.framework import ChatCompletionResponse
 from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.agent.agent_orchestrator import OrchestratorAgent, OrchestratedAgent
+from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
@@ -121,14 +122,20 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         server.agents.clear()
 
         in_ = [call_a_friend_in]
-
         server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model)
         server.orchestrator_agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
+        task_manager = AgentTaskManager(server.orchestrator_agent, None)
+        server.orchestrator_agent.set_task_manager(task_manager)
 
         server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model))
         server.agents['TestAgent'].agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
+        task_manager = AgentTaskManager(server.agents['TestAgent'].agent, None)
+        server.agents['TestAgent'].agent.set_task_manager(task_manager)
 
         server.graph = server._build_graph()
+
+        task_manager = AgentTaskManager(server, None)
+        server.set_task_manager(task_manager)
 
         invoked = server.invoke("hello", "test")
 

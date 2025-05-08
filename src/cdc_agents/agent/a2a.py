@@ -2,6 +2,7 @@ import abc
 import typing
 from typing import AsyncIterable, Dict, Any
 
+import asyncio
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -54,23 +55,15 @@ class A2AAgent(BaseAgent, abc.ABC):
         self.memory = memory
         self._agent_name = self.__class__.__name__
 
-    def peek_task_history(self, session_id) -> typing.Optional[Message]:
+    def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
             return None
-        t = self.task_manager.task(session_id)
-        if t and len(t.history) != 0:
-            return t.history[0]
+        return asyncio.get_event_loop().run_until_complete(self.task_manager.peek_to_process_task(session_id))
 
-        return None
-
-    def pop_task_history(self, session_id) -> typing.Optional[Message]:
+    def pop_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
             return None
-        t = self.task_manager.task(session_id)
-        if t and len(t.history) != 0:
-            return t.history.pop(0)
-
-        return None
+        return asyncio.get_event_loop().run_until_complete(self.task_manager.pop_to_process_task(session_id))
 
     def set_task_manager(self, task_manager: TaskManager):
         self.task_manager = task_manager

@@ -26,7 +26,7 @@ from cdc_agents.common.types import (
     Task,
     TaskIdParams,
     PushNotificationConfig,
-    InvalidParamsError,
+    InvalidParamsError, Part,
     # PushTaskEvent,
 )
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
@@ -130,20 +130,26 @@ class AgentTaskManager(InMemoryTaskManager):
 
         await self.upsert_task(request.params)
         task = await self.update_store(
-            request.params.id, TaskStatus(state=TaskState.WORKING), None
-        )
+            request.params.id, TaskStatus(state=TaskState.WORKING), None)
+
         await self.send_task_notification(task)
 
         task_send_params: TaskSendParams = request.params
         query = self._get_user_query(task_send_params)
         try:
+            task = self.task(request.id)
             agent_response = self.agent.invoke(query, task_send_params.sessionId)
+            # loop until stop receiving messages for this agent.
+            while task and len(task.to_process)  != 0:
+                query = self._get_user_query_message(next(iter(task.to_process)))
+                agent_response = self.agent.invoke(query, task_send_params.sessionId)
+                task = self.task(request.id)
+            return await self._process_agent_response(
+                request, agent_response)
         except Exception as e:
             logger.error(f"Error invoking agent: {e}")
             raise ValueError(f"Error invoking agent: {e}")
-        return await self._process_agent_response(
-            request, agent_response
-        )
+
 
     async def on_send_task_subscribe(
         self, request: SendTaskStreamingRequest
@@ -204,11 +210,16 @@ class AgentTaskManager(InMemoryTaskManager):
         return SendTaskResponse(id=request.id, result=task_result)
     
     def _get_user_query(self, task_send_params: TaskSendParams) -> str:
-        part = task_send_params.message.parts[0]
+        return self._get_user_query_message(task_send_params.message)
+
+    def _get_user_query_message(self, task_send_params: Message) -> str:
+        return '\n'.join([self._get_user_query_part(p) for p in task_send_params.parts])
+
+    def _get_user_query_part(self, part: Part) -> str:
         if not isinstance(part, TextPart):
             raise ValueError("Only text parts are supported")
         return part.text
-    
+
     async def send_task_notification(self, task: Task):
         if not await self.has_push_notification_info(task.id):
             logger.info(f"No push notification info found for task {task.id}")
