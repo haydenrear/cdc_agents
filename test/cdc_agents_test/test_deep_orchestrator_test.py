@@ -119,7 +119,6 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
 
         server = copy.copy(self.server)
         server.agents = copy.copy(server.agents)
-        # server.get_agent_response = self._agent_response
         server.agents.clear()
 
         in_ = [call_a_friend_in]
