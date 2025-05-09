@@ -211,7 +211,3 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         model.executor.call = mock
         return model
 
-    # def _agent_response(self, *args, **kwargs):
-    #     c: CompiledStateGraph = args[1]
-    #     state = c.get_state(args[0])
-    #     return state.values.get('messages')
