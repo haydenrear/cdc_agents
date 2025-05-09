@@ -63,7 +63,7 @@ class HumanDelegateAgent(DeepResearchOrchestrated, A2AReactAgent):
         cdc_codegen_agent = str(HumanDelegateAgent)
         A2AReactAgent.__init__(self, agent_config,
                                [bootstrap_ai_character, message_human_delegate, check_human_delegate_messages],
-                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider, task_event_hooks=[])
+                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
         self.agent_config: AgentCardItem = agent_config.agents[cdc_codegen_agent] \
             if cdc_codegen_agent in agent_config.agents.keys() else None
 

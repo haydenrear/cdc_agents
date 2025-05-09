@@ -4,15 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="orchestrator one graph for A2A messages with session">
-      <change afterPath="$PROJECT_DIR$/test/cdc_agents_test/test_in_mem.py" afterDir="false" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="adding lock striping">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/a2a.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/a2a.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/resources/application-test.yml" beforeDir="false" afterPath="$PROJECT_DIR$/resources/application-test.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/agent_orchestrator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/agent_orchestrator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/server/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/server/task_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/types.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/cdc_agents_test/test_deep_orchestrator_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents_test/test_deep_orchestrator_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/cdc_server_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/cdc_server_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/deep_code_research_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/deep_code_research_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/human_delegate_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/human_delegate_agent.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,64 +59,64 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props.executor": "Run",
-    "Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body.executor": "Run",
-    "Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model.executor": "Run",
-    "Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_with_react_agent.executor": "Run",
-    "Python tests.Python tests for cdc_agents_test.test_in_mem.TestInMem.test_something.executor": "Run",
-    "Python tests.Python tests for cdc_agents_test.test_memory.MemTest.test_mem.executor": "Run",
-    "Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.DoTestImportsWork.test_imports_work.executor": "Run",
-    "Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.MyTestCase.test_something.executor": "Run",
-    "Python tests.Python tests for test_cdc_agent_test.agent_config_props_test.AgentConfigPropsTest.test_agent_config_props.executor": "Run",
-    "Python tests.Python tests for test_cdc_agent_test.agent_config_props_test.AgentConfigPropsTest.test_model_event_body.executor": "Run",
-    "Python tests.Python tests for test_cdc_agent_test.deep_code_test.AgentConfigPropsTest.test_deep_code_injection.executor": "Run",
-    "Python tests.Python tests in /Users/hayde/IdeaProjects/drools/cdc_agents/test/test_cdc_agent_test/agent_config_props_test.py.executor": "Run",
-    "Python tests.Python tests in agent_config_props_test.py.executor": "Run",
-    "Python tests.Python tests in cdc_agents.executor": "Run",
-    "Python tests.Python tests in deep_code_test.py.executor": "Run",
-    "Python tests.Python tests in dynamic_a2a_server_test.py.executor": "Run",
-    "Python tests.Python tests in test.executor": "Run",
-    "Python tests.Python tests in test_cdc_agent_start_test.py.executor": "Run",
-    "Python tests.Python tests in test_cdc_agent_test.executor": "Run",
-    "Python tests.Python tests in test_model_server_model.py.executor": "Run",
-    "Python tests.Python tests individual.executor": "Run",
-    "Python tests.Python tests.executor": "Debug",
-    "Python.cdc_agents_main.executor": "Run",
-    "Python.cdc_server_agent.executor": "Run",
-    "Python.model_server_main.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/hayde/IdeaProjects/drools/cdc_agents/src/cdc_agents",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.15501264",
-    "project.structure.side.proportion": "0.28125",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "uv.Project script: cdc-agents.executor": "Run",
-    "uv.Project script: run-cdc-agents.executor": "Run",
-    "uv.Project script: test-cdc-agents.executor": "Run",
-    "uv.Project script: test.executor": "Run",
-    "uv.Project script: test_cdc_agents.executor": "Run",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_agent_config_props.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for cdc_agents.test_agent_config_props.AgentConfigPropsTest.test_model_event_body.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_with_react_agent.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for cdc_agents_test.test_in_mem.TestInMem.test_something.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for cdc_agents_test.test_memory.MemTest.test_mem.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.DoTestImportsWork.test_imports_work.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.MyTestCase.test_something.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for test_cdc_agent_test.agent_config_props_test.AgentConfigPropsTest.test_agent_config_props.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for test_cdc_agent_test.agent_config_props_test.AgentConfigPropsTest.test_model_event_body.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for test_cdc_agent_test.deep_code_test.AgentConfigPropsTest.test_deep_code_injection.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in /Users/hayde/IdeaProjects/drools/cdc_agents/test/test_cdc_agent_test/agent_config_props_test.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in agent_config_props_test.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in cdc_agents.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in deep_code_test.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in dynamic_a2a_server_test.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in test.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in test_cdc_agent_start_test.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in test_cdc_agent_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in test_model_server_model.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests individual.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cdc_agents_main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cdc_server_agent.executor&quot;: &quot;Run&quot;,
+    &quot;Python.model_server_main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/hayde/IdeaProjects/drools/cdc_agents/src/cdc_agents/main&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15501264&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.28125&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;uv.Project script: cdc-agents.executor&quot;: &quot;Run&quot;,
+    &quot;uv.Project script: run-cdc-agents.executor&quot;: &quot;Run&quot;,
+    &quot;uv.Project script: test-cdc-agents.executor&quot;: &quot;Run&quot;,
+    &quot;uv.Project script: test.executor&quot;: &quot;Run&quot;,
+    &quot;uv.Project script: test_cdc_agents.executor&quot;: &quot;Run&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/cdc_agents/main" />
       <recent name="$PROJECT_DIR$/src/cdc_agents" />
       <recent name="$PROJECT_DIR$/src/cdc_agents/agents" />
       <recent name="$PROJECT_DIR$/test/cdc_agents" />
       <recent name="$PROJECT_DIR$/resources" />
-      <recent name="$PROJECT_DIR$/test/test_cdc_agent_test" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/cdc_agents/common/client" />
@@ -270,111 +269,8 @@
       <workItem from="1746648346008" duration="1197000" />
       <workItem from="1746649564785" duration="220000" />
       <workItem from="1746649788991" duration="4013000" />
-      <workItem from="1746654636096" duration="13447000" />
-    </task>
-    <task id="LOCAL-00007" summary="git ignore">
-      <option name="closed" value="true" />
-      <created>1745948659218</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1745948659218</updated>
-    </task>
-    <task id="LOCAL-00008" summary="adding some more stuff outlining some stuff">
-      <option name="closed" value="true" />
-      <created>1746049597507</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1746049597507</updated>
-    </task>
-    <task id="LOCAL-00009" summary="adding some more stuff outlining some stuff">
-      <option name="closed" value="true" />
-      <created>1746054914382</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1746054914382</updated>
-    </task>
-    <task id="LOCAL-00010" summary="interact with sessions">
-      <option name="closed" value="true" />
-      <created>1746111880293</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1746111880293</updated>
-    </task>
-    <task id="LOCAL-00011" summary="interact with sessions">
-      <option name="closed" value="true" />
-      <created>1746141369017</created>
-      <option name="number" value="00011" />
-      <option name="presentableId" value="LOCAL-00011" />
-      <option name="project" value="LOCAL" />
-      <updated>1746141369017</updated>
-    </task>
-    <task id="LOCAL-00012" summary="interact with sessions">
-      <option name="closed" value="true" />
-      <created>1746141377847</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1746141377847</updated>
-    </task>
-    <task id="LOCAL-00013" summary="discover agents">
-      <option name="closed" value="true" />
-      <created>1746145413213</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1746145413213</updated>
-    </task>
-    <task id="LOCAL-00014" summary="discover agents">
-      <option name="closed" value="true" />
-      <created>1746148283271</created>
-      <option name="number" value="00014" />
-      <option name="presentableId" value="LOCAL-00014" />
-      <option name="project" value="LOCAL" />
-      <updated>1746148283271</updated>
-    </task>
-    <task id="LOCAL-00015" summary="discover agents">
-      <option name="closed" value="true" />
-      <created>1746201029094</created>
-      <option name="number" value="00015" />
-      <option name="presentableId" value="LOCAL-00015" />
-      <option name="project" value="LOCAL" />
-      <updated>1746201029094</updated>
-    </task>
-    <task id="LOCAL-00016" summary="discover agents">
-      <option name="closed" value="true" />
-      <created>1746201741715</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1746201741715</updated>
-    </task>
-    <task id="LOCAL-00017" summary="discover agents">
-      <option name="closed" value="true" />
-      <created>1746201790303</created>
-      <option name="number" value="00017" />
-      <option name="presentableId" value="LOCAL-00017" />
-      <option name="project" value="LOCAL" />
-      <updated>1746201790303</updated>
-    </task>
-    <task id="LOCAL-00018" summary="tool calling stup">
-      <option name="closed" value="true" />
-      <created>1746204472615</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1746204472615</updated>
-    </task>
-    <task id="LOCAL-00019" summary="agent graph">
-      <option name="closed" value="true" />
-      <created>1746306173731</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1746306173731</updated>
+      <workItem from="1746654636096" duration="24330000" />
+      <workItem from="1746750063379" duration="150000" />
     </task>
     <task id="LOCAL-00020" summary="agent graph">
       <option name="closed" value="true" />
@@ -664,7 +560,111 @@
       <option name="project" value="LOCAL" />
       <updated>1746723540105</updated>
     </task>
-    <option name="localTasksCounter" value="56" />
+    <task id="LOCAL-00056" summary="adding to process messages.">
+      <option name="closed" value="true" />
+      <created>1746727455614</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1746727455614</updated>
+    </task>
+    <task id="LOCAL-00057" summary="adding to process messages.">
+      <option name="closed" value="true" />
+      <created>1746727699684</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1746727699685</updated>
+    </task>
+    <task id="LOCAL-00058" summary="adding to process messages.">
+      <option name="closed" value="true" />
+      <created>1746728347072</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1746728347072</updated>
+    </task>
+    <task id="LOCAL-00059" summary="adding to process messages.">
+      <option name="closed" value="true" />
+      <created>1746728761719</created>
+      <option name="number" value="00059" />
+      <option name="presentableId" value="LOCAL-00059" />
+      <option name="project" value="LOCAL" />
+      <updated>1746728761719</updated>
+    </task>
+    <task id="LOCAL-00060" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746729870264</created>
+      <option name="number" value="00060" />
+      <option name="presentableId" value="LOCAL-00060" />
+      <option name="project" value="LOCAL" />
+      <updated>1746729870264</updated>
+    </task>
+    <task id="LOCAL-00061" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746729950862</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1746729950862</updated>
+    </task>
+    <task id="LOCAL-00062" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746730034993</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1746730034993</updated>
+    </task>
+    <task id="LOCAL-00063" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746730572094</created>
+      <option name="number" value="00063" />
+      <option name="presentableId" value="LOCAL-00063" />
+      <option name="project" value="LOCAL" />
+      <updated>1746730572094</updated>
+    </task>
+    <task id="LOCAL-00064" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746730637586</created>
+      <option name="number" value="00064" />
+      <option name="presentableId" value="LOCAL-00064" />
+      <option name="project" value="LOCAL" />
+      <updated>1746730637586</updated>
+    </task>
+    <task id="LOCAL-00065" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746730673478</created>
+      <option name="number" value="00065" />
+      <option name="presentableId" value="LOCAL-00065" />
+      <option name="project" value="LOCAL" />
+      <updated>1746730673478</updated>
+    </task>
+    <task id="LOCAL-00066" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746730866356</created>
+      <option name="number" value="00066" />
+      <option name="presentableId" value="LOCAL-00066" />
+      <option name="project" value="LOCAL" />
+      <updated>1746730866356</updated>
+    </task>
+    <task id="LOCAL-00067" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746731005392</created>
+      <option name="number" value="00067" />
+      <option name="presentableId" value="LOCAL-00067" />
+      <option name="project" value="LOCAL" />
+      <updated>1746731005392</updated>
+    </task>
+    <task id="LOCAL-00068" summary="adding lock striping">
+      <option name="closed" value="true" />
+      <created>1746731857590</created>
+      <option name="number" value="00068" />
+      <option name="presentableId" value="LOCAL-00068" />
+      <option name="project" value="LOCAL" />
+      <updated>1746731857590</updated>
+    </task>
+    <option name="localTasksCounter" value="69" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -697,7 +697,9 @@
     <MESSAGE value="McpSyncAdapter" />
     <MESSAGE value="upgrade to uv" />
     <MESSAGE value="orchestrator one graph for A2A messages with session" />
-    <option name="LAST_COMMIT_MESSAGE" value="orchestrator one graph for A2A messages with session" />
+    <MESSAGE value="adding to process messages." />
+    <MESSAGE value="adding lock striping" />
+    <option name="LAST_COMMIT_MESSAGE" value="adding lock striping" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -731,7 +733,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1746631228886" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746727094480" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746731806825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>

@@ -18,7 +18,8 @@ import torch
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage
 from langchain_core.tools import tool
 
-from cdc_agents.agent.agent import A2AAgent, ResponseFormat
+from cdc_agents.agent.agent import A2AAgent
+from cdc_agents.common.types import ResponseFormat
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem, AgentMcpTool
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
@@ -40,17 +41,6 @@ class DeepResearchOrchestrated(BaseAgent, abc.ABC):
         pass
 
 
-@tool
-def call_a_friend():
-    """Call a human in the loop to validate we're moving the correct direction.
-
-    Args:
-
-    Returns:
-
-    """
-    raise NotImplementedError
-
 @component(bind_to=[A2AAgent, A2AReactAgent])
 @injectable()
 class DeepCodeAgent(OrchestratorAgent):
@@ -64,7 +54,7 @@ class DeepCodeAgent(OrchestratorAgent):
         {self._parse_agents_lines(orchestrator_prompts)}
         {self.orchestration_messages()}
         """
-        A2AReactAgent.__init__(self, agent_config, [call_a_friend], self.SYSTEM_INSTRUCTION, memory_saver,
+        A2AReactAgent.__init__(self, agent_config, [], self.SYSTEM_INSTRUCTION, memory_saver,
                                model_provider)
 
     def _parse_agents_lines(self, orchestrator_prompts):
@@ -91,13 +81,17 @@ class DeepCodeAgent(OrchestratorAgent):
         
         If the agent provides a message with
         
-        FINAL ANSWER:  
+        FINAL ANSWER: 
         [final answer provided]
                
         Please evaluate the answer, and determine whether or not it meets the requirements or additional action is needed. For example, 
         if the CdcCodeSearchAgent provides context, and then you call the CdcCodegenAgent, which provides a final answer,
         then, in order to validate the answer, you may apply the code changes and validate them using the CodeRunnerAgent,
-        or generate some tests after applying the changes and run those with the CodeRunnerAgent. In some cases, you may
+        or generate some tests after applying the changes and run those with the CodeRunnerAgent. After the CodeRunnerAgent
+        provides feedback from running the code, you may need to revert the changes using git and delegate to the 
+        CdcCodegenAgent to provide the changes with updates to fix the errors provided. 
+        
+        In some cases, you may
         need to validate business requirements, or demonstrate the code changes, in which case you may then call the 
         HumanDelegateAgent to validate the changes, or business requirements. 
         
@@ -152,7 +146,9 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
         return f'Graph orchestrator agent; {self.orchestrator_agent.agent_name}'
 
     def parse_orchestration_response(self, last_message: BaseMessage) -> typing.Union[BaseMessage, NextAgentResponse]:
-        found: typing.List[str] = list(filter(lambda x: 'NEXT AGENT:' in x, last_message.content if isinstance(last_message.content, list) else [last_message.content]))
+        found: typing.List[str] = list(filter(lambda x: 'NEXT AGENT:' in x,
+                                              last_message.content if isinstance(last_message.content, list)
+                                              else [last_message.content]))
         if len(found) == 0:
             return last_message
         else:

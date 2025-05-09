@@ -8,7 +8,6 @@ import subprocess
 import typing
 import uuid
 from typing import Any, Dict, AsyncIterable
-from typing import Literal
 
 from langchain_core.callbacks import Callbacks
 from langchain_core.messages import ToolMessage
@@ -17,16 +16,9 @@ from langchain_core.tools import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
-from pydantic import BaseModel
 
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
-
-
-class ResponseFormat(BaseModel):
-    """Respond to the user in this format."""
-    status: Literal["input_required", "completed", "error"] = "input_required"
-    message: str
 
 
 class A2ASmolAgent(A2AAgent, abc.ABC):
@@ -202,7 +194,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
             query = self.task_manager.get_user_query_message(next_message)
             invoked = self.graph.invoke(query, config)
             next_message = self.pop_to_process_task(sessionId)
-
+        #         TODO: self.get_agent_response_graph(invoked)
         return invoked
 
     async def stream(self, query, session_id, graph=None) -> AsyncIterable[Dict[str, Any]]:

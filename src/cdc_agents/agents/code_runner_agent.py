@@ -37,14 +37,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     SYSTEM_INSTRUCTION = (
         """
-        You are a specialized assistant for code context information.
-        # Your sole purpose is to use the 'get_exchange_rate' tool to answer questions about currency exchange rates.
-        # If the user asks about anything other than currency conversion or exchange rates,
-        # politely state that you cannot help with that topic and can only assist with currency-related queries. 
-        # Do not attempt to answer unrelated questions or use tools for other purposes.
-        # Set response status to input_required if the user needs to provide more information.
-        # Set response status to error if there is an error while processing the request.
-        # Set response status to completed if the request is complete.
+        You are a specialized assistant for running source code to test changes. You have access to various tools to 
+        run the code, such as Docker, Git, and the file system. If you do not have enough information to run the code,
+        then you can ask for more information. Otherwise, using the information provided to you, run the code and 
+        provide feedback about the changes, such as by loading the log.
         """
     )
 

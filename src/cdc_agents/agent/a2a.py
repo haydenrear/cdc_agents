@@ -1,20 +1,27 @@
 import abc
+import dataclasses
+import json
+import re
 import typing
 from typing import AsyncIterable, Dict, Any
 
+import regex
+from langchain_core.messages import BaseMessage
+
 import asyncio
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.runnables import AddableDict
 from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.common.server import TaskManager
-from cdc_agents.common.types import Message
+from cdc_agents.common.types import Message, ResponseFormat
 from cdc_agents.config.agent_config_props import AgentMcpTool
 
 
 class BaseAgent(abc.ABC):
 
     @abc.abstractmethod
-    def invoke(self, query, sessionId):
+    def invoke(self, query, sessionId) -> typing.Union[AddableDict, ResponseFormat]:
         pass
 
     @property
@@ -43,7 +50,6 @@ class BaseAgent(abc.ABC):
 
     def message_contains(self, last_message, answer) -> bool:
         return answer in last_message.content or any([answer in c for c in last_message.content])
-
 
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_instruction=None,
@@ -109,8 +115,37 @@ class A2AAgent(BaseAgent, abc.ABC):
 
     def get_agent_response_graph(self, config, graph):
         current_state = graph.get_state(config)
-        structured_response = current_state.values.get('messages')
-        from cdc_agents.agent.agent import ResponseFormat
+        messages = current_state.values.get('messages')
+
+        last_message: BaseMessage = messages[-1]
+        content = ''.join([c for c in last_message.content])
+
+        STATUS_RX = re.compile(
+            r"""^[\ufeff\s]*          # optional BOM + leading whitespace
+             status\s*:\s*                   # literal header key (allow extra spaces)
+            (?P<state>[A-Za-z_]+)            # capture the value
+            \s*$                             # ignore anything after the value on this line
+            """,
+            re.IGNORECASE | re.VERBOSE | re.MULTILINE,
+        )
+
+        match = STATUS_RX.search(content)
+
+        if match:
+            status_token = match.group("state")
+            header_end = content.find("\n", match.end())  # first newline after the header we matched
+            content = content[header_end + 1 :] if header_end != -1 else ""
+            structured_response = ResponseFormat(status=status_token, message=content, history=messages)
+        else:
+            try:
+                if isinstance(content, dict):
+                    loaded = content
+                else:
+                    loaded = json.loads(content)
+                structured_response = ResponseFormat(**loaded)
+            except:
+                structured_response = ResponseFormat(status=self.completed, message=content, history=messages)
+
         if structured_response and isinstance(structured_response, ResponseFormat):
             if structured_response.status == self.needs_input_string:
                 return {

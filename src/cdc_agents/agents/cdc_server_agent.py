@@ -181,13 +181,19 @@ class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
         """
         You are a specialized assistant for generating commits for implementation of software projects.
         You request the generation of a full git commit, with respect to a commit message and other contextual information 
-        provided to you. 
+        provided to you. Then, after applying the commit, you ask for the code to be tested. Sometimes, you will ask 
+        it to be tested and then you will be asked again later to generate another commit from the feedback on why it failed. 
+        In this case, you either need to generate the whole commit again, taking into account the error, or request
+        for more information about the repository, file system, or dependency, so that next time you have the information you need
+        to provide the finished code generation. By the time you are asked to fix the commit, it will have been reverted,
+        but you will still be able to look at what changes you made.
         """
     )
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
-        A2AReactAgent.__init__(self,agent_config, [retrieve_next_code_commit, apply_code_commit, retrieve_and_apply_code_commit],
+        A2AReactAgent.__init__(self, agent_config,
+                               [retrieve_next_code_commit, apply_code_commit, retrieve_and_apply_code_commit],
                                self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
 
     @property

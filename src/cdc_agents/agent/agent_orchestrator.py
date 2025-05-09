@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+from langchain_core.runnables import AddableDict
 import typing
 from typing import AsyncIterable, Dict, Any, Optional
 from langchain_core.messages import BaseMessage, HumanMessage
@@ -97,10 +98,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                 if (self.props.let_orchestrated_agents_terminate
                         or self.orchestrator_agent.agent_name == last_executed_agent.agent_name):
                     return END
-                else:
-                    return self.orchestrator_agent.agent_name
-            else:
-                return self.orchestrator_agent.agent_name
+
+            return self.orchestrator_agent.agent_name
         elif isinstance(last_message, NextAgentResponse):
             return last_message.next_agent
 
@@ -127,19 +126,23 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
     def next_node(self, agent: BaseAgent, state: MessagesState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
         session_id = config['configurable']['thread_id']
+
         result = agent.invoke(state, session_id)
 
-        result['messages'] = self.do_collapse_summary_state(result['messages'], agent, config)
+        if isinstance(result, AddableDict):
+            result['messages'] = self.do_collapse_summary_state(result['messages'], agent, config)
 
-        last_message: BaseMessage = result['messages'][-1]
+            last_message: BaseMessage = result['messages'][-1]
 
-        last_message = HumanMessage(content=last_message.content, name=agent.agent_name)
+            last_message = HumanMessage(content=last_message.content, name=agent.agent_name)
 
-        result["messages"][-1] = last_message
+            result["messages"][-1] = last_message
 
-        last_message = self.parse_orchestration_response(last_message)
+            last_message = self.parse_orchestration_response(last_message)
 
-        return self.parse_messages(agent, last_message, result, session_id, state, config)
+            return self.parse_messages(agent, last_message, result, session_id, state, config)
+        else:
+            raise NotImplementedError
 
     def parse_messages(self, agent, last_message, result, session_id, state, config) -> Command[typing.Union[str, END]]:
         if self.do_perform_summary(result, config):

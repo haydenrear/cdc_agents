@@ -3,6 +3,7 @@ import typing
 import unittest
 import unittest.mock
 from typing import Any
+from langchain_core.tools import tool
 
 from langchain.agents import create_react_agent
 from langchain_core.language_models import LanguageModelInput
@@ -12,7 +13,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import BaseTool
 
 from aisuite.framework import ChatCompletionResponse
-from cdc_agents.agents.deep_code_research_agent import call_a_friend
 from cdc_agents.config.agent_config import AgentConfig
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
@@ -97,16 +97,21 @@ class ModelServerModelTest(unittest.TestCase):
 
             def get_config_props(self) -> ModelServerConfigProps:
                 pass
+        @tool
+        def message_human_delegate():
+            """
+            """
+            pass
 
         self.server.executor = Executor()
         self.server.executor.call = unittest.mock.MagicMock(return_value="""
-        Action: call_a_friend
+        Action: message_human_delegate
         Action Input: 
         """)
-        agent = create_react_agent(self.server, [call_a_friend],
+        agent = create_react_agent(self.server, [message_human_delegate],
                                    prompt=PromptTemplate.from_template(
                                        template,
-                                       partial_variables={"tools": [call_a_friend], "agent_scratchpad": "",
+                                       partial_variables={"tools": [message_human_delegate], "agent_scratchpad": "",
                                                           "input": "???"}))
 
         test_ = {'configurable': {'thread_id': 'test'}}

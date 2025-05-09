@@ -1,7 +1,8 @@
 import abc
 import enum
+from langchain_core.runnables import AddableDict
 import typing
-from typing import Union, Any
+from typing import Union, Any, Literal
 
 from langchain_core.messages import ToolCall
 from pydantic import BaseModel, Field, TypeAdapter
@@ -402,3 +403,9 @@ def aggregate_errs(res, results):
     if len(errs) != 0:
         res['error'] = JSONRPCError(**{"code": 500, "message": ', '.join([e.message for e in errs]), "data": errs})
 
+
+class ResponseFormat(BaseModel):
+    """Respond to the user in this format."""
+    status: Literal["input_required", "completed", "error"] = "input_required"
+    message: typing.Union[str, typing.List[BaseMessage], dict[str, typing.Any]]
+    history: typing.List[BaseMessage] = None
