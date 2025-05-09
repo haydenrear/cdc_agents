@@ -44,60 +44,82 @@ class AgentTaskManager(InMemoryTaskManager):
         self.notification_sender_auth = notification_sender_auth
 
     async def _run_streaming_agent(self, request: SendTaskStreamingRequest):
+        await self.insert_lock(request.id)
+
         task_send_params: TaskSendParams = request.params
         query = self.get_user_query(task_send_params)
 
         try:
-            async for item in self.agent.stream(query, task_send_params.sessionId):
-                is_task_complete = item["is_task_complete"]
-                require_user_input = item["require_user_input"]
-                artifact = None
-                message = None
-                parts = [{"type": "text", "text": item["content"]}]
-                end_stream = False
-
-                if not is_task_complete and not require_user_input:
-                    task_state = TaskState.WORKING
-                    message = Message(role="agent", parts=parts)
-                elif require_user_input:
-                    task_state = TaskState.INPUT_REQUIRED
-                    message = Message(role="agent", parts=parts)
-                    end_stream = True
-                else:
-                    task_state = TaskState.COMPLETED
-                    artifact = Artifact(parts=parts, index=0, append=False)
-                    end_stream = True
-
-                task_status = TaskStatus(state=task_state, message=message)
-                latest_task = await self.update_store(
-                    task_send_params.id,
-                    task_status,
-                    None if artifact is None else [artifact],
-                )
-                await self.send_task_notification(latest_task)
-
-                if artifact:
-                    task_artifact_update_event = TaskArtifactUpdateEvent(
-                        id=task_send_params.id, artifact=artifact
-                    )
-                    await self.enqueue_events_for_sse(
-                        task_send_params.id, task_artifact_update_event
-                    )                    
-                    
-
-                task_update_event = TaskStatusUpdateEvent(
-                    id=task_send_params.id, status=task_status, final=end_stream
-                )
-                await self.enqueue_events_for_sse(
-                    task_send_params.id, task_update_event
-                )
+            await self._do_agent_stream(query, task_send_params.sessionId)
 
         except Exception as e:
             logger.error(f"An error occurred while streaming the response: {e}")
             await self.enqueue_events_for_sse(
                 task_send_params.id,
-                InternalError(message=f"An error occurred while streaming the response: {e}")                
+                InternalError(message=f"An error occurred while streaming the response: {e}"))
+
+    async def _do_agent_stream(self, query, session_id):
+        async for item in self.agent.stream(query, session_id):
+            is_task_complete = item["is_task_complete"]
+            require_user_input = item["require_user_input"]
+            artifact = None
+            message = None
+            parts = [{"type": "text", "text": item["content"]}]
+            end_stream = False
+            restart_stream = False
+
+            if not is_task_complete and not require_user_input:
+                async with self.task_locks[session_id]:
+                    task_state = TaskState.WORKING
+                    message = Message(role="agent", parts=parts)
+                    await self._apply_task_enqueue(artifact, end_stream, message, session_id, task_state)
+            elif require_user_input:
+                async with self.task_locks[session_id]:
+                    task_state = TaskState.INPUT_REQUIRED
+                    message = Message(role="agent", parts=parts)
+                    end_stream = True
+                    await self._apply_task_enqueue(artifact, end_stream, message, session_id, task_state)
+            else:
+                async with self.task_locks[session_id]:
+                    task = self.task(session_id)
+                    if task.to_process and len(task.to_process) == 0:
+                        task_state = TaskState.COMPLETED
+                        artifact = Artifact(parts=parts, index=0, append=False)
+                        end_stream = True
+                        await self._apply_task_enqueue(artifact, end_stream, message, session_id, task_state)
+                    else:
+                        # If message was added after stream finished, then run stream until finished processing.
+                        query = self.get_user_query_message(next(iter(task.to_process)))
+                        restart_stream = True
+
+                if restart_stream:
+                    LoggerFacade.info("Found task query added with send task after finished stream. "
+                                      "Starting another agent stream.")
+                    try:
+                        await self._do_agent_stream(query, session_id)
+                    except Exception as e:
+                        LoggerFacade.error(f"Error performing agent stream - could not load history concurrently: {e}. "
+                                           f"Will not try again. {query} was missing message.")
+
+    async def _apply_task_enqueue(self, artifact, end_stream, message, session_id, task_state):
+        task_status = TaskStatus(state=task_state, message=message)
+        latest_task = await self.update_store(
+            session_id,
+            task_status,
+            None if artifact is None else [artifact], )
+        await self.send_task_notification(latest_task)
+        if artifact:
+            task_artifact_update_event = TaskArtifactUpdateEvent(
+                id=session_id, artifact=artifact
             )
+            await self.enqueue_events_for_sse(
+                session_id, task_artifact_update_event
+            )
+        task_update_event = TaskStatusUpdateEvent(
+            id=session_id, status=task_status, final=end_stream
+        )
+        await self.enqueue_events_for_sse(
+            session_id, task_update_event)
 
     def _validate_request(
         self, request: Union[SendTaskRequest, SendTaskStreamingRequest]
@@ -131,33 +153,46 @@ class AgentTaskManager(InMemoryTaskManager):
 
         await self.insert_lock(request.params)
 
-        async with self.task_locks[request.id]:
-            prev_task = await self.upsert_task(request.params)
+        task_send_params: TaskSendParams = request.params
+        request_id = request.id
+
+        async with self.task_locks[request_id]:
+            prev_task = await self.upsert_task(task_send_params)
             if prev_task.status == TaskState.WORKING:
                 # Task already working - will catch the messages below
-                return SendTaskResponse(id=request.id, result=prev_task)
+                return SendTaskResponse(id=request_id, result=prev_task)
 
             # must update the store in the same lock here - otherwise it fails.
-            task = await self.update_store(
-                request.params.id, TaskStatus(state=TaskState.WORKING))
+            task = await self.update_store(task_send_params.id, TaskStatus(state=TaskState.WORKING))
 
         await self.send_task_notification(task)
+        return await self._do_on_send_task(self.get_user_query(task_send_params), request_id, task_send_params)
 
-        task_send_params: TaskSendParams = request.params
-        query = self.get_user_query(task_send_params)
+    async def _do_on_send_task(self, query, request_id, task_send_params: TaskSendParams):
         try:
-            async with self.task_locks[request.id]:
-                task = self.task(request.id)
-                agent_response = self.agent.invoke(query, task_send_params.sessionId)
-                # loop until stop receiving messages for this agent.
-                while task and len(task.to_process)  != 0:
-                    query = self.get_user_query_message(next(iter(task.to_process)))
-                    agent_response = self.agent.invoke(query, task_send_params.sessionId)
-                    task = self.task(request.id)
-                return await self._process_agent_response(request, agent_response)
+            agent_response = self.agent.invoke(query, task_send_params.sessionId)
         except Exception as e:
-            LoggerFacade.error(f"Error invoking agent: {e}")
-            raise ValueError(f"Error invoking agent: {e}")
+            raise ValueError(f"Error invoking agent: {e}.")
+        try:
+            # loop until stop receiving messages for this agent.
+            has_more_work = False
+            async with self.task_locks[request_id]:
+                task = self.task(request_id)
+                if task and len(task.to_process)  != 0:
+                    query = self.get_user_query_message(next(iter(task.to_process)))
+                    has_more_work = True
+
+            #  Perform this out of lock.
+            if has_more_work:
+                return await self._do_on_send_task(query, request_id, task_send_params)
+
+            return await self._process_agent_response(request_id, task_send_params, agent_response)
+        except Exception as e:
+            if has_more_work:
+                LoggerFacade.error(f"Error processing additional query added concurrently: {e}. "
+                                   f"Returning without last query: {query}")
+                return await self._process_agent_response(request_id, task_send_params, agent_response)
+            raise ValueError(f"Error processing agent query: {e}")
 
 
     async def on_send_task_subscribe(
@@ -205,10 +240,10 @@ class AgentTaskManager(InMemoryTaskManager):
                 ))
 
     async def _process_agent_response(
-        self, request: SendTaskRequest, agent_response: dict
+        self, request_id, request_params: TaskSendParams, agent_response: dict
     ) -> SendTaskResponse:
         """Processes the agent's response and updates the task store."""
-        task_send_params: TaskSendParams = request.params
+        task_send_params: TaskSendParams = request_params
         task_id = task_send_params.id
         history_length = task_send_params.historyLength
         task_status = None
@@ -228,7 +263,7 @@ class AgentTaskManager(InMemoryTaskManager):
         )
         task_result = self.append_task_history(task, history_length)
         await self.send_task_notification(task)
-        return SendTaskResponse(id=request.id, result=task_result)
+        return SendTaskResponse(id=request_id, result=task_result)
 
     async def send_task_notification(self, task: Task):
         if not await self.has_push_notification_info(task.id):

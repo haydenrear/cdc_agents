@@ -65,7 +65,6 @@ class DataPart(BaseModel):
     data: dict[str, Any]
     metadata: dict[str, Any] | None = None
 
-
 Part = Annotated[Union[TextPart, FilePart, DataPart], Field(discriminator="type")]
 
 class Message(BaseModel):
@@ -82,7 +81,6 @@ class TaskStatus(BaseModel):
     @field_serializer("timestamp")
     def serialize_dt(self, dt: datetime, _info):
         return dt.isoformat()
-
 
 class Artifact(BaseModel):
     name: str | None = None
@@ -187,9 +185,6 @@ class SendTaskStreamingResponse(JSONRPCResponse):
 class GetTaskRequest(JSONRPCRequest):
     method: Literal["tasks/get"] = "tasks/get"
     params: TaskQueryParams
-
-class TaskEventResult(BaseModel):
-    body_value: typing.Any = None
 
 class GetTaskResponse(JSONRPCResponse):
     result: Task | None = None
