@@ -13,7 +13,7 @@ from langgraph.types import Command, Runnable
 
 from cdc_agents.agent.a2a import A2AAgent, BaseAgent
 from cdc_agents.agent.agent import A2AReactAgent
-from cdc_agents.common.types import Message
+from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from python_util.logger.logger import LoggerFacade
 
@@ -30,7 +30,7 @@ class AgentOrchestrator(A2AAgent, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def parse_orchestration_response(self, last_message) -> typing.Union[BaseMessage, NextAgentResponse]:
+    def parse_orchestration_response(self, last_message: AgentGraphResult):
         pass
 
 
@@ -80,33 +80,42 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.summarizer_agent = agents.get(SummarizerAgent.__name__)
         self.graph = self._build_graph()
 
-    def get_next_node(self, last_executed_agent: BaseAgent, last_message: typing.Union[BaseMessage, NextAgentResponse],
-                      state: MessagesState, config, message: typing.Optional[Message] = None):
-        if message is not None and message.agent_route is not None:
-            if message.agent_route not in self.agents.keys():
-                LoggerFacade.error(f"Found message route {message.agent_route} not in keys {self.agents.keys()}")
+    def get_next_node(self, last_executed_agent: BaseAgent, graph_result: AgentGraphResult,
+                      state: MessagesState, config):
+        last_executed_agent_name = last_executed_agent.agent_name
+        is_this_agent_orchestrator = self._is_orchestrator(last_executed_agent_name)
+        if graph_result.agent_route is not None and is_this_agent_orchestrator:
+            if graph_result.agent_route not in self.agents.keys():
+                LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
             else:
-                return message.agent_route
+                return graph_result.agent_route
+        elif graph_result.agent_route is not None and not is_this_agent_orchestrator:
+            if graph_result.agent_route in self.agents.keys():
+                LoggerFacade.error(f"Found agent routing directly to another agent: {last_executed_agent_name}. "
+                                   f"Haven't handled this explicitly. Adding a message to the orchestrator that this happened.")
+                graph_result.add_to_last_message(f'Found agent {last_executed_agent_name} routing to another agent {graph_result.agent_route}. '
+                                                 f'Please consider this to determine whether to add context and route to this agent.')
+            else:
+                LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
 
-        if self.do_perform_summary(state, config):
+        if self.do_perform_summary(graph_result, config):
             from cdc_agents.agents.summarizer_agent import SummarizerAgent
             return SummarizerAgent.__name__
 
-        if isinstance(last_message, BaseMessage):
-            is_last_message = last_executed_agent.is_terminate_node(last_message, state)
-            if is_last_message:
-                if (self.props.let_orchestrated_agents_terminate
-                        or self.orchestrator_agent.agent_name == last_executed_agent.agent_name):
-                    return END
+        last_message = graph_result.last_message
 
-            return self.orchestrator_agent.agent_name
-        elif isinstance(last_message, NextAgentResponse):
-            return last_message.next_agent
+        is_last_message = last_executed_agent.is_terminate_node(graph_result, state)
 
-        raise NotImplementedError
+        if is_last_message and is_this_agent_orchestrator:
+            return END
+
+        return self.orchestrator_agent.agent_name
+
+    def _is_orchestrator(self, name):
+        return self.orchestrator_agent.agent_name == name
 
     #  TODO: for example, if too many messages
-    def do_perform_summary(self, state: typing.Union[MessagesState, typing.List[BaseMessage]], config) -> bool:
+    def do_perform_summary(self, state: AgentGraphResult, config) -> bool:
         if self.summarizer_agent is None:
             return False
 
@@ -120,63 +129,78 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         return state
 
-    def invoke(self, query, sessionId):
+    def invoke(self, query, sessionId) -> AgentGraphResponse:
         config, graph = self._create_invoke_graph(query, sessionId)
         return self.get_agent_response(config, graph)
 
     def next_node(self, agent: BaseAgent, state: MessagesState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
         session_id = config['configurable']['thread_id']
 
-        result = agent.invoke(state, session_id)
+        result: AgentGraphResponse = agent.invoke(state, session_id)
 
-        if isinstance(result, AddableDict):
-            result['messages'] = self.do_collapse_summary_state(result['messages'], agent, config)
+        messages = self._retrieve_messages(result.content, agent.agent_name)
 
-            last_message: BaseMessage = result['messages'][-1]
+        messages = self.do_collapse_summary_state(messages, agent, config)
 
-            last_message = HumanMessage(content=last_message.content, name=agent.agent_name)
+        last_message: BaseMessage = messages[-1]
 
-            result["messages"][-1] = last_message
+        messages.append(HumanMessage(content=last_message.content, name=agent.agent_name))
 
-            last_message = self.parse_orchestration_response(last_message)
+        agent_graph_parsed = AgentGraphResult(
+            content=messages, is_task_complete=result.is_task_complete,
+            require_user_input=result.require_user_input,
+            agent_route=result.content.route_to if isinstance(result.content, ResponseFormat) else None,
+            last_message=messages[-1])
 
-            return self.parse_messages(agent, last_message, result, session_id, state, config)
-        else:
-            raise NotImplementedError
+        agent_graph_parsed = self.parse_orchestration_response(agent_graph_parsed)
 
-    def parse_messages(self, agent, last_message, result, session_id, state, config) -> Command[typing.Union[str, END]]:
+        return self.parse_messages(agent, agent_graph_parsed, session_id, state, config)
+
+    def _retrieve_messages(self, content:  typing.Union[ResponseFormat, str, list[BaseMessage]], agent_name) -> typing.List[BaseMessage]:
+        if isinstance(content, ResponseFormat):
+            return self._retrieve_messages(content.history, agent_name)
+        elif isinstance(content, list) and len(content) > 0 and isinstance(content[0], BaseMessage):
+            return content
+        elif isinstance(content, str):
+            return [HumanMessage(content=content, name=agent_name)]
+        elif content is None:
+            raise ValueError("Found None content.")
+        return [HumanMessage(content=f"Empty message found from {agent_name}. Please retry or redirect.", name=agent_name)]
+
+    def parse_messages(self, agent, result: AgentGraphResult, session_id, state, config) -> Command[typing.Union[str, END]]:
         if self.do_perform_summary(result, config):
-            goto = self.get_next_node(agent, last_message, state, session_id)
+            goto = self.get_next_node(agent, result, state, session_id)
         elif self.task_manager:
             recent = self.pop_to_process_task(session_id)
             if recent is not None:
                 # only route to a single agent at a time, but can add as many other messages to the context
-                result['messages'].append(HumanMessage(content=self._parse_content(recent), name="pushed task"))
+                result.content.append(HumanMessage(content=self._parse_content(recent), name="pushed task"))
 
                 while recent is not None and recent.agent_route is not None:
-                    result['messages'].append(
+                    result.content.append(
                         HumanMessage(content=self._parse_content(self.peek_to_process_task(session_id)),
                                      name="pushed task"))
                     # if the next message appended, no matter what it is, pushes number of tokens too big, then
                     # ignore that message for now, keep it in TaskManager, and don't replace recent for the get_next_node
                     # call for below
-                    if self.do_perform_summary(result['messages'], config):
+                    if self.do_perform_summary(result, config):
                         # pop the message we just added to check if it pushes over token limit for summary
-                        result['messages'].pop()
+                        result.content.pop()
                         break
                     else:
                         # pop already appended to result, but still in task manager queue, remove from task manager
                         # queue here and set to recent to check if go out of loop now.
                         recent = self.pop_to_process_task(session_id)
 
-            goto = self.get_next_node(agent, last_message, state, session_id, recent)
+            goto = self.get_next_node(agent, result, state, session_id)
         else:
-            goto = self.get_next_node(agent, last_message, state, session_id)
+            goto = self.get_next_node(agent, result, state, session_id)
         if goto == self.orchestrator_agent.agent_name and agent.agent_name == self.orchestrator_agent.agent_name:
-            last_message.content.append(
+            result.add_to_last_message(
                 f"Did not receive a {self.terminal_string} delimited with {self.terminal_string} or which agent to forward to. "
                 f"Please either summarize into a {self.terminal_string} or delegate to one of you're agents who will.")
-        return Command(update={"messages": result["messages"]},
+
+        return Command(update={"messages": result.content},
                        goto=goto)
 
     def _parse_content(self, recent):

@@ -406,6 +406,34 @@ def aggregate_errs(res, results):
 
 class ResponseFormat(BaseModel):
     """Respond to the user in this format."""
-    status: Literal["input_required", "completed", "error"] = "input_required"
+    status: Literal["input_required", "completed", "error", "next_agent"] = "input_required"
     message: typing.Union[str, typing.List[BaseMessage], dict[str, typing.Any]]
+    route_to: typing.Optional[str] = None
     history: typing.List[BaseMessage] = None
+
+class AgentGraphResponse(BaseModel):
+    is_task_complete: bool
+    require_user_input: bool
+    content: typing.Union[ResponseFormat, str, list[BaseMessage]]
+
+class AgentGraphResult(BaseModel):
+    is_task_complete: bool
+    require_user_input: bool
+    content: list[BaseMessage]
+    last_message: typing.Optional[BaseMessage] = None
+    agent_route: typing.Optional[str] = None
+
+    def add_to_last_message(self, message: str):
+        if not self.last_message.content:
+            self.last_message.content = message
+        elif isinstance(self.last_message.content, str):
+            self.last_message.content = f'{message}\n{self.last_message.content}'
+        elif isinstance(self.last_message.content, list):
+            if len(self.last_message.content)  == 0:
+                self.last_message.content.append(message)
+            else:
+                curr_last = self.last_message.content[0]
+                if isinstance(curr_last, str):
+                    self.last_message.content.append(message)
+                else:
+                    self.last_message.content.append({'added_message': message})

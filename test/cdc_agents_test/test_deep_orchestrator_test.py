@@ -104,7 +104,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             did_call = False
 
             def invoke(self, query, sessionId) -> str:
-                self.did_call = True
+                TestAgent.did_call = True
                 return A2AReactAgent.invoke(self, query, sessionId)
 
         class TestOrchestratorAgent(OrchestratorAgent):
@@ -112,13 +112,14 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             did_call = False
 
             def invoke(self, query, sessionId) -> str:
-                self.did_call = True
-                return A2AReactAgent.invoke(self, query, sessionId)
+                TestOrchestratorAgent.did_call = True
+                invoked_value =  A2AReactAgent.invoke(self, query, sessionId)
+                return invoked_value
 
 
         server = copy.copy(self.server)
         server.agents = copy.copy(server.agents)
-        server.get_agent_response = self._agent_response
+        # server.get_agent_response = self._agent_response
         server.agents.clear()
 
         in_ = [call_a_friend_in]
@@ -137,21 +138,34 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         task_manager = AgentTaskManager(server, None)
         server.set_task_manager(task_manager)
 
-        invoked = server.invoke("hello", "test")
+        graph_response = server.invoke("hello", "test")
+
+        invoked = graph_response.content.history
 
         assert len(invoked) != 0
         assert any([isinstance(i, ToolMessage) and i.status == 'success' for i in invoked])
         assert any([i.content[-1] == 'okay' for i in invoked if isinstance(i, HumanMessage)])
         assert any([i.content == 'hello...' for i in invoked if isinstance(i, ToolMessage)])
-        assert any([i.content[-1] == 'FINAL ANSWER: hello!' for i in invoked if isinstance(i, HumanMessage)])
+        assert any([i.content[-1] == 'status: completed\nhello!' for i in invoked if isinstance(i, HumanMessage)])
+        assert graph_response.is_task_complete
 
-        assert invoked[-1].content[-1] == 'FINAL ANSWER: hello!'
+        assert invoked[-1].content[-1] == 'status: completed\nhello!'
 
-        TestOrchestratorAgent.did_call = True
-        OrchestratedAgent.did_call = True
-        invoked_second = server.invoke("hello", "test")
+        assert TestOrchestratorAgent.did_call
+        assert TestAgent.did_call
+
+        TestOrchestratorAgent.did_call = False
+        TestAgent.did_call = False
+
+        invoked_second = server.invoke("hello", "test").content.history
+        assert TestOrchestratorAgent.did_call
+        assert TestAgent.did_call
         assert len(invoked_second) > len(invoked)
-        invoked_third = server.invoke("hello", "whatever")
+        TestOrchestratorAgent.did_call = False
+        TestAgent.did_call = False
+        invoked_third = server.invoke("hello", "whatever").content.history
+        assert TestOrchestratorAgent.did_call
+        assert TestAgent.did_call
         assert len(invoked_third) <= len(invoked)
 
     def _mock_executor_call(self):
@@ -174,30 +188,30 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             Action: query
             Action Input: { "sql": "SELECT * FROM commit_diff" }
             """,
-            "NEXT AGENT: TestAgent",
+            "status: next_agent\nTestAgent",
             "okay",
-            "FINAL ANSWER: hello!",
+            "status: completed\nhello!",
             """
             Action: call_a_friend_in
             Action Input: 
             """,
-            "NEXT AGENT: TestAgent",
+            "status: next_agent\nTestAgent",
             "okay",
-            "FINAL ANSWER: hello!",
+            "status: completed\nhello!",
             """
             Action: call_a_friend_in
             Action Input: 
             """,
-            "NEXT AGENT: TestAgent",
+            "status: next_agent\nTestAgent",
             "okay",
-            "FINAL ANSWER: hello!"
+            "status: completed\nhello!"
         ]
         model = copy.copy(self.model)
         model.executor = Executor()
         model.executor.call = mock
         return model
 
-    def _agent_response(self, *args, **kwargs):
-        c: CompiledStateGraph = args[1]
-        state = c.get_state(args[0])
-        return state.values.get('messages')
+    # def _agent_response(self, *args, **kwargs):
+    #     c: CompiledStateGraph = args[1]
+    #     state = c.get_state(args[0])
+    #     return state.values.get('messages')

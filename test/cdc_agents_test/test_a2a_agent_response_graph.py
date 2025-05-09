@@ -39,5 +39,3 @@ class TestA2AResponse(unittest.TestCase):
         graph.get_state = MagicMock(return_value=g)
         t.get_agent_response_graph({}, graph)
 
-if __name__ == '__main__':
-    unittest.main()

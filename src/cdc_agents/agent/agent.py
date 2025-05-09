@@ -168,6 +168,9 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 if v.stop_tool:
                     subprocess.run(v.stop_tool, shell=True)
 
+                if isinstance(ran, ToolMessage):
+                    return ran
+
                 return ToolMessage(
                     content=ran,
                     name=self.name,
@@ -195,7 +198,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
             invoked = self.graph.invoke(query, config)
             next_message = self.pop_to_process_task(sessionId)
         #         TODO: self.get_agent_response_graph(invoked)
-        return invoked
+        return self.get_agent_response(config)
 
     async def stream(self, query, session_id, graph=None) -> AsyncIterable[Dict[str, Any]]:
         return self.stream_agent_response_graph(query, session_id, self.graph)

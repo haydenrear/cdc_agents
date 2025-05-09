@@ -19,7 +19,7 @@ from langchain_core.messages import AIMessage, ToolMessage, BaseMessage
 from langchain_core.tools import tool
 
 from cdc_agents.agent.agent import A2AAgent
-from cdc_agents.common.types import ResponseFormat
+from cdc_agents.common.types import ResponseFormat, AgentGraphResponse
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem, AgentMcpTool
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
@@ -145,18 +145,8 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
     def agent_name(self) -> str:
         return f'Graph orchestrator agent; {self.orchestrator_agent.agent_name}'
 
-    def parse_orchestration_response(self, last_message: BaseMessage) -> typing.Union[BaseMessage, NextAgentResponse]:
-        found: typing.List[str] = list(filter(lambda x: 'NEXT AGENT:' in x,
-                                              last_message.content if isinstance(last_message.content, list)
-                                              else [last_message.content]))
-        if len(found) == 0:
-            return last_message
-        else:
-            split = found[0].split('NEXT AGENT:')
-            if len(split) <= 1:
-                return last_message
-            f = split[1].strip()
-            return NextAgentResponse(f)
+    def parse_orchestration_response(self, last_message: AgentGraphResponse) -> AgentGraphResponse:
+        return last_message
 
     def orchestration_prompt(self):
         pass

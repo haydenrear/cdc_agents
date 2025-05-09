@@ -14,7 +14,7 @@ from langchain_core.runnables import AddableDict
 from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.common.server import TaskManager
-from cdc_agents.common.types import Message, ResponseFormat
+from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult
 from cdc_agents.config.agent_config_props import AgentMcpTool
 
 
@@ -31,11 +31,15 @@ class BaseAgent(abc.ABC):
 
     @property
     def terminal_string(self) -> str:
-        return "FINAL ANSWER"
+        return "completed"
 
     @property
     def completed(self) -> str:
         return "completed"
+
+    @property
+    def next_agent(self) -> str:
+        return "next_agent"
 
     @property
     def needs_input_string(self) -> str:
@@ -45,8 +49,8 @@ class BaseAgent(abc.ABC):
     def has_error_string(self) -> str:
         return "error"
 
-    def is_terminate_node(self, last_message, state) -> bool:
-        return self.message_contains(last_message, self.terminal_string)
+    def is_terminate_node(self, last_message: AgentGraphResult, state) -> bool:
+        return last_message.is_task_complete
 
     def message_contains(self, last_message, answer) -> bool:
         return answer in last_message.content or any([answer in c for c in last_message.content])
@@ -113,7 +117,7 @@ class A2AAgent(BaseAgent, abc.ABC):
         """
         pass
 
-    def get_agent_response_graph(self, config, graph):
+    def get_agent_response_graph(self, config, graph) -> AgentGraphResponse:
         current_state = graph.get_state(config)
         messages = current_state.values.get('messages')
 
@@ -135,7 +139,7 @@ class A2AAgent(BaseAgent, abc.ABC):
             status_token = match.group("state")
             header_end = content.find("\n", match.end())  # first newline after the header we matched
             content = content[header_end + 1 :] if header_end != -1 else ""
-            structured_response = ResponseFormat(status=status_token, message=content, history=messages)
+            structured_response = ResponseFormat(status=status_token, message=content, history=messages, route_to=content if status_token == self.next_agent else None)
         else:
             try:
                 if isinstance(content, dict):
@@ -148,29 +152,35 @@ class A2AAgent(BaseAgent, abc.ABC):
 
         if structured_response and isinstance(structured_response, ResponseFormat):
             if structured_response.status == self.needs_input_string:
-                return {
+                return AgentGraphResponse(**{
                     "is_task_complete": False,
                     "require_user_input": True,
-                    "content": structured_response.message
-                }
+                    "content": structured_response
+                })
             elif structured_response.status == self.has_error_string:
-                return {
+                return AgentGraphResponse(**{
                     "is_task_complete": False,
                     "require_user_input": True,
-                    "content": structured_response.message
-                }
+                    "content": structured_response
+                })
             elif structured_response.status == self.completed:
-                return {
+                return AgentGraphResponse(**{
                     "is_task_complete": True,
                     "require_user_input": False,
-                    "content": structured_response.message
-                }
+                    "content": structured_response
+                })
+            elif structured_response.status == self.next_agent:
+                return AgentGraphResponse(**{
+                    "is_task_complete": False,
+                    "require_user_input": False,
+                    "content": structured_response
+                })
 
-        return {
+        return AgentGraphResponse(**{
             "is_task_complete": False,
             "require_user_input": True,
             "content": "We are unable to process your request at the moment. Please try again.",
-        }
+        })
 
     @staticmethod
     async def stream_agent_response_graph(query, sessionId, graph) -> AsyncIterable[Dict[str, Any]]:
