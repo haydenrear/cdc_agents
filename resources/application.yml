@@ -2,6 +2,9 @@ model_server:
   host: localhost
   port: 9991
 
+checkpoint:
+  uri:
+
 agent_config:
   agents:
 #    CodeRunnerAgent:
