@@ -13,7 +13,7 @@ from langgraph.types import Command, Runnable
 
 from cdc_agents.agent.a2a import A2AAgent, BaseAgent
 from cdc_agents.agent.agent import A2AReactAgent
-from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult
+from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from python_util.logger.logger import LoggerFacade
 
@@ -98,6 +98,10 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             else:
                 LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
 
+        if graph_result.require_user_input:
+            graph_result.add_to_last_message(f'\nstatus_message: awaiting input for {last_executed_agent_name}')
+            return END
+
         if self.do_perform_summary(graph_result, config):
             from cdc_agents.agents.summarizer_agent import SummarizerAgent
             return SummarizerAgent.__name__
@@ -133,7 +137,22 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         config, graph = self._create_invoke_graph(query, sessionId)
         return self.get_agent_response(config, graph)
 
+    def retrieve_status_messages(self, message: typing.Optional[BaseMessage]) -> typing.Optional[WaitStatusMessage]:
+        if message is None:
+            return None
+        return self.get_status_message(message)
+
     def next_node(self, agent: BaseAgent, state: MessagesState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
+        prev_messages = state.get('messages')
+
+        if prev_messages is not None and len(prev_messages) > 1:
+            second_to_last = prev_messages[-2]
+            status_messages = self.retrieve_status_messages(second_to_last)
+            wait_status_message = self.retrieve_status_messages(status_messages)
+            if self._is_valid_wait_status(wait_status_message):
+                return Command(update={"messages": prev_messages},
+                               goto=wait_status_message.agent_route)
+
         session_id = config['configurable']['thread_id']
 
         result: AgentGraphResponse = agent.invoke(state, session_id)
@@ -142,7 +161,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         messages = self.do_collapse_summary_state(messages, agent, config)
 
-        last_message: BaseMessage = messages[-1]
+        last_message: BaseMessage = messages.pop()
 
         messages.append(HumanMessage(content=last_message.content, name=agent.agent_name))
 
@@ -155,6 +174,11 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         agent_graph_parsed = self.parse_orchestration_response(agent_graph_parsed)
 
         return self.parse_messages(agent, agent_graph_parsed, session_id, state, config)
+
+    def _is_valid_wait_status(self, wait_status_message):
+        return ((wait_status_message is not None) and
+                (
+                            wait_status_message.agent_route in self.agents.keys() or self.orchestrator_agent.agent_name == wait_status_message.agent_route))
 
     def _retrieve_messages(self, content:  typing.Union[ResponseFormat, str, list[BaseMessage]], agent_name) -> typing.List[BaseMessage]:
         if isinstance(content, ResponseFormat):

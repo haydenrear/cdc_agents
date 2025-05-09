@@ -437,3 +437,6 @@ class AgentGraphResult(BaseModel):
                     self.last_message.content.append(message)
                 else:
                     self.last_message.content.append({'added_message': message})
+
+class WaitStatusMessage(BaseModel):
+    agent_route: str

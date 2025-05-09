@@ -14,8 +14,9 @@ from langchain_core.runnables import AddableDict
 from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.common.server import TaskManager
-from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult
+from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 from cdc_agents.config.agent_config_props import AgentMcpTool
+from python_util.logger.logger import LoggerFacade
 
 
 class BaseAgent(abc.ABC):
@@ -64,6 +65,15 @@ class A2AAgent(BaseAgent, abc.ABC):
         self.system_instruction = system_instruction
         self.memory = memory
         self._agent_name = self.__class__.__name__
+        self.AWAITING_RX = re.compile(
+            r"""^.*?                          # any leading junk (non-greedy)
+        status_message\s*:\s*        # literal key (flexible spacing)
+        awaiting\s+input\s+for\s+    # fixed phrase
+        (?P<agent>[^\r\n]+?)         # capture agent name (greedy to EOL)
+        \s*$                         # allow trailing spaces
+        """,
+            re.IGNORECASE | re.VERBOSE | re.MULTILINE,
+            )
 
     def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
@@ -116,6 +126,29 @@ class A2AAgent(BaseAgent, abc.ABC):
         :return:
         """
         pass
+
+    def get_status_message(self, message: BaseMessage) -> typing.Optional[WaitStatusMessage]:
+        content = message.content
+        if isinstance(content, list):
+            for next_message_content in reversed(content):
+                f = self._get_status_message(next_message_content)
+                if f:
+                    return f
+        elif isinstance(content, str):
+            return self._get_status_message(content)
+
+        return None
+
+    def _get_status_message(self, raw):
+        try:
+            matches = list(self.AWAITING_RX.finditer(raw))
+            if not matches or len(matches) == 0:
+                return None
+
+            return WaitStatusMessage(agent_route=matches[-1].group("agent").strip())
+        except Exception as e:
+            LoggerFacade.error(f"Found error with status message: {e}")
+
 
     def get_agent_response_graph(self, config, graph) -> AgentGraphResponse:
         current_state = graph.get_state(config)

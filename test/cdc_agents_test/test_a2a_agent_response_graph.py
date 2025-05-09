@@ -39,3 +39,14 @@ class TestA2AResponse(unittest.TestCase):
         graph.get_state = MagicMock(return_value=g)
         t.get_agent_response_graph({}, graph)
 
+        found = t.get_status_message(BaseMessage(content=["""
+        status_message: awaiting input for TestA2A
+        """], type="human"))
+        assert found.agent_route == "TestA2A"
+
+        found = t.get_status_message(BaseMessage(content=["""
+        other code...
+        status_message: awaiting input for TestA2A
+        """], type="human"))
+        assert found.agent_route == "TestA2A"
+
