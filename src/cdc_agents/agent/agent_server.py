@@ -18,6 +18,7 @@ from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
+from python_di.inject.profile_composite_injector.composite_injector import profile_scope
 from python_util.logger.logger import LoggerFacade
 
 
@@ -28,7 +29,7 @@ class DiscoverableAgent:
 
 
 
-@component()
+@component(profile=['main_profile', 'test'], scope=profile_scope)
 @injectable()
 class AgentServerRunner:
 
@@ -37,6 +38,7 @@ class AgentServerRunner:
                  agent_config_props: AgentConfigProps,
                  memory: MemorySaver,
                  model_server_provider: ModelProvider,
+                 starlette: Starlette,
                  agents: typing.List[A2AAgent] = None):
         self.model_server_provider = model_server_provider
         self.memory = memory
@@ -46,7 +48,7 @@ class AgentServerRunner:
             for next_agent in agents}
         _add_all_managed_agents(self.agent_config_props)
         # self.start_dynamic_agent_cards() # TODO:
-        self.starlette = self.load_server(agent_config_props.host, agent_config_props.port)
+        self.starlette = self.load_server(agent_config_props.host, agent_config_props.port, starlette)
 
         if agent_config_props.initialize_server:
             self.run_server()
@@ -56,15 +58,11 @@ class AgentServerRunner:
 
     def run_server(self):
         """Starts the Currency Agent server."""
-        if self.starlette is None:
-            self.starlette = self.load_server(self.agent_config_props.host, self.agent_config_props.port)
-
         LoggerFacade.info(f"Starting server on {self.agent_config_props.host}:{self.agent_config_props.port}")
         uvicorn.run(self.starlette, host=self.agent_config_props.host,
                     port=self.agent_config_props.port)
 
-    def load_server(self, host, port):
-        starlette = Starlette()
+    def load_server(self, host, port, starlette: Starlette):
         notification_sender_auth = PushNotificationSenderAuth()
         notification_sender_auth.generate_jwk()
         starlette.add_route(

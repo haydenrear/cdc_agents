@@ -51,7 +51,6 @@ class AgentTaskManager(InMemoryTaskManager):
 
         try:
             await self._do_agent_stream(query, task_send_params.sessionId)
-
         except Exception as e:
             logger.error(f"An error occurred while streaming the response: {e}")
             await self.enqueue_events_for_sse(
@@ -228,8 +227,7 @@ class AgentTaskManager(InMemoryTaskManager):
             asyncio.create_task(self._run_streaming_agent(request))
 
             return self.dequeue_events_for_sse(
-                request.id, task_send_params.id, sse_event_queue
-            )
+                request.id, task_send_params.id, sse_event_queue)
         except Exception as e:
             logger.error(f"Error in SSE stream: {e}")
             print(traceback.format_exc())
