@@ -31,15 +31,6 @@ from starlette.applications import Starlette
                               DeepCodeOrchestrator, ModelProvider, AgentServerRunner])
 class AgentConfig:
 
-    # @bean(profile=['test', 'validation', 'test_batches', 'main_profile'], scope=profile_scope)
-    # def agent_runner(self,
-    #                  agent_config_props: AgentConfigProps,
-    #                  memory: MemorySaver,
-    #                  model_server_provider: ModelProvider,
-    #                  starlette: Starlette,
-    #                  agents: typing.List[A2AAgent] = None) -> AgentServerRunner:
-    #     return AgentServerRunner(agent_config_props, memory, model_server_provider, starlette, agents)
-
     @bean(profile='test', scope=profile_scope, bindings=[Starlette])
     def starlette_test(self) -> Starlette:
         return unittest.mock.MagicMock(return_value='hello!')
@@ -47,7 +38,6 @@ class AgentConfig:
     @bean(profile='main_profile', scope=profile_scope, bindings=[Starlette])
     def starlette_main(self) -> Starlette:
         return Starlette()
-
 
     @bean()
     def memory(self, checkpoint_config_props: CheckpointConfigProps) -> MemorySaver:
