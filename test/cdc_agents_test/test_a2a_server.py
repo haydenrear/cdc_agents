@@ -146,8 +146,7 @@ class A2AServerTest(unittest.IsolatedAsyncioTestCase):
         ]
         
         test_agent, task_manager = create_test_streaming_task_manager(
-            self.ai_suite, self.memory, self.model_provider, self.model, self.server, streaming_responses
-        )
+            self.ai_suite, self.memory, self.model_provider, self.model, self.server, streaming_responses)
         
         # Create a streaming request
         test_request = SendTaskStreamingRequest(

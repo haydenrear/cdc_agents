@@ -4,23 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="update for inject special mocks">
-      <change afterPath="$PROJECT_DIR$/Dockerfile_mcp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/mcp_client/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/mcp_client/cdc_agents_mcp.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/cdc_agents/mcp_client/mcp_client_main.py" afterDir="false" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="updated not async instead Thread">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/a2a.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/a2a.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/code_runner_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agents/deep_code_research_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agents/deep_code_research_agent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/server/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/server/task_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/common/utils/push_notification_auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/common/utils/push_notification_auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/cdc_agents_test/fixtures/agent_fixtures.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents_test/fixtures/agent_fixtures.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/cdc_agents_test/test_a2a_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents_test/test_a2a_server.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -143,7 +129,7 @@
       <recent name="$PROJECT_DIR$/src/cdc_agents" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.Python tests for cdc_agents_test.test_deep_orchestrator_test.ModelServerModelTest.test_model_server_model">
+  <component name="RunManager" selected="Python tests.Python tests">
     <configuration name="Python tests for cdc_agents_test.test_a2a_server.A2AServerTest" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
       <module name="cdc_agents" />
       <option name="ENV_FILES" value="" />
@@ -253,10 +239,10 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest" />
         <item itemvalue="Python tests.Python tests for cdc_agents_test.test_deep_orchestrator_test.ModelServerModelTest.test_model_server_model" />
         <item itemvalue="Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest.test_stream_agent" />
         <item itemvalue="Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest.test_push_notification" />
-        <item itemvalue="Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest" />
         <item itemvalue="Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest.test_receive_a2a_invoke" />
       </list>
     </recent_temporary>
@@ -290,23 +276,7 @@
       <workItem from="1746649788991" duration="4013000" />
       <workItem from="1746654636096" duration="24330000" />
       <workItem from="1746750063379" duration="150000" />
-      <workItem from="1746750219837" duration="55853000" />
-    </task>
-    <task id="LOCAL-00032" summary="model server provider model_provider.py">
-      <option name="closed" value="true" />
-      <created>1746471206593</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
-      <option name="project" value="LOCAL" />
-      <updated>1746471206593</updated>
-    </task>
-    <task id="LOCAL-00033" summary="model server provider model_provider.py">
-      <option name="closed" value="true" />
-      <created>1746471271544</created>
-      <option name="number" value="00033" />
-      <option name="presentableId" value="LOCAL-00033" />
-      <option name="project" value="LOCAL" />
-      <updated>1746471271544</updated>
+      <workItem from="1746750219837" duration="59846000" />
     </task>
     <task id="LOCAL-00034" summary="model server provider model_provider.py">
       <option name="closed" value="true" />
@@ -684,7 +654,23 @@
       <option name="project" value="LOCAL" />
       <updated>1746991343409</updated>
     </task>
-    <option name="localTasksCounter" value="81" />
+    <task id="LOCAL-00081" summary="updated not async instead Thread">
+      <option name="closed" value="true" />
+      <created>1747005154214</created>
+      <option name="number" value="00081" />
+      <option name="presentableId" value="LOCAL-00081" />
+      <option name="project" value="LOCAL" />
+      <updated>1747005154214</updated>
+    </task>
+    <task id="LOCAL-00082" summary="updated not async instead Thread">
+      <option name="closed" value="true" />
+      <created>1747005199774</created>
+      <option name="number" value="00082" />
+      <option name="presentableId" value="LOCAL-00082" />
+      <option name="project" value="LOCAL" />
+      <updated>1747005199774</updated>
+    </task>
+    <option name="localTasksCounter" value="83" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -723,7 +709,8 @@
     <MESSAGE value="updating for parsing status and completion" />
     <MESSAGE value="do wait for human input" />
     <MESSAGE value="update for inject special mocks" />
-    <option name="LAST_COMMIT_MESSAGE" value="update for inject special mocks" />
+    <MESSAGE value="updated not async instead Thread" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated not async instead Thread" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -795,7 +782,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1746631228886" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746999495399" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1747005116427" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>
