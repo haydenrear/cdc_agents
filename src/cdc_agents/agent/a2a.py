@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+from langgraph.graph.state import CompiledStateGraph
 import json
 import re
 import typing
@@ -9,7 +10,7 @@ import regex
 from langchain_core.messages import BaseMessage
 
 import asyncio
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage, HumanMessage
 from langchain_core.runnables import AddableDict
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -78,12 +79,12 @@ class A2AAgent(BaseAgent, abc.ABC):
     def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
             return None
-        return asyncio.get_event_loop().run_until_complete(self.task_manager.peek_to_process_task(session_id))
+        return self.task_manager.peek_to_process_task(session_id)
 
     def pop_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
             return None
-        return asyncio.get_event_loop().run_until_complete(self.task_manager.pop_to_process_task(session_id))
+        return self.task_manager.pop_to_process_task(session_id)
 
     def set_task_manager(self, task_manager: TaskManager):
         self.task_manager = task_manager
@@ -100,7 +101,7 @@ class A2AAgent(BaseAgent, abc.ABC):
         return self._agent_name
 
     @abc.abstractmethod
-    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
+    def stream(self, query, sessionId, graph=None):
         pass
 
     @abc.abstractmethod
@@ -152,11 +153,12 @@ class A2AAgent(BaseAgent, abc.ABC):
 
     def get_agent_response_graph(self, config, graph) -> AgentGraphResponse:
         current_state = graph.get_state(config)
-        messages = current_state.values.get('messages')
+        return self._do_get_res(current_state.values)
 
+    def _do_get_res(self, values, is_completed = None):
+        messages = values.get('messages')
         last_message: BaseMessage = messages[-1]
         content = ''.join([c for c in last_message.content])
-
         STATUS_RX = re.compile(
             r"""^[\ufeff\s]*          # optional BOM + leading whitespace
              status\s*:\s*                   # literal header key (allow extra spaces)
@@ -171,8 +173,9 @@ class A2AAgent(BaseAgent, abc.ABC):
         if match:
             status_token = match.group("state")
             header_end = content.find("\n", match.end())  # first newline after the header we matched
-            content = content[header_end + 1 :] if header_end != -1 else ""
-            structured_response = ResponseFormat(status=status_token, message=content, history=messages, route_to=content if status_token == self.next_agent else None)
+            content = content[header_end + 1:] if header_end != -1 else ""
+            structured_response = ResponseFormat(status=status_token, message=content, history=messages,
+                                                 route_to=content if status_token == self.next_agent else None)
         else:
             try:
                 if isinstance(content, dict):
@@ -180,61 +183,55 @@ class A2AAgent(BaseAgent, abc.ABC):
                 else:
                     loaded = json.loads(content)
                 structured_response = ResponseFormat(**loaded)
-            except:
+            except Exception as e:
                 structured_response = ResponseFormat(status=self.completed, message=content, history=messages)
+
+        is_task_completed = structured_response.status == self.completed
+
+        if is_completed is not None:
+            is_task_completed = is_completed
 
         if structured_response and isinstance(structured_response, ResponseFormat):
             if structured_response.status == self.needs_input_string:
                 return AgentGraphResponse(**{
-                    "is_task_complete": False,
+                    "is_task_complete": is_task_completed,
                     "require_user_input": True,
                     "content": structured_response
                 })
             elif structured_response.status == self.has_error_string:
                 return AgentGraphResponse(**{
-                    "is_task_complete": False,
+                    "is_task_complete": is_task_completed,
                     "require_user_input": True,
                     "content": structured_response
                 })
             elif structured_response.status == self.completed:
                 return AgentGraphResponse(**{
-                    "is_task_complete": True,
+                    "is_task_complete": is_task_completed,
                     "require_user_input": False,
                     "content": structured_response
                 })
             elif structured_response.status == self.next_agent:
                 return AgentGraphResponse(**{
-                    "is_task_complete": False,
+                    "is_task_complete": is_task_completed,
                     "require_user_input": False,
                     "content": structured_response
                 })
 
         return AgentGraphResponse(**{
-            "is_task_complete": False,
+            "is_task_complete": is_task_completed,
             "require_user_input": True,
             "content": "We are unable to process your request at the moment. Please try again.",
         })
 
-    @staticmethod
-    async def stream_agent_response_graph(query, sessionId, graph) -> AsyncIterable[Dict[str, Any]]:
+    def stream_agent_response_graph(self, query, sessionId, graph: CompiledStateGraph):
         inputs = {"messages": [("user", query)]}
         config = {"configurable": {"thread_id": sessionId}}
 
         for item in graph.stream(inputs, config, stream_mode="values"):
-            message = item["messages"][-1]
-            if (
-                    isinstance(message, AIMessage)
-                    and message.tool_calls
-                    and len(message.tool_calls) > 0
-            ):
-                yield {
-                    "is_task_complete": False,
-                    "require_user_input": False,
-                    "content": "Looking up the exchange rates...",
-                }
-            elif isinstance(message, ToolMessage):
-                yield {
-                    "is_task_complete": False,
-                    "require_user_input": False,
-                    "content": "Processing the exchange rates..",
-                }
+            if 'messages' in item.keys() and len(item['messages']) == 1 and item['messages'][0].content == query:
+                found =  self._do_get_res(item, False)
+                yield found
+            else:
+                res =  self._do_get_res(item)
+                yield res
+

@@ -1,0 +1,7 @@
+# Use a Python image with uv pre-installed
+FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim
+
+COPY ./ .
+
+# when running the container, add --db-path and a bind mount to the host's db file
+ENTRYPOINT ["uv", "run", "run-mcp-client"]

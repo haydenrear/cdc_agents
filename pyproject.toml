@@ -31,7 +31,8 @@ dependencies=[
     "python_di",
     "python_util",
     "aisuite",
-    "drools_py"
+    "drools_py",
+    "mcp>=1.0.0"
 ]
 
 requires-python = ">=3.10"
@@ -49,6 +50,7 @@ build-backend = "hatchling.build"
 [project.scripts]
 run-cdc-agents = "cdc_agents.main.run_cdc_agents:CdcAgentsApplication"
 test-cdc-agents = "cdc_agents.test.run_cdc_agents:main"
+run-mcp-client = "cdc_agents.mcp_client.cdc_agents_mcp:main"
 
 [tool.setuptools]
 packages = ["cdc_agents"]

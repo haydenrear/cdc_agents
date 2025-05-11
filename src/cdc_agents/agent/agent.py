@@ -200,8 +200,8 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         #         TODO: self.get_agent_response_graph(invoked)
         return self.get_agent_response(config)
 
-    async def stream(self, query, session_id, graph=None) -> AsyncIterable[Dict[str, Any]]:
-        return self.stream_agent_response_graph(query, session_id, self.graph)
+    def stream(self, query, session_id, graph=None):
+        yield from self.stream_agent_response_graph(query, session_id, self.graph)
 
     def get_agent_response(self, config, graph=None):
         return self.get_agent_response_graph(config, self.graph)

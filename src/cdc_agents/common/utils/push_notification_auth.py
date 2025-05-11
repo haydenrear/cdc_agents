@@ -37,11 +37,11 @@ class PushNotificationSenderAuth(PushNotificationAuth):
         self.private_key_jwk: PyJWK = None
 
     @staticmethod
-    async def verify_push_notification_url(url: str) -> bool:
-        async with httpx.AsyncClient(timeout=10) as client:
+    def verify_push_notification_url(url: str) -> bool:
+        with httpx.AsyncClient(timeout=10) as client:
             try:
                 validation_token = str(uuid.uuid4())
-                response = await client.get(
+                response = client.get(
                     url,
                     params={"validationToken": validation_token}
                 )
@@ -103,10 +103,10 @@ class PushNotificationReceiverAuth(PushNotificationAuth):
         self.public_keys_jwks = []
         self.jwks_client = None
 
-    async def load_jwks(self, jwks_url: str):
+    def load_jwks(self, jwks_url: str):
         self.jwks_client = PyJWKClient(jwks_url)
     
-    async def verify_push_notification(self, request: Request) -> bool:
+    def verify_push_notification(self, request: Request) -> bool:
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith(AUTH_HEADER_PREFIX):
             print("Invalid authorization header")
@@ -122,7 +122,7 @@ class PushNotificationReceiverAuth(PushNotificationAuth):
             algorithms=["RS256"],
         )
 
-        actual_body_sha256 = self._calculate_request_body_sha256(await request.json())
+        actual_body_sha256 = self._calculate_request_body_sha256(request.json())
         if actual_body_sha256 != decode_token["request_body_sha256"]:
             # Payload signature does not match the digest in signed token.
             raise ValueError("Invalid request body")

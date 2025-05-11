@@ -1,4 +1,6 @@
 import logging
+from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
+import threading
 import traceback
 from typing import AsyncIterable
 from typing import Union
@@ -43,81 +45,88 @@ class AgentTaskManager(InMemoryTaskManager):
         self.agent = agent
         self.notification_sender_auth = notification_sender_auth
 
-    async def _run_streaming_agent(self, request: SendTaskStreamingRequest):
-        await self.insert_lock(request.id)
+    def _run_streaming_agent(self, request: SendTaskStreamingRequest):
+        self.insert_lock(request.params.id)
 
         task_send_params: TaskSendParams = request.params
         query = self.get_user_query(task_send_params)
 
         try:
-            await self._do_agent_stream(query, task_send_params.sessionId)
+            threading.Thread(target=lambda: self._do_agent_stream(query, task_send_params.sessionId)).start()
         except Exception as e:
             logger.error(f"An error occurred while streaming the response: {e}")
-            await self.enqueue_events_for_sse(
+            self.enqueue_events_for_sse(
                 task_send_params.id,
                 InternalError(message=f"An error occurred while streaming the response: {e}"))
 
-    async def _do_agent_stream(self, query, session_id):
-        async for item in self.agent.stream(query, session_id):
-            is_task_complete = item["is_task_complete"]
-            require_user_input = item["require_user_input"]
+    def _do_agent_stream(self, query, session_id):
+        for item in self.agent.stream(query, session_id):
+            item: AgentGraphResponse = item
+            is_task_complete = item.is_task_complete
+            require_user_input = item.require_user_input
             artifact = None
             message = None
-            parts = [{"type": "text", "text": item["content"]}]
-            end_stream = False
-            restart_stream = False
+            parts = [{"type": "text", "text": item.content.message}]
+            do_end_stream = False
+            do_restart_stream = False
 
             if not is_task_complete and not require_user_input:
-                async with self.task_locks[session_id]:
+                with self.task_locks[session_id]:
                     task_state = TaskState.WORKING
                     message = Message(role="agent", parts=parts)
-                    await self._apply_task_enqueue(artifact, end_stream, message, session_id, task_state)
+                    self._apply_task_enqueue(artifact, do_end_stream, message, session_id, task_state)
             elif require_user_input:
-                async with self.task_locks[session_id]:
+                with self.task_locks[session_id]:
                     task_state = TaskState.INPUT_REQUIRED
                     message = Message(role="agent", parts=parts)
-                    end_stream = True
-                    await self._apply_task_enqueue(artifact, end_stream, message, session_id, task_state)
+                    do_end_stream = True
+                    self._apply_task_enqueue(artifact, do_end_stream, message, session_id, task_state)
             else:
-                async with self.task_locks[session_id]:
+                with self.task_locks[session_id]:
                     task = self.task(session_id)
-                    if task.to_process and len(task.to_process) == 0:
+                    if self._no_more_to_process(task):
                         task_state = TaskState.COMPLETED
                         artifact = Artifact(parts=parts, index=0, append=False)
-                        end_stream = True
-                        await self._apply_task_enqueue(artifact, end_stream, message, session_id, task_state)
+                        do_end_stream = True
+                        self._apply_task_enqueue(artifact, do_end_stream, message, session_id, task_state)
                     else:
                         # If message was added after stream finished, then run stream until finished processing.
                         query = self.get_user_query_message(next(iter(task.to_process)))
-                        restart_stream = True
+                        do_restart_stream = True
 
-                if restart_stream:
+                if do_restart_stream:
                     LoggerFacade.info("Found task query added with send task after finished stream. "
                                       "Starting another agent stream.")
                     try:
-                        await self._do_agent_stream(query, session_id)
+                        self._do_agent_stream(query, session_id)
                     except Exception as e:
                         LoggerFacade.error(f"Error performing agent stream - could not load history concurrently: {e}. "
                                            f"Will not try again. {query} was missing message.")
+            if do_end_stream:
+                return
 
-    async def _apply_task_enqueue(self, artifact, end_stream, message, session_id, task_state):
+    def _no_more_to_process(self, task):
+        return not task.to_process or (task.to_process is not None and len(task.to_process) == 0)
+
+    def _apply_task_enqueue(self, artifact, end_stream, message, session_id, task_state):
         task_status = TaskStatus(state=task_state, message=message)
-        latest_task = await self.update_store(
+        latest_task = self.update_store(
             session_id,
             task_status,
-            None if artifact is None else [artifact], )
-        await self.send_task_notification(latest_task)
+            None if artifact is None else [artifact],
+            append_process=False)
+        self.send_task_notification(latest_task)
         if artifact:
             task_artifact_update_event = TaskArtifactUpdateEvent(
                 id=session_id, artifact=artifact
             )
-            await self.enqueue_events_for_sse(
+            self.enqueue_events_for_sse(
                 session_id, task_artifact_update_event
             )
         task_update_event = TaskStatusUpdateEvent(
             id=session_id, status=task_status, final=end_stream
         )
-        await self.enqueue_events_for_sse(
+        self.enqueue_events_for_sse(
             session_id, task_update_event)
 
     def _validate_request(
@@ -140,34 +149,34 @@ class AgentTaskManager(InMemoryTaskManager):
         
         return None
         
-    async def on_send_task(self, request: SendTaskRequest) -> SendTaskResponse:
+    def on_send_task(self, request: SendTaskRequest) -> SendTaskResponse:
         """Handles the 'send task' request."""
         validation_error = self._validate_request(request)
         if validation_error:
             return SendTaskResponse(id=request.id, error=validation_error.error)
         
         if request.params.pushNotification:
-            if not await self.set_push_notification_info(request.params.id, request.params.pushNotification):
+            if not self.set_push_notification_info(request.params.id, request.params.pushNotification):
                 return SendTaskResponse(id=request.id, error=InvalidParamsError(message="Push notification URL is invalid"))
 
-        await self.insert_lock(request.params)
+        self.insert_lock(request.params.id)
 
         task_send_params: TaskSendParams = request.params
         request_id = request.id
 
-        async with self.task_locks[request_id]:
-            prev_task = await self.upsert_task(task_send_params)
+        with self.task_locks[task_send_params.id]:
+            prev_task = self.upsert_task(task_send_params)
             if prev_task.status == TaskState.WORKING:
                 # Task already working - will catch the messages below
                 return SendTaskResponse(id=request_id, result=prev_task)
 
             # must update the store in the same lock here - otherwise it fails.
-            task = await self.update_store(task_send_params.id, TaskStatus(state=TaskState.WORKING))
+            task = self.update_store(task_send_params.id, TaskStatus(state=TaskState.WORKING), None)
 
-        await self.send_task_notification(task)
-        return await self._do_on_send_task(self.get_user_query(task_send_params), request_id, task_send_params)
+        self.send_task_notification(task)
+        return self._do_on_send_task(self.get_user_query(task_send_params), request_id, task_send_params)
 
-    async def _do_on_send_task(self, query, request_id, task_send_params: TaskSendParams):
+    def _do_on_send_task(self, query, request_id, task_send_params: TaskSendParams):
         try:
             agent_response = self.agent.invoke(query, task_send_params.sessionId)
         except Exception as e:
@@ -175,7 +184,7 @@ class AgentTaskManager(InMemoryTaskManager):
         try:
             # loop until stop receiving messages for this agent.
             has_more_work = False
-            async with self.task_locks[request_id]:
+            with self.task_locks[request_id]:
                 task = self.task(request_id)
                 if task and len(task.to_process)  != 0:
                     query = self.get_user_query_message(next(iter(task.to_process)))
@@ -183,18 +192,18 @@ class AgentTaskManager(InMemoryTaskManager):
 
             #  Perform this out of lock.
             if has_more_work:
-                return await self._do_on_send_task(query, request_id, task_send_params)
+                return self._do_on_send_task(query, request_id, task_send_params)
 
-            return await self._process_agent_response(request_id, task_send_params, agent_response)
+            return self._process_agent_response(request_id, task_send_params, agent_response)
         except Exception as e:
             if has_more_work:
                 LoggerFacade.error(f"Error processing additional query added concurrently: {e}. "
                                    f"Returning without last query: {query}")
-                return await self._process_agent_response(request_id, task_send_params, agent_response)
+                return self._process_agent_response(request_id, task_send_params, agent_response)
             raise ValueError(f"Error processing agent query: {e}")
 
 
-    async def on_send_task_subscribe(
+    def on_send_task_subscribe(
         self, request: SendTaskStreamingRequest
     ) -> AsyncIterable[SendTaskStreamingResponse] | JSONRPCResponse:
         try:
@@ -202,10 +211,10 @@ class AgentTaskManager(InMemoryTaskManager):
             if error:
                 return error
 
-            await self.insert_lock(request.params)
+            self.insert_lock(request.params.id)
 
-            async with self.task_locks[request.id]:
-                prev_task = await self.upsert_task(request.params)
+            with self.task_locks[request.params.id]:
+                prev_task = self.upsert_task(request.params)
                 if prev_task is not None and prev_task.status.state == TaskState.WORKING:
                     return JSONRPCResponse(
                         id=request.id,
@@ -213,18 +222,18 @@ class AgentTaskManager(InMemoryTaskManager):
                             message="Cannot stream task that has already started. "
                                     "Must send a task message or wait until task is completed."))
                 # must update the store in the same lock here - otherwise it fails.
-                prev_task = await self.update_store(
-                    request.params.id, TaskStatus(state=TaskState.WORKING))
+                prev_task = self.update_store(
+                    request.params.id, TaskStatus(state=TaskState.WORKING),None)
 
 
             if request.params.pushNotification:
-                if not await self.set_push_notification_info(request.params.id, request.params.pushNotification):
+                if not self.set_push_notification_info(request.params.id, request.params.pushNotification):
                     return JSONRPCResponse(id=request.id, error=InvalidParamsError(message="Push notification URL is invalid"))
 
             task_send_params: TaskSendParams = request.params
-            sse_event_queue = await self.setup_sse_consumer(task_send_params.id, False)            
+            sse_event_queue = self.setup_sse_consumer(task_send_params.id, False)
 
-            asyncio.create_task(self._run_streaming_agent(request))
+            self._run_streaming_agent(request)
 
             return self.dequeue_events_for_sse(
                 request.id, task_send_params.id, sse_event_queue)
@@ -237,8 +246,8 @@ class AgentTaskManager(InMemoryTaskManager):
                     message="An error occurred while streaming the response"
                 ))
 
-    async def _process_agent_response(
-        self, request_id, request_params: TaskSendParams, agent_response: dict
+    def _process_agent_response(
+        self, request_id, request_params: TaskSendParams, agent_response: AgentGraphResponse
     ) -> SendTaskResponse:
         """Processes the agent's response and updates the task store."""
         task_send_params: TaskSendParams = request_params
@@ -246,41 +255,41 @@ class AgentTaskManager(InMemoryTaskManager):
         history_length = task_send_params.historyLength
         task_status = None
 
-        parts = [{"type": "text", "text": agent_response["content"]}]
+        parts = [{"type": "text", "text": agent_response.content.message}]
         artifact = None
-        if agent_response["require_user_input"]:
+        if agent_response.require_user_input:
             task_status = TaskStatus(
                 state=TaskState.INPUT_REQUIRED,
                 message=Message(role="agent", parts=parts),
             )
         else:
-            task_status = TaskStatus(state=TaskState.COMPLETED)
+            task_status = TaskStatus(state=TaskState.COMPLETED, message=Message(role="agent", parts=parts))
             artifact = Artifact(parts=parts)
-        task = await self.update_store(
+        task = self.update_store(
             task_id, task_status, None if artifact is None else [artifact]
         )
         task_result = self.append_task_history(task, history_length)
-        await self.send_task_notification(task)
+        self.send_task_notification(task)
         return SendTaskResponse(id=request_id, result=task_result)
 
-    async def send_task_notification(self, task: Task):
-        if not await self.has_push_notification_info(task.id):
+    def send_task_notification(self, task: Task):
+        if not self.has_push_notification_info(task.id):
             logger.info(f"No push notification info found for task {task.id}")
             return
-        push_info = await self.get_push_notification_info(task.id)
+        push_info = self.get_push_notification_info(task.id)
 
         logger.info(f"Notifying for task {task.id} => {task.status.state}")
-        await self.notification_sender_auth.send_push_notification(
+        self.notification_sender_auth.send_push_notification(
             push_info.url,
             data=task.model_dump(exclude_none=True)
         )
 
-    async def on_resubscribe_to_task(
+    def on_resubscribe_to_task(
         self, request
     ) -> AsyncIterable[SendTaskStreamingResponse] | JSONRPCResponse:
         task_id_params: TaskIdParams = request.params
         try:
-            sse_event_queue = await self.setup_sse_consumer(task_id_params.id, True)
+            sse_event_queue = self.setup_sse_consumer(task_id_params.id, True)
             return self.dequeue_events_for_sse(request.id, task_id_params.id, sse_event_queue)
         except Exception as e:
             logger.error(f"Error while reconnecting to SSE stream: {e}")
@@ -291,11 +300,11 @@ class AgentTaskManager(InMemoryTaskManager):
                 ),
             )
     
-    async def set_push_notification_info(self, task_id: str, push_notification_config: PushNotificationConfig):
+    def set_push_notification_info(self, task_id: str, push_notification_config: PushNotificationConfig):
         # Verify the ownership of notification URL by issuing a challenge request.
-        is_verified = await self.notification_sender_auth.verify_push_notification_url(push_notification_config.url)
+        is_verified = self.notification_sender_auth.verify_push_notification_url(push_notification_config.url)
         if not is_verified:
             return False
         
-        await super().set_push_notification_info(task_id, push_notification_config)
+        super().set_push_notification_info(task_id, push_notification_config)
         return True

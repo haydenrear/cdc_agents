@@ -12,24 +12,6 @@ from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from langchain_core.tools import tool
 
-@tool
-def perform_local_file_operation():
-    """
-    """
-    pass
-
-@tool
-def perform_git_operation():
-    """
-    """
-    pass
-
-@tool
-def perform_browser_operation():
-    """
-    """
-    pass
-
 
 # @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 # @injectable()
@@ -46,9 +28,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     # @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
-        A2AReactAgent.__init__(self,agent_config,
-                          [perform_git_operation, perform_browser_operation, perform_local_file_operation],
-                          self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
+        A2AReactAgent.__init__(self,agent_config,[], self.SYSTEM_INSTRUCTION,
+                               memory_saver, model_provider)
 
     @property
     def orchestrator_prompt(self):

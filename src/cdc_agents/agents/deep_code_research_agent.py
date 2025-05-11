@@ -117,7 +117,7 @@ class DeepCodeAgent(OrchestratorAgent):
 
         return self.get_agent_response(config)
 
-    async def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
+    def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
         return self.stream_agent_response_graph(query, sessionId, self.graph)
 
     def get_agent_response(self, config, graph=None):

@@ -13,6 +13,7 @@ from langchain_core.runnables.config import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool, tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.prebuilt import create_react_agent
 
 from cdc_agents.agent.a2a import A2AAgent
 from cdc_agents.agent.agent import A2AReactAgent
@@ -46,10 +47,19 @@ def create_mock_model(model: ModelServerModel, responses: List[str]) -> ModelSer
     mock_model.executor = mock_executor
     return mock_model
 
+def get_query(query) :
+    if isinstance(query, str):
+        query = {"messages": [("user", query)]}
+    return query
+
 class TestStreamingAgent(A2AReactAgent):
     """Agent for testing streaming responses"""
     SUPPORTED_CONTENT_TYPES = ["text"]
     _agent_name = "TestStreamingAgent"
+    
+    @property
+    def supported_content_types(self) -> list[str]:
+        return self.SUPPORTED_CONTENT_TYPES
     
     @staticmethod
     def get_mock_responses():
@@ -65,6 +75,10 @@ class VideoStreamingAgent(A2AReactAgent):
     SUPPORTED_CONTENT_TYPES = ["text", "video"]
     _agent_name = "VideoStreamingAgent"
     
+    @property
+    def supported_content_types(self) -> list[str]:
+        return self.SUPPORTED_CONTENT_TYPES
+    
     @staticmethod
     def get_mock_responses():
         """Default mock responses for video streaming"""
@@ -78,11 +92,16 @@ class VideoStreamingAgent(A2AReactAgent):
 class TestA2AAgent(A2AReactAgent):
     """Test React Agent with tracking of invocations"""
     did_call = False
+    _agent_name = "TestA2AAgent"
     SUPPORTED_CONTENT_TYPES = ["text"]
+    
+    @property
+    def supported_content_types(self) -> list[str]:
+        return self.SUPPORTED_CONTENT_TYPES
     
     def invoke(self, query, sessionId) -> Dict[str, Any]:
         TestA2AAgent.did_call = True
-        return super().invoke(query, sessionId)
+        return super().invoke(get_query(query), sessionId)
     
     @staticmethod
     def reset_tracking():
@@ -94,6 +113,10 @@ class TestOrchestratorAgent(OrchestratorAgent):
     did_call = False
     _agent_name = "TestOrchestratorAgent"
     SUPPORTED_CONTENT_TYPES = ["text"]
+    
+    @property
+    def supported_content_types(self) -> list[str]:
+        return self.SUPPORTED_CONTENT_TYPES
     
     def invoke(self, query, sessionId) -> Dict[str, Any]:
         TestOrchestratorAgent.did_call = True
@@ -121,6 +144,7 @@ def create_test_agent_task_manager(
                             memory, model_provider, mock_model)
     
     # Create notification auth
+    # Create a real task manager with our test agent
     notification_auth = PushNotificationSenderAuth()
     notification_auth.generate_jwk()
     mock_push_notification_auth(notification_auth)
@@ -129,8 +153,12 @@ def create_test_agent_task_manager(
     task_manager = AgentTaskManager(test_agent, notification_auth)
     test_agent.set_task_manager(task_manager)
     
-    # Build the agent's graph
-    test_agent.graph = test_agent.graph
+    # Build the agent's graph if needed
+    if not hasattr(test_agent, 'graph') or test_agent.graph is None:
+        test_agent.graph = create_react_agent(
+            test_agent.model, tools=test_agent.tools, checkpointer=memory,
+            prompt=test_agent.system_instruction
+        )
     
     return test_agent, task_manager
 

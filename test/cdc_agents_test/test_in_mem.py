@@ -7,7 +7,7 @@ from cdc_agents.common.server import InMemoryTaskManager
 class TestInMem(unittest.IsolatedAsyncioTestCase):
     async def test_something(self):
         t = AgentTaskManager(None, None)
-        async with t.lock:
+        with t.lock:
             print("hello!")
 
 
