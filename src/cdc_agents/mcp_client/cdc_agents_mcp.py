@@ -579,7 +579,7 @@ class CdcMcpAgents:
         return capabilities
 
     async def start_server(self):
-        """Start the MCP server"""
+        """Start the MCP server - Expose agents as tools themselves for easy integration"""
         self.logger.info("Starting MCP server for CDC agents")
         
         options = self.server.create_initialization_options()
