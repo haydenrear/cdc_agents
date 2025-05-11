@@ -13,7 +13,10 @@ def main():
     runner = unittest.TextTestRunner()
     tr = runner.run(suite)
 
+    if len(tr.errors) != 0:
+        LoggerFacade.to_ctx(f"I ran the tests and still found some errors.\n")
+        LoggerFacade.to_ctx(f"We have found {len(tr.errors)} errors.\n")
     for e in tr.errors:
-        LoggerFacade.to_ctx(f'{e}')
+        LoggerFacade.to_ctx(f'Here is another error: {e}\n')
 
     LoggerFacade.info(f'RAN TESTS: {tr}')

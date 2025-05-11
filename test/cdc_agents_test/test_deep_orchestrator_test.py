@@ -5,9 +5,12 @@ import logging
 import typing
 import unittest
 import unittest.mock
-import unittest.mock
 import uuid
 from typing import Any
+
+from cdc_agents_test.fixtures.agent_fixtures import (
+    create_test_orchestrator, TestA2AAgent, TestOrchestratorAgent
+)
 
 from langchain_core.callbacks import Callbacks
 from langchain_core.messages import ToolMessage, HumanMessage
@@ -64,149 +67,77 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         ModelServerModelTest.model_provider = model_provider
 
     def test_model_server_model(self):
-
-        # TODO: could potentially bootstrap smaller agents with thoughts of larger agents using multishot
-        #  Question, Thought, Question, Thought
-        template = '''Answer the following questions as best you can
-            Use the following format:
-
-            Question: the input question you must answer
-            Thought: you should always think about what to do
-            Action: the action to take, should be one of [{tool_names}]
-            Action Input: the input to the action
-            Observation: the result of the action
-            ... (this Thought/Action/Action Input/Observation can repeat N times)
-            Thought: I now know the final answer
-            Final Answer: the final answer to the original input question
-
-            Begin!
-
-            Question: {input}
-            Thought:{agent_scratchpad}'''
-
-
-        @tool
-        def call_a_friend_in() -> str:
-            """Call a human in the loop to validate we're moving the correct direction.
-
-            Args:
-
-            Returns:
-                 str: called friend
-
+        # Set up expected responses for orchestrator and inner agent
+        orchestrator_responses = [
             """
-            return "hello..."
-
-        model = self._mock_executor_call()
-
-        class TestAgent(A2AReactAgent) :
-
-            did_call = False
-
-            def invoke(self, query, sessionId) -> str:
-                TestAgent.did_call = True
-                return A2AReactAgent.invoke(self, query, sessionId)
-
-        class TestOrchestratorAgent(OrchestratorAgent):
-
-            did_call = False
-
-            def invoke(self, query, sessionId) -> str:
-                TestOrchestratorAgent.did_call = True
-                invoked_value =  A2AReactAgent.invoke(self, query, sessionId)
-                return invoked_value
-
-
-        server = copy.copy(self.server)
-        server.agents = copy.copy(server.agents)
-        server.agents.clear()
-
-        in_ = [call_a_friend_in]
-        server.orchestrator_agent = TestOrchestratorAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model)
-        server.orchestrator_agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
-        task_manager = AgentTaskManager(server.orchestrator_agent, None)
-        server.orchestrator_agent.set_task_manager(task_manager)
-
-        server.agents['TestAgent'] = OrchestratedAgent(TestAgent(self.ai_suite, in_, "test", self.memory, self.model_provider, model))
-        server.agents['TestAgent'].agent.add_mcp_tools(self.ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
-        task_manager = AgentTaskManager(server.agents['TestAgent'].agent, None)
-        server.agents['TestAgent'].agent.set_task_manager(task_manager)
-
-        server.graph = server._build_graph()
-
-        task_manager = AgentTaskManager(server, None)
-        server.set_task_manager(task_manager)
-
-        graph_response = server.invoke("hello", "test")
-
-        invoked = graph_response.content.history
-
-        assert len(invoked) != 0
-        assert any([isinstance(i, ToolMessage) and i.status == 'success' for i in invoked])
-        assert any([i.content[-1] == 'okay' for i in invoked if isinstance(i, HumanMessage)])
-        assert any([i.content == 'hello...' for i in invoked if isinstance(i, ToolMessage)])
-        assert any([i.content[-1] == 'status: completed\nhello!' for i in invoked if isinstance(i, HumanMessage)])
-        assert graph_response.is_task_complete
-
-        assert invoked[-1].content[-1] == 'status: completed\nhello!'
-
-        assert TestOrchestratorAgent.did_call
-        assert TestAgent.did_call
-
-        TestOrchestratorAgent.did_call = False
-        TestAgent.did_call = False
-
-        invoked_second = server.invoke("hello", "test").content.history
-        assert TestOrchestratorAgent.did_call
-        assert TestAgent.did_call
-        assert len(invoked_second) > len(invoked)
-        TestOrchestratorAgent.did_call = False
-        TestAgent.did_call = False
-        invoked_third = server.invoke("hello", "whatever").content.history
-        assert TestOrchestratorAgent.did_call
-        assert TestAgent.did_call
-        assert len(invoked_third) <= len(invoked)
-
-    def _mock_executor_call(self):
-        class Executor:
-            def call(self, model_server_input: ModelServerInput, tools: typing.Optional[
-                typing.Sequence[typing.Union[typing.Dict[str, Any], type, typing.Callable, BaseTool]]] = None, *args,
-                     **kwargs) -> typing.Union[ChatCompletionResponse, str]:
-                pass
-
-            def get_config_props(self) -> ModelServerConfigProps:
-                pass
-
-        mock = unittest.mock.MagicMock()
-        mock.side_effect = [
-            """
-            Action: call_a_friend_in
+            Action: test_tool
             Action Input: 
             """,
             """
             Action: query
             Action Input: { "sql": "SELECT * FROM commit_diff" }
             """,
-            "status: next_agent\nTestAgent",
+            "status: next_agent\nTestA2AAgent",
             "okay",
             "status: completed\nhello!",
             """
-            Action: call_a_friend_in
+            Action: test_tool
             Action Input: 
             """,
-            "status: next_agent\nTestAgent",
+            "status: next_agent\nTestA2AAgent",
             "okay",
             "status: completed\nhello!",
             """
-            Action: call_a_friend_in
+            Action: test_tool
             Action Input: 
             """,
-            "status: next_agent\nTestAgent",
+            "status: next_agent\nTestA2AAgent",
             "okay",
             "status: completed\nhello!"
         ]
-        model = copy.copy(self.model)
-        model.executor = Executor()
-        model.executor.call = mock
-        return model
+        
+        # Create a test orchestrator setup with our fixtures
+        orchestrator, task_manager = create_test_orchestrator(
+            self.ai_suite,
+            self.memory,
+            self.model_provider,
+            self.model,
+            orchestrator_responses,
+            self.server
+        )
+        
+        # Invoke the orchestrator
+        graph_response = orchestrator.invoke("hello", "test")
+        
+        # Check the results
+        invoked = graph_response.content.history
+        
+        assert len(invoked) != 0
+        assert any([isinstance(i, ToolMessage) and i.status == 'success' for i in invoked])
+        assert any([i.content[-1] == 'okay' for i in invoked if isinstance(i, HumanMessage)])
+        assert any([i.content == 'hello...' for i in invoked if isinstance(i, ToolMessage)])
+        assert any([i.content[-1] == 'status: completed\nhello!' for i in invoked if isinstance(i, HumanMessage)])
+        assert graph_response.is_task_complete
+        
+        assert invoked[-1].content[-1] == 'status: completed\nhello!'
+        
+        assert TestOrchestratorAgent.did_call
+        assert TestA2AAgent.did_call
+        
+        TestOrchestratorAgent.reset_tracking()
+        TestA2AAgent.reset_tracking()
+        
+        invoked_second = orchestrator.invoke("hello", "test").content.history
+        assert TestOrchestratorAgent.did_call
+        assert TestA2AAgent.did_call
+        assert len(invoked_second) > len(invoked)
+        
+        TestOrchestratorAgent.reset_tracking()
+        TestA2AAgent.reset_tracking()
+        
+        invoked_third = orchestrator.invoke("hello", "whatever").content.history
+        assert TestOrchestratorAgent.did_call
+        assert TestA2AAgent.did_call
+        assert len(invoked_third) <= len(invoked)
+
 
