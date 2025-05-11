@@ -31,11 +31,7 @@ from starlette.applications import Starlette
                               DeepCodeOrchestrator, ModelProvider, AgentServerRunner])
 class AgentConfig:
 
-    @bean(profile='test', scope=profile_scope, bindings=[Starlette])
-    def starlette_test(self) -> Starlette:
-        return unittest.mock.MagicMock(return_value='hello!')
-
-    @bean(profile='main_profile', scope=profile_scope, bindings=[Starlette])
+    @bean(profile=['main_profile', 'test'], scope=profile_scope, bindings=[Starlette])
     def starlette_main(self) -> Starlette:
         return Starlette()
 

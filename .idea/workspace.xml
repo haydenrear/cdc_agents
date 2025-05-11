@@ -4,11 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="do wait for human input">
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/agent_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/agent_server.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cdc_agents/config/agent_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/config/agent_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/cdc_agents_test/test_a2a_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents_test/test_a2a_server.py" afterDir="false" />
+    <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="update for inject special mocks">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,7 +60,7 @@
     "Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_model_server_model.executor": "Run",
     "Python tests.Python tests for cdc_agents.test_model_server_model.ModelServerModelTest.test_with_react_agent.executor": "Run",
     "Python tests.Python tests for cdc_agents_test.test_a2a_agent_response_graph.TestA2AResponse.test_a2a_response.executor": "Run",
-    "Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest.test_inject.executor": "Debug",
+    "Python tests.Python tests for cdc_agents_test.test_a2a_server.A2AServerTest.test_inject.executor": "Run",
     "Python tests.Python tests for cdc_agents_test.test_in_mem.TestInMem.test_something.executor": "Run",
     "Python tests.Python tests for cdc_agents_test.test_memory.MemTest.test_mem.executor": "Run",
     "Python tests.Python tests for test_cdc_agent_test.TestCdcAgentStartTest.DoTestImportsWork.test_imports_work.executor": "Run",
@@ -81,7 +78,7 @@
     "Python tests.Python tests in test_cdc_agent_test.executor": "Run",
     "Python tests.Python tests in test_model_server_model.py.executor": "Run",
     "Python tests.Python tests individual.executor": "Run",
-    "Python tests.Python tests.executor": "Run",
+    "Python tests.Python tests.executor": "Debug",
     "Python.cdc_agents_main.executor": "Run",
     "Python.cdc_server_agent.executor": "Run",
     "Python.model_server_main.executor": "Run",
@@ -90,7 +87,7 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/hayde/IdeaProjects/drools/cdc_agents/src/cdc_agents/config",
+    "last_opened_file_path": "/Users/hayde/IdeaProjects/drools/cdc_agents",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -111,11 +108,11 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src/cdc_agents/config" />
       <recent name="$PROJECT_DIR$/src/cdc_agents/main" />
       <recent name="$PROJECT_DIR$/src/cdc_agents" />
       <recent name="$PROJECT_DIR$/src/cdc_agents/agents" />
-      <recent name="$PROJECT_DIR$/test/cdc_agents" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/cdc_agents/common/client" />
@@ -124,7 +121,7 @@
       <recent name="$PROJECT_DIR$/src/cdc_agents" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.Python tests">
+  <component name="RunManager" selected="uv.Project script: test-cdc-agents">
     <configuration name="Python tests for cdc_agents_test.test_a2a_agent_response_graph.TestA2AResponse.test_a2a_response" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
       <module name="cdc_agents" />
       <option name="ENV_FILES" value="" />
@@ -271,23 +268,7 @@
       <workItem from="1746649788991" duration="4013000" />
       <workItem from="1746654636096" duration="24330000" />
       <workItem from="1746750063379" duration="150000" />
-      <workItem from="1746750219837" duration="24066000" />
-    </task>
-    <task id="LOCAL-00027" summary="model output parser decoupled for extensibility">
-      <option name="closed" value="true" />
-      <created>1746381697807</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1746381697807</updated>
-    </task>
-    <task id="LOCAL-00028" summary="model output parser decoupled for extensibility">
-      <option name="closed" value="true" />
-      <created>1746381784698</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1746381784698</updated>
+      <workItem from="1746750219837" duration="39584000" />
     </task>
     <task id="LOCAL-00029" summary="model output parser decoupled for extensibility">
       <option name="closed" value="true" />
@@ -665,7 +646,23 @@
       <option name="project" value="LOCAL" />
       <updated>1746823916775</updated>
     </task>
-    <option name="localTasksCounter" value="76" />
+    <task id="LOCAL-00076" summary="update for inject special mocks">
+      <option name="closed" value="true" />
+      <created>1746918161530</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1746918161530</updated>
+    </task>
+    <task id="LOCAL-00077" summary="update for inject special mocks">
+      <option name="closed" value="true" />
+      <created>1746918186687</created>
+      <option name="number" value="00077" />
+      <option name="presentableId" value="LOCAL-00077" />
+      <option name="project" value="LOCAL" />
+      <updated>1746918186687</updated>
+    </task>
+    <option name="localTasksCounter" value="78" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -703,7 +700,8 @@
     <MESSAGE value="updating for parsing status" />
     <MESSAGE value="updating for parsing status and completion" />
     <MESSAGE value="do wait for human input" />
-    <option name="LAST_COMMIT_MESSAGE" value="do wait for human input" />
+    <MESSAGE value="update for inject special mocks" />
+    <option name="LAST_COMMIT_MESSAGE" value="update for inject special mocks" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -724,6 +722,29 @@
           <line>143</line>
           <option name="timeStamp" value="193" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/python_di/inject/prioritized_injectors.py</url>
+          <line>155</line>
+          <option name="timeStamp" value="249" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="'Starlette' in str(key)" language="Python" />
+          <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/scopes/composite_scope.py</url>
+          <line>39</line>
+          <option name="timeStamp" value="277" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="'Starlette' in str(key)" language="Python" />
+          <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/scopes/composite_scope.py</url>
+          <line>37</line>
+          <option name="timeStamp" value="278" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="'Starlette' in str(key)" language="Python" />
+          <url>file://$PROJECT_DIR$/python_di/inject/profile_composite_injector/scopes/composite_scope.py</url>
+          <line>28</line>
+          <option name="timeStamp" value="279" />
+        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -733,11 +754,16 @@
         </breakpoint>
       </default-breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="tests">
+        <watch expression="profiles_from_composite[2]" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_server_agent.coverage" NAME="cdc_server_agent Coverage Results" MODIFIED="1746052330345" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/agents" />
     <SUITE FILE_PATH="coverage/cdc_agents$cdc_agents_main.coverage" NAME="cdc_agents_main Coverage Results" MODIFIED="1746631228886" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
-    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746918068629" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/cdc_agents$.coverage" NAME=" Coverage Results" MODIFIED="1746987125716" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/cdc_agents$model_server_main.coverage" NAME="model_server_main Coverage Results" MODIFIED="1745763793159" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/cdc_agents/main" />
   </component>
 </project>

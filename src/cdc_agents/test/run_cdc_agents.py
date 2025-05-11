@@ -12,4 +12,8 @@ def main():
     suite = unittest.defaultTestLoader.discover(test_dir)
     runner = unittest.TextTestRunner()
     tr = runner.run(suite)
+
+    for e in tr.errors:
+        LoggerFacade.to_ctx(f'{e}')
+
     LoggerFacade.info(f'RAN TESTS: {tr}')

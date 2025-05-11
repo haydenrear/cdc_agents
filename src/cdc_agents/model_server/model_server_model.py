@@ -213,7 +213,7 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
         """
         if self.bound_tools is not None:
             if tools != self.bound_tools:
-                LoggerFacade.error(f"Attempted to rebind tools for {self}")
+                LoggerFacade.debug(f"Attempted to rebind tools for {self}")
 
         self.bound_tools = tools
         self.tool_choice = tool_choice
