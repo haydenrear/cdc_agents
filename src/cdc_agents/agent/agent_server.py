@@ -71,25 +71,13 @@ class AgentServerRunner:
             agent_card = a.agent_card
 
             if name not in self.agents.keys():
-                try:
-                    LoggerFacade.warn(
-                        f"Could not find agent {name} in injected. Looks like it's not being injected. Attempting to create it using reflection.")
-                    agent: typing.Type[A2AAgent] = typing.cast(importlib.import_module(a.agent_clazz),
-                                                               typing.Type[A2AAgent])
-                    model = self.model_server_provider.retrieve_model(a)
-                    self.agents[name] = DiscoverableAgent(
-                        agent(model, [importlib.import_module(t) for t in a.tools],
-                              a.agent_descriptor.system_instruction, self.memory, []),
-                        agent_card)
-                    # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
-                except Exception as e:
-                    LoggerFacade.error(f"Error resolving agent: {e}. Skipping the agent.")
-                    continue
+                raise ValueError("Could not find agents.")
 
             # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
 
             task_manager = AgentTaskManager(agent=self.agents[name].agent, notification_sender_auth=notification_sender_auth)
             self.agents[name].agent.set_task_manager(task_manager)
+            self.agents[name].agent.system_instruction = a.agent_descriptor.system_instruction
             A2AServer(
                 agent_card=agent_card,
                 task_manager=task_manager,

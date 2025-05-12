@@ -346,6 +346,9 @@ class AgentDescriptor(BaseModel):
     agent_name: str
     system_instruction: str = None
     tools: typing.List[str] = None
+    orchestrator_instruction: str = None
+    orchestration_instruction: str = None
+    orchestration_message: str = None
 
 AgentCardForward = typing.ForwardRef("AgentCard")
 

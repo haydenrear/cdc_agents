@@ -1,5 +1,0 @@
-def a():
-  yield from b
-
-def c():
-  yield    from     d

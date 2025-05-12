@@ -2,5 +2,9 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../drools_py" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../python_di" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../python_util" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../../ml/integrations/aisuite" vcs="Git" />
   </component>
 </project>

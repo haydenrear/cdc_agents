@@ -209,11 +209,10 @@ class CdcMcpAgents:
             if isinstance(res, JSONRPCResponse):
                 return [TextContent(type="test", text=PushEvent(eventName="", data={}))]
 
-            server_push = []
+            server_response = []
 
             try:
-                # TODO: SSE push
-                server_push.append(
+                server_response.append(
                     TextContent(
                         type="text",
                         text=json.dumps(PushEvent(
@@ -233,24 +232,24 @@ class CdcMcpAgents:
                     if manager:
                         task = manager.task(task_id)
                         if task.status.state == TaskState.CANCELLED:
-                            _push_cancelled_task(agent_tool, server_push, task_id)
+                            _push_cancelled_task(agent_tool, server_response, task_id)
                             break
 
                     parts = chunk.result.status.message.parts
                     for p in parts:
                         if not isinstance(p, TextPart):
-                            _push_task_error(agent_tool, f"Could not push part of type: {p.type}", server_push, task_id)
+                            _push_task_error(agent_tool, f"Could not push part of type: {p.type}", server_response, task_id)
                         else:
-                            _push_response(agent_tool, p.text, server_push, task_id)
+                            _push_response(agent_tool, p.text, server_response, task_id)
 
 
-                return server_push
+                return server_response
 
             except asyncio.CancelledError:
-                return await _do_handle_call_tool_cancelled(agent_tool, manager, server_push, task_id)
+                return await _do_handle_call_tool_cancelled(agent_tool, manager, server_response, task_id)
 
             except Exception as e:
-                return await _do_handle_call_tool_exception(agent_tool, e, manager, server_push, task_id)
+                return await _do_handle_call_tool_exception(agent_tool, e, manager, server_response, task_id)
 
         async def _do_handle_call_tool_exception(agent_tool, e, manager, server_push, task_id):
             # Handle errors

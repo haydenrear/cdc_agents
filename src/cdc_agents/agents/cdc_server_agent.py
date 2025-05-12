@@ -56,9 +56,9 @@ class GitRepoResult:
     serverSessionKey: ServerSessionKey
 
 @tool
-def perform_git_actions(actions_to_perform: typing.List[str] | str | typing.List[GitAction],
-                        git_repo_url: str, git_branch: str,
-                        perform_ops_async: bool) -> GitRepoResult:
+def perform_commit_diff_context_git_actions(actions_to_perform: typing.List[str] | str | typing.List[GitAction],
+                                            git_repo_url: str, git_branch: str,
+                                            perform_ops_async: bool) -> GitRepoResult:
     """Use this to embed a git repository for code context.
 
     Args:
@@ -66,12 +66,12 @@ def perform_git_actions(actions_to_perform: typing.List[str] | str | typing.List
         git_branch: the branch of the repository to embed.
         actions_to_perform: a list of actions to perform.
             Options are:
-             - 'ADD_BRANCH': add a single branch for a repository
-             - 'REMOVE_BRANCH': remove a single branch
-             - 'REMOVE_REPO': remove the repository
+             - 'ADD_BRANCH': add a single branch for a repository to the commit diff vector database
+             - 'REMOVE_BRANCH': remove a single branch from the commit diff vector database
+             - 'REMOVE_REPO': remove the repository from the commit diff vector database
              - 'PARSE_BLAME_TREE': add additional embeddings based on parsing the git blame tree
-             - 'SET_EMBEDDINGS': add the commit diff embeddings to the database
-             - 'ADD_REPO': add an entire repository
+             - 'SET_EMBEDDINGS': set commit diff embeddings to the database
+             - 'ADD_REPO': add an entire repository for the commit diff vector database
         perform_ops_async: whether to return immediately or wait until all operations are completed
     Returns: a result object containing information about the operations completed
     """
@@ -93,8 +93,7 @@ class CommitDiffFileResult:
     files: typing.List
 
 @tool
-def retrieve_commit_diff_code_context(git_repos: typing.List[GitRepo],
-                                      query: str) -> CommitDiffFileResult:
+def retrieve_commit_diff_code_context(git_repos: typing.List[GitRepo], query: str) -> CommitDiffFileResult:
     """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts.
 
     Args:
@@ -125,7 +124,7 @@ def retrieve_and_apply_code_commit():
     pass
 
 @tool
-def retrieve_current_repository_state():
+def retrieve_current_repository_staged():
     """
     """
     pass
@@ -134,72 +133,24 @@ def retrieve_current_repository_state():
 @injectable()
 class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
 
-    SYSTEM_INSTRUCTION = (
-        """
-        You are a specialized assistant for searching for code context information.
-        Your overall goal is to provide context for code generation across multiple repositories, within the context of
-        the history of the development of that software. In order to achieve your purpose, you have access to some tools.
-        The tools you have facilitate performing operations on git repositories, including adding git diffs for repositories
-        and branches to the vector database, removing git diffs for repositories and branches from the vector database,
-        and retrieving files from the vector database with their history by a code snippet or commit message. You can 
-        also parse the repository history with respect to an input, such as a code snippet or a message, and add diffs
-        from the blame tree with respect to this code snippet or message.  
-        
-        If you do not have enough 
-        information to perform your request, you can return a request for that information. Examples of this would be,
-        for instance, if you need to include the code from one of the libraries. Then you could request for the URL
-        for the git repository for that library. At that point, another agent will retrieve that information for you and 
-        you can then perform your function to better inform your operations.
-        """
-    )
-
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
-        A2AReactAgent.__init__(self, agent_config, [retrieve_commit_diff_code_context, perform_git_actions],
-                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
-
-    @property
-    def orchestrator_prompt(self):
-        return """
-        An agent that can add git repositories to an embedding database with history. This agent has a mechanism to 
-        provide contextual information from the git repositories. This agent has access to an embedding database, so 
-        he embeds the commit history as git commit diffs, and then interfaces with these repositories, returning 
-        relevant files to the queries in the context with their history in an XML format that can be parsed by downstream
-        codegen processes. It can also parse repositories with respect to particular queries, adding commit diffs to the 
-        repository with respect to particular code, so it can be used to produce more relevant contextual information,
-        using the git blame tree mechanism.
-        """
-
-    SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
-
+        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
+        DeepResearchOrchestrated.__init__(self, self_card)
+        A2AReactAgent.__init__(self, agent_config,
+                               [retrieve_commit_diff_code_context, retrieve_next_code_commit,
+                                retrieve_current_repository_staged, retrieve_and_apply_code_commit,
+                                apply_code_commit, perform_commit_diff_context_git_actions],
+                               self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
 class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
 
-    SYSTEM_INSTRUCTION = (
-        """
-        You are a specialized assistant for generating commits for implementation of software projects.
-        You request the generation of a full git commit, with respect to a commit message and other contextual information 
-        provided to you. Then, after applying the commit, you ask for the code to be tested. Sometimes, you will ask 
-        it to be tested and then you will be asked again later to generate another commit from the feedback on why it failed. 
-        In this case, you either need to generate the whole commit again, taking into account the error, or request
-        for more information about the repository, file system, or dependency, so that next time you have the information you need
-        to provide the finished code generation. By the time you are asked to fix the commit, it will have been reverted,
-        but you will still be able to look at what changes you made.
-        """
-    )
-
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
+        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
+        DeepResearchOrchestrated.__init__(self, self_card)
         A2AReactAgent.__init__(self, agent_config,
                                [retrieve_next_code_commit, apply_code_commit, retrieve_and_apply_code_commit],
-                               self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
-
-    @property
-    def orchestrator_prompt(self):
-        return """
-        An agent that generates code modifications using the history of diffs added with the CdcCodeSearchAgent.
-        """
-
-    SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
+                               self_card.agent_descriptor.system_instruction, memory_saver, model_provider)

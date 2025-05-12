@@ -1,3 +1,5 @@
+import subprocess
+import typing
 from typing import Any, Dict, AsyncIterable
 
 import injector
@@ -12,31 +14,15 @@ from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from langchain_core.tools import tool
 
-
-# @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
-# @injectable()
+@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
+@injectable()
 class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
-    SYSTEM_INSTRUCTION = (
-        """
-        You are a specialized assistant for running source code to test changes. You have access to various tools to 
-        run the code, such as Docker, Git, and the file system. If you do not have enough information to run the code,
-        then you can ask for more information. Otherwise, using the information provided to you, run the code and 
-        provide feedback about the changes, such as by loading the log.
-        """
-    )
-
-    # @injector.inject
+    @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
-        A2AReactAgent.__init__(self,agent_config,[], self.SYSTEM_INSTRUCTION,
+        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
+        DeepResearchOrchestrated.__init__(self, self_card)
+        A2AReactAgent.__init__(self, agent_config, [], self_card.agent_descriptor.system_instruction,
                                memory_saver, model_provider)
 
-    @property
-    def orchestrator_prompt(self):
-        return """
-        An agent that facilitates the running of the code after making code changes, to validate code changes with respect
-        for particular tickets, bug changes, or any other unit of work.
-        """
-
-    SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 

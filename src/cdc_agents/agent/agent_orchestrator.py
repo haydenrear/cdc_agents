@@ -14,7 +14,7 @@ from langgraph.types import Command, Runnable
 from cdc_agents.agent.a2a import A2AAgent, BaseAgent
 from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
-from cdc_agents.config.agent_config_props import AgentConfigProps
+from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_util.logger.logger import LoggerFacade
 
 
@@ -24,10 +24,6 @@ class NextAgentResponse:
 
 
 class AgentOrchestrator(A2AAgent, abc.ABC):
-
-    @abc.abstractmethod
-    def orchestration_prompt(self):
-        pass
 
     @abc.abstractmethod
     def parse_orchestration_response(self, last_message: AgentGraphResult):
@@ -56,7 +52,18 @@ class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
 
 
 class OrchestratorAgent(A2AReactAgent, abc.ABC):
-    pass
+
+    def __init__(self, self_card: AgentCardItem):
+        self._orchestration_message = self_card.agent_descriptor.orchestration_message
+        self._orchestration_prompt = self_card.agent_descriptor.orchestration_instruction
+
+    @property
+    def orchestration_prompt(self):
+        return self._orchestration_prompt
+
+    @property
+    def orchestration_messages(self):
+        return self._orchestration_message
 
 
 class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):

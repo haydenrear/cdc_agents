@@ -1,8 +1,0 @@
-async def a(b):
-  c
-
-async with d:
-  e
-
-async for f in g:
-  await i

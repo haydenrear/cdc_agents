@@ -1,8 +1,0 @@
-with a:
-  b
-with c:
-  with d:
-    with e:
-      f
-with g as h:
-  i

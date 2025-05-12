@@ -39,14 +39,14 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                  memory: MemorySaver, model_server_provider: ModelProvider, model = None):
         self.model_server_provider = model_server_provider
         this_agent_name = self.__class__.__name__
+        self.agent_config: AgentCardItem = agent_config.agents.get(this_agent_name)
+        inputs = self.agent_config.agent_card.defaultInputModes
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
-        A2AAgent.__init__(self, self.model, tools, system_instruction, memory)
+        A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
-        self.agent_config: AgentCardItem = agent_config.agents[this_agent_name] \
-            if this_agent_name in agent_config.agents.keys() else None
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if loop:

@@ -1,9 +1,0 @@
-for a in b:
-  c
-
-for   d    in        e   :
-  f
-  g
-else:
-  h
-  i

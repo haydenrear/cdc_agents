@@ -7,6 +7,13 @@
       <sourceFolder url="file://$MODULE_DIR$/test" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/resources" type="java-resource" />
       <excludeFolder url="file://$MODULE_DIR$/.cdc_agents" />
+      <excludeFolder url="file://$MODULE_DIR$/docker/build" />
+      <excludeFolder url="file://$MODULE_DIR$/python_di/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/python_di/.zed" />
+      <excludeFolder url="file://$MODULE_DIR$/python_di/build" />
+      <excludeFolder url="file://$MODULE_DIR$/python_di/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/python_util/build" />
+      <excludeFolder url="file://$MODULE_DIR$/python_util/dist" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

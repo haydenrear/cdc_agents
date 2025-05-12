@@ -15,27 +15,16 @@ from python_di.configs.component import component
 from langchain_core.tools import tool
 
 
-# @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
-# @injectable()
+@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
+@injectable()
 class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
-    SYSTEM_INSTRUCTION = (
-        """
-        """
-    )
-
-    # @injector.inject
+    @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
-        A2AReactAgent.__init__(self,agent_config,
-                          [], self.SYSTEM_INSTRUCTION, memory_saver, model_provider)
-
-    @property
-    def orchestrator_prompt(self):
-        return """
-        An agent that summarizes the information to be provided. Used when there is too much data in the context to 
-        provide to the agent, and then this information can be summarized or compactified so as to reduce the burden
-        on the next agents. 
-        """
+        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
+        DeepResearchOrchestrated.__init__(self, self_card)
+        A2AReactAgent.__init__(self,agent_config, [], self_card.agent_descriptor.system_instruction,
+                               memory_saver, model_provider)
 
     def do_collapse(self, message_state: list[BaseMessage], config) -> list[BaseMessage]:
         """
@@ -48,5 +37,4 @@ class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
         """
         return message_state
 
-    SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 

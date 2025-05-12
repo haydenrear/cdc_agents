@@ -1,3 +1,0 @@
-def a(b, c, /, d, e, *, f, g): h
-
-def a(b, c,/  ,d, e,* , f, g): h

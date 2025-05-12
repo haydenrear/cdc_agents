@@ -43,7 +43,7 @@ agent_config:
 #              - -i
 #              - --rm
 #              - --mount type=bind,src=/Users/
-#              - mcp/code-runner-git
+#              - mcp/code-runner-docker
 #            env:
 #        filesystem:
 #          name: filesystem

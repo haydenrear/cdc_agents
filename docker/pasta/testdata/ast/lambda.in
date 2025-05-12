@@ -1,5 +1,0 @@
-lambda a: b
-
-lambda c, d=e: f
-
-lambda     g  ,h,i =  j ,  k=l,*m , **n: o

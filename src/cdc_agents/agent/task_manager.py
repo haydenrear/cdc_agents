@@ -233,6 +233,7 @@ class AgentTaskManager(InMemoryTaskManager):
                     return JSONRPCResponse(id=request.id, error=InvalidParamsError(message="Push notification URL is invalid"))
 
             task_send_params: TaskSendParams = request.params
+
             sse_event_queue = self.setup_sse_consumer(task_send_params.id, False)
 
             self._run_streaming_agent(request)

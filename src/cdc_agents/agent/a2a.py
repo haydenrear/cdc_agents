@@ -59,7 +59,8 @@ class BaseAgent(abc.ABC):
 
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_instruction=None,
-                 memory: MemorySaver = MemorySaver()):
+                 memory: MemorySaver = MemorySaver(), content_types = None):
+        self._content_types = content_types if content_types is not None else ['text', 'text/plain']
         self.task_manager: typing.Optional[TaskManager] = None
         self.model = model
         self.tools = tools
@@ -91,10 +92,7 @@ class A2AAgent(BaseAgent, abc.ABC):
 
     @property
     def supported_content_types(self) -> list[str]:
-        if not hasattr(self, 'SUPPORTED_CONTENT_TYPES'):
-            raise NotImplementedError("Could not find supported content.")
-
-        return getattr(self, 'SUPPORTED_CONTENT_TYPES')
+        return self._content_types
 
     @property
     def agent_name(self) -> str:
