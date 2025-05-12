@@ -1,4 +1,6 @@
 import logging
+import typing
+
 from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 import threading
 import traceback
@@ -205,7 +207,7 @@ class AgentTaskManager(InMemoryTaskManager):
 
     def on_send_task_subscribe(
         self, request: SendTaskStreamingRequest
-    ) -> AsyncIterable[SendTaskStreamingResponse] | JSONRPCResponse:
+    ) -> typing.Generator[SendTaskStreamingResponse, None, None] | JSONRPCResponse:
         try:
             error = self._validate_request(request)
             if error:

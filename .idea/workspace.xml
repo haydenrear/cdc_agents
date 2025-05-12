@@ -6,7 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="bdb36c76-44ac-4c4d-b5ce-0e296b7737d6" name="Changes" comment="updated not async instead Thread">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/cdc_agents_test/test_a2a_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/cdc_agents_test/test_a2a_server.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/agent/task_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cdc_agents/mcp_client/cdc_agents_mcp.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cdc_agents/mcp_client/cdc_agents_mcp.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -276,15 +277,7 @@
       <workItem from="1746649788991" duration="4013000" />
       <workItem from="1746654636096" duration="24330000" />
       <workItem from="1746750063379" duration="150000" />
-      <workItem from="1746750219837" duration="59846000" />
-    </task>
-    <task id="LOCAL-00034" summary="model server provider model_provider.py">
-      <option name="closed" value="true" />
-      <created>1746471889424</created>
-      <option name="number" value="00034" />
-      <option name="presentableId" value="LOCAL-00034" />
-      <option name="project" value="LOCAL" />
-      <updated>1746471889424</updated>
+      <workItem from="1746750219837" duration="63161000" />
     </task>
     <task id="LOCAL-00035" summary="model server provider model_provider.py">
       <option name="closed" value="true" />
@@ -670,7 +663,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747005199774</updated>
     </task>
-    <option name="localTasksCounter" value="83" />
+    <task id="LOCAL-00083" summary="updated not async instead Thread">
+      <option name="closed" value="true" />
+      <created>1747007844228</created>
+      <option name="number" value="00083" />
+      <option name="presentableId" value="LOCAL-00083" />
+      <option name="project" value="LOCAL" />
+      <updated>1747007844228</updated>
+    </task>
+    <option name="localTasksCounter" value="84" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
