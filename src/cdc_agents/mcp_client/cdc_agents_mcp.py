@@ -398,9 +398,9 @@ class CdcMcpAgents:
             Chunks of the response as they become available
         """
         tasks: AgentTaskManager = self.tasks[agent.agent_name]
-        return tasks.on_send_task_subscribe(SendTaskStreamingRequest(params=TaskSendParams(
-            id=task_id, sessionId=task_id,
-            message=Message(role="user", parts=[TextPart(text=query)]))))
+        return tasks.on_send_task_subscribe(
+            SendTaskStreamingRequest(params=TaskSendParams(id=task_id, sessionId=task_id,
+                                                           message=Message(role="user", parts=[TextPart(text=query)]))))
 
 
     async def _handle_get_task_status(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -492,20 +492,6 @@ class CdcMcpAgents:
                         task_ids.add(task_id)
 
         return {"tasks": tasks}
-
-    def _get_agent_capabilities(self, agent: A2AAgent) -> List[str]:
-        """Get the capabilities of an agent"""
-        capabilities = []
-        
-        # Check for supported content types
-        if hasattr(agent, "SUPPORTED_CONTENT_TYPES"):
-            capabilities.extend([f"content_type:{ct}" for ct in agent.SUPPORTED_CONTENT_TYPES])
-            
-        # Check for specific tool capabilities
-        if hasattr(agent, "tools") and agent.tools:
-            capabilities.extend([f"tool:{tool.__name__}" for tool in agent.tools if hasattr(tool, "__name__")])
-            
-        return capabilities
 
     async def start_server(self):
         """Start the MCP server - Expose agents as tools themselves for easy integration"""
