@@ -7,3 +7,4 @@ resources/
 application-docker.yml
 docker.env
 requirements.txt
+build/
