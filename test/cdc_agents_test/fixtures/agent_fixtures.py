@@ -108,12 +108,20 @@ class TestA2AAgent(A2AReactAgent):
         """Reset the tracking flag"""
         TestA2AAgent.did_call = False
 
-class TestOrchestratorAgent(OrchestratorAgent):
+class TestOrchestratorAgent(A2AReactAgent, OrchestratorAgent):
     """Test Orchestrator Agent with tracking of invocations"""
     did_call = False
     _agent_name = "TestOrchestratorAgent"
     SUPPORTED_CONTENT_TYPES = ["text"]
-    
+
+    @property
+    def orchestration_prompt(self):
+        return ""
+
+    @property
+    def orchestration_messages(self):
+        return ""
+
     @property
     def supported_content_types(self) -> list[str]:
         return self.SUPPORTED_CONTENT_TYPES
@@ -139,7 +147,9 @@ def create_test_agent_task_manager(
     """Create a test agent and task manager with mocked responses"""
     mock_model = create_mock_model(model, responses)
     tools = [test_tool]
-    
+
+    ai_suite.agents[agent_class.__name__] = next(iter(ai_suite.agents.values()))
+
     test_agent = agent_class(ai_suite, tools, "Test system instruction", 
                             memory, model_provider, mock_model)
     
@@ -207,11 +217,13 @@ def create_test_orchestrator(
     tools = [test_tool]
     
     # Create the orchestrator
+    ai_suite.agents['TestOrchestratorAgent'] = next(iter(ai_suite.agents.values()))
     orchestrator_agent = TestOrchestratorAgent(
         ai_suite, tools, "Test orchestrator instruction", 
         memory, model_provider, mock_orchestrator_model
     )
-    
+
+    ai_suite.agents['TestA2AAgent'] = next(iter(ai_suite.agents.values()))
     # Create an inner agent
     inner_agent = TestA2AAgent(
         ai_suite, tools, "Test agent instruction", 

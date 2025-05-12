@@ -71,7 +71,7 @@ class AgentServerRunner:
             agent_card = a.agent_card
 
             if name not in self.agents.keys():
-                raise ValueError("Could not find agents.")
+                raise ValueError(f"Could not find agent: {name}.")
 
             # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
 

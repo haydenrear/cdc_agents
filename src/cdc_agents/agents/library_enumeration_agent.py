@@ -36,7 +36,7 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AReactAgent):
         DeepResearchOrchestrated.__init__(self, self_card)
         A2AReactAgent.__init__(self,
                           agent_config,
-                          [search_github_for_sources, search_gitlab_for_sources],
+                          [],
                           self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
 
     @property

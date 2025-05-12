@@ -9,9 +9,14 @@ from cdc_agents.agent.agent_server import AgentServerRunner
 from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.agents.cdc_server_agent import CdcCodeSearchAgent
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator, DeepCodeAgent
+from cdc_agents.agents.human_delegate_agent import HumanDelegateAgent
+from cdc_agents.agents.library_enumeration_agent import LibraryEnumerationAgent
+from cdc_agents.agents.summarizer_agent import SummarizerAgent
 from cdc_agents.common.server import TaskManager
 from cdc_agents.config.agent_config_props import AgentConfigProps
+from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.config.checkpoint_config_props import CheckpointConfigProps
+from cdc_agents.config.human_delegate_config_props import HumanDelegateConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.model_server.model_server_model import ModelServerModel
@@ -26,9 +31,11 @@ from starlette.applications import Starlette
 
 
 @configuration()
-@enable_configuration_properties(config_props=[AgentConfigProps, ModelServerConfigProps, CheckpointConfigProps])
+@enable_configuration_properties(config_props=[AgentConfigProps, ModelServerConfigProps, CheckpointConfigProps, CdcServerConfigProps,
+                                               HumanDelegateConfigProps])
 @component_scan(base_classes=[ModelServerModel, CdcCodeSearchAgent, DeepCodeAgent,
-                              DeepCodeOrchestrator, ModelProvider, AgentServerRunner])
+                              DeepCodeOrchestrator, ModelProvider, AgentServerRunner, HumanDelegateAgent,
+                              SummarizerAgent, LibraryEnumerationAgent])
 class AgentConfig:
 
     @bean(profile='test', scope=profile_scope, bindings=[Starlette])

@@ -39,6 +39,11 @@ agent_config:
         orchestrator_instruction: >
           An agent that facilitates communication with human representatives, such as refining ticket or business requirements.
         system_instruction: >
+          You have the ability to message the humans to get feedback on requirements and business needs. You will be called
+          with a message from someone, at which time you will need to initialize the session. Then, you will respond to the
+          message received, at which time you will then either finalize the session or wait for a response, if you have requested
+          a response. You can continue in the loop of sending another message, and receiving another response for as long 
+          as you deem necessary, but make sure to finalize the session at the end of the exchange.
       agent_card:
         name: HumanDelegateAgent
         path: /human-delegate

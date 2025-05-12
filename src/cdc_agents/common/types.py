@@ -341,6 +341,13 @@ class ModelDescriptor(BaseModel):
     headers: dict[str, str] = None
     model_endpoint: str
 
+def read_from_file_if(name: str):
+    if name.startswith('file://'):
+        with open(name.replace('file://', ''), 'r') as f:
+            return f.readlines()
+
+    return name
+
 class AgentDescriptor(BaseModel):
     model: typing.Union[str, ModelDescriptor]
     agent_name: str
@@ -349,6 +356,22 @@ class AgentDescriptor(BaseModel):
     orchestrator_instruction: str = None
     orchestration_instruction: str = None
     orchestration_message: str = None
+
+    @field_serializer('orchestrator_instruction')
+    def serialize_orchestrator_instruction(self, orchestrator_instruction: str):
+        return read_from_file_if(orchestrator_instruction)
+
+    @field_serializer('orchestration_instruction')
+    def serialize_orchestrator_instruction(self, orchestration_instruction: str):
+        return read_from_file_if(orchestration_instruction)
+
+    @field_serializer('orchestration_message')
+    def serialize_orchestrator_instruction(self, orchestration_message: str):
+        return read_from_file_if(orchestration_message)
+
+    @field_serializer('system_instruction')
+    def serialize_orchestrator_instruction(self, system_instruction: str):
+        return read_from_file_if(system_instruction)
 
 AgentCardForward = typing.ForwardRef("AgentCard")
 

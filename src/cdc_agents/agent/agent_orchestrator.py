@@ -51,7 +51,7 @@ class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
     pass
 
 
-class OrchestratorAgent(A2AReactAgent, abc.ABC):
+class OrchestratorAgent(abc.ABC):
 
     def __init__(self, self_card: AgentCardItem):
         self._orchestration_message = self_card.agent_descriptor.orchestration_message

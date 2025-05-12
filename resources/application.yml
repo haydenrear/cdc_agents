@@ -1,7 +1,11 @@
+cdc_server:
+  graphql_endpoint: localhost:9991
 model_server:
   host: localhost
   port: 9991
 
+human_delegate:
+  base_dir: ./human_delegate_data
 checkpoint:
   uri:
 
