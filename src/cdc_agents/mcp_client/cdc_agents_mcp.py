@@ -86,10 +86,9 @@ class CdcMcpAgents:
         self.agent_tools: List[AgentTool] = []
 
         # Initialize agent tools
-        if agents:
-            self._initialize_agent_tools(agents)
-        else:
-            self._discover_agents()
+        self.agents = agents
+
+        self._initialize_agent_tools(agents)
 
         self.tasks = {agent.agent_name: agent.task_manager for agent in agents}
 
@@ -100,9 +99,9 @@ class CdcMcpAgents:
         if agent_config_props.initialize_server:
             self.start_server()
 
-    def _initialize_agent_tools(self, agents: List[A2AAgent]):
+    def _initialize_agent_tools(self):
         """Initialize agent tools from the provided agents list"""
-        for agent in agents:
+        for agent in self.agents:
             agent_name = agent.agent_name
 
             task_manager = AgentTaskManager(agent, PushNotificationSenderAuth())
@@ -124,66 +123,10 @@ class CdcMcpAgents:
                         name=agent_name,
                         description=description,
                         agent=agent,
-                        agent_card=agent_card)
-                )
+                        agent_card=agent_card))
                 LoggerFacade.info(f"Added agent tool: {agent_name}")
             else:
                 LoggerFacade.warn(f"Agent {agent_name} not found in configuration, skipping")
-
-    def _discover_agents(self):
-        """Discover available agents from the configuration"""
-        LoggerFacade.info("Discovering available agents from configuration")
-
-        for agent_name, agent_config in self.agent_config_props.agents.items():
-            try:
-                # Try to create the agent from the configuration
-                agent_card = agent_config.agent_card
-
-                if hasattr(agent_config, 'agent_clazz') and agent_config.agent_clazz:
-                    # Import the agent class
-                    module_path, class_name = agent_config.agent_clazz.rsplit('.', 1)
-                    module = importlib.import_module(module_path)
-                    agent_class = getattr(module, class_name)
-
-                    # Initialize the agent
-                    model = self.model_provider.retrieve_model(agent_config)
-
-                    # Get the appropriate constructor parameters
-                    import inspect
-                    sig = inspect.signature(agent_class.__init__)
-                    params = {}
-
-                    # Match parameters based on signature
-                    if 'agent_config' in sig.parameters:
-                        params['agent_config'] = agent_config
-                    if 'model' in sig.parameters:
-                        params['model'] = model
-                    if 'memory_saver' in sig.parameters and self.memory_saver:
-                        params['memory_saver'] = self.memory_saver
-                    if 'model_provider' in sig.parameters:
-                        params['model_provider'] = self.model_provider
-
-                    # Create agent instance
-                    agent = agent_class(**params)
-
-                    # Add to tools
-                    description = agent_card.description
-                    if hasattr(agent, "orchestrator_prompt") and agent.orchestrator_prompt:
-                        description = agent.orchestrator_prompt
-
-                    self.agent_tools.append(
-                        AgentTool(
-                            name=agent_name,
-                            description=description,
-                            agent=agent,
-                            agent_card=agent_card
-                        )
-                    )
-                    LoggerFacade.info(f"Discovered and added agent tool: {agent_name}")
-                else:
-                    LoggerFacade.warning(f"Agent {agent_name} has no agent_clazz defined, skipping")
-            except Exception as e:
-                LoggerFacade.error(f"Failed to create agent {agent_name}: {str(e)}")
 
     def _register_server_methods(self):
         """Register all the server method decorators"""
@@ -257,14 +200,6 @@ class CdcMcpAgents:
                     text="Error: Query parameter is required"
                 )]
 
-            # Create task in the task manager
-            message = Message(role="user", parts=[{"type": "text", "text": query}])
-            task_send_params = TaskSendParams(
-                id=task_id,
-                sessionId=task_id,  # Use task_id as session_id for simplicity
-                message=message,
-                acceptedOutputModes=["text"]
-            )
 
             # Use TaskManager to create task
             manager: AgentTaskManager = self.tasks.get(agent_tool.name)
@@ -277,7 +212,6 @@ class CdcMcpAgents:
             server_push = []
 
             try:
-                # Send initial notification
                 # TODO: SSE push
                 server_push.append(
                     TextContent(
@@ -291,61 +225,86 @@ class CdcMcpAgents:
                                 "task_id": task_id,
                                 "timestamp": self.server.now()
                             }
-                        )))
-                )
+                        ))))
 
                 async for chunk in res:
+                    chunk: SendTaskStreamingResponse = chunk
                     # Check if task was cancelled
-                    is_cancelled = False
                     if manager:
                         task = manager.task(task_id)
-                        is_cancelled = task and task.status.state == TaskState.CANCELLED
+                        if task.status.state == TaskState.CANCELLED:
+                            _push_cancelled_task(agent_tool, server_push, task_id)
+                            break
 
-                    if is_cancelled:
-                        server_push.append(
-                            TextContent(
-                                type="text",
-                                text=PushEvent(
-                                eventName="agent_response",
-                                data={
-                                    "content": "Task was cancelled by user request",
-                                    "is_final": True,
-                                    "agent": agent_tool.name,
-                                    "task_id": task_id,
-                                    "timestamp": self.server.now()
-                                }
-                            ))
-                        )
-                        break
-
-                    server_push.append(
-                        TextContent(
-                            type="text",
-                            text=PushEvent(
-                            eventName="agent_response",
-                            data={
-                                "content": chunk,
-                                "is_final": False,
-                                "agent": agent_tool.name,
-                                "task_id": task_id,
-                                "timestamp": self.server.now()
-                            }
-                        ))
-                    )
+                    parts = chunk.result.status.message.parts
+                    for p in parts:
+                        if not isinstance(p, TextPart):
+                            _push_task_error(agent_tool, f"Could not push part of type: {p.type}", server_push, task_id)
+                        else:
+                            _push_response(agent_tool, p.text, server_push, task_id)
 
 
                 return server_push
 
             except asyncio.CancelledError:
-                # Task was cancelled
-                if manager:
-                    task_status = TaskStatus(state=TaskState.CANCELLED)
-                    manager.update_store(task_id, task_status)
+                return await _do_handle_call_tool_cancelled(agent_tool, manager, server_push, task_id)
 
-                server_push.append(
-                    TextContent(
-                        type="text",
-                        text=PushEvent(
+            except Exception as e:
+                return await _do_handle_call_tool_exception(agent_tool, e, manager, server_push, task_id)
+
+        async def _do_handle_call_tool_exception(agent_tool, e, manager, server_push, task_id):
+            # Handle errors
+            error_msg = f"Error executing agent {agent_tool.name}: {str(e)}"
+            LoggerFacade.error(error_msg)
+            if manager:
+                task_status = TaskStatus(state=TaskState.FAILED,
+                                         message=Message(role="system", parts=[{"type": "text", "text": str(e)}]))
+                manager.update_store(task_id, task_status)
+            _push_task_error(agent_tool, error_msg, server_push, task_id)
+            return server_push
+
+        async def _do_handle_call_tool_cancelled(agent_tool, manager, server_push, task_id):
+            # Task was cancelled
+            if manager:
+                task_status = TaskStatus(state=TaskState.CANCELLED)
+                manager.update_store(task_id, task_status)
+            _push_cancelled_task(agent_tool, server_push, task_id)
+            return server_push
+
+        def _push_response(agent_tool, text_content, server_push, task_id):
+            server_push.append(
+                TextContent(
+                    type="text",
+                    text=PushEvent(
+                        eventName="agent_response",
+                        data={
+                            "content": text_content,
+                            "is_final": False,
+                            "agent": agent_tool.name,
+                            "task_id": task_id,
+                            "timestamp": self.server.now()
+                        }
+                    )))
+
+        def _push_task_error(agent_tool, error_msg, server_push, task_id):
+            server_push.append(
+                PushEvent(
+                    eventName="agent_response",
+                    data={
+                        "content": f"Error: {error_msg}",
+                        "is_final": True,
+                        "agent": agent_tool.name,
+                        "task_id": task_id,
+                        "timestamp": self.server.now()
+                    }
+                )
+            )
+
+        def _push_cancelled_task(agent_tool, server_push, task_id):
+            server_push.append(
+                TextContent(
+                    type="text",
+                    text=PushEvent(
                         eventName="agent_response",
                         data={
                             "content": "Task was cancelled",
@@ -354,36 +313,7 @@ class CdcMcpAgents:
                             "task_id": task_id,
                             "timestamp": self.server.now()
                         }
-                    )
-                ))
-
-                return server_push
-
-            except Exception as e:
-                # Handle errors
-                error_msg = f"Error executing agent {agent_tool.name}: {str(e)}"
-                LoggerFacade.error(error_msg)
-
-                if manager:
-                    task_status = TaskStatus(state=TaskState.FAILED, message=Message(role="system", parts=[{"type": "text", "text": str(e)}]))
-                    manager.update_store(task_id, task_status)
-
-                server_push.append(
-                    PushEvent(
-                        eventName="agent_response",
-                        data={
-                            "content": f"Error: {error_msg}",
-                            "is_final": True,
-                            "agent": agent_tool.name,
-                            "task_id": task_id,
-                            "timestamp": self.server.now()
-                        }
-                    )
-                )
-
-                return server_push
-
-
+                    )))
 
     async def _call_agent_tool_get_responses(self, agent: A2AAgent, query: str, task_id: str) -> typing.Generator[SendTaskStreamingResponse, None, None] | JSONRPCResponse:
         """
@@ -398,9 +328,14 @@ class CdcMcpAgents:
             Chunks of the response as they become available
         """
         tasks: AgentTaskManager = self.tasks[agent.agent_name]
-        return tasks.on_send_task_subscribe(
-            SendTaskStreamingRequest(params=TaskSendParams(id=task_id, sessionId=task_id,
-                                                           message=Message(role="user", parts=[TextPart(text=query)]))))
+        # Create task in the task manager
+        message = Message(role="user", parts=[{"type": "text", "text": query}])
+        task_send_params = TaskSendParams(
+            id=task_id,
+            sessionId=task_id,  # Use task_id as session_id for simplicity
+            message=message,
+            acceptedOutputModes=["text"])
+        return tasks.on_send_task_subscribe(SendTaskStreamingRequest(params=task_send_params))
 
 
     async def _handle_get_task_status(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
