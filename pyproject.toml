@@ -32,7 +32,8 @@ dependencies=[
     "python_util",
     "aisuite",
     "drools_py",
-    "mcp>=1.0.0"
+    "mcp>=1.0.0",
+    "nest-asyncio==1.6.0"
 ]
 
 requires-python = ">=3.10"

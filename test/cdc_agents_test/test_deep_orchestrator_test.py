@@ -65,7 +65,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         ModelServerModelTest.model = model
         ModelServerModelTest.model_provider = model_provider
 
-    def test_model_server_model(self):
+    async def test_model_server_model(self):
         # Set up expected responses for orchestrator and inner agent
         orchestrator_responses = [
             """

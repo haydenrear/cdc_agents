@@ -1,6 +1,6 @@
 import json
 import typing
-
+import nest_asyncio
 import asyncio
 import dataclasses
 import logging
@@ -437,5 +437,6 @@ class CdcMcpAgents:
 
     def start_server_sync(self):
         """Start the server synchronously (for non-async contexts)"""
+        nest_asyncio.apply()
         asyncio.run(self.start_server())
 

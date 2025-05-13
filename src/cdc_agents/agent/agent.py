@@ -2,6 +2,8 @@ import abc
 import asyncio
 import atexit
 
+import nest_asyncio
+
 from cdc_agents.agent.a2a import A2AAgent
 import json
 import subprocess
@@ -49,10 +51,20 @@ class A2AReactAgent(A2AAgent, abc.ABC):
             prompt = self.system_instruction)
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
-        if loop:
-            loop.run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
-        else:
-            asyncio.get_event_loop().run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
+        try:
+            if loop:
+                loop.run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
+            else:
+                asyncio.get_event_loop().run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
+        except RuntimeError as r:
+            if 'This event loop is already running' in str(r):
+                nest_asyncio.apply()
+                if loop:
+                    loop.run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
+                else:
+                    asyncio.get_event_loop().run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
+            else:
+                raise r
 
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
@@ -162,10 +174,22 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                         except:
                             pass
 
-                ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
-                                                               color, callbacks, tags=tags, metadata=metadata,
-                                                               run_name=run_name, run_id=run_id,
-                                                               config=config, tool_call_id=tool_call_id, **kwargs))
+                try:
+                    ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
+                                                                   color, callbacks, tags=tags, metadata=metadata,
+                                                                   run_name=run_name, run_id=run_id,
+                                                                   config=config, tool_call_id=tool_call_id, **kwargs))
+                except RuntimeError as e:
+                    if 'This event loop is already running' in str(e):
+                        import nest_asyncio
+                        nest_asyncio.apply()
+                        ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
+                                                                       color, callbacks, tags=tags, metadata=metadata,
+                                                                       run_name=run_name, run_id=run_id,
+                                                                       config=config, tool_call_id=tool_call_id, **kwargs))
+                    else:
+                        raise e
+
 
                 if close_loop:
                     to_run_loop.close()
