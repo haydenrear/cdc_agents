@@ -102,9 +102,18 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 async with MultiServerMCPClient({k: v.tool_options}) as c:
                     for tool in c.get_tools():
                         if self.name == tool.name:
-                            return await tool.arun(tool_input, verbose, start_color, color, callbacks, tags=tags,
-                                                   metadata=metadata,run_name=run_name, run_id=run_id,config=config,
-                                                   tool_call_id=tool_call_id, **kwargs)
+                            try:
+                                out = await tool.arun(tool_input, verbose, start_color, color, callbacks, tags=tags,
+                                                       metadata=metadata,run_name=run_name, run_id=run_id,config=config,
+                                                       tool_call_id=tool_call_id, **kwargs)
+                                return out
+                            except Exception as e:
+                                return ToolMessage(
+                                    content=f"Failed to run tool with err {e}. Could not find matching tools for {self.name} - are all the services running?",
+                                    name=self.name,
+                                    tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
+                                    status="error")
+
 
                     return ToolMessage(
                         content=f"Failed to run tool. Could not find matching tools for {self.name}",
