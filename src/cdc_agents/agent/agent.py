@@ -21,6 +21,7 @@ from langgraph.prebuilt import create_react_agent
 
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
+from cdc_agents.util.nest_async_util import do_run_on_event_loop
 
 
 class A2ASmolAgent(A2AAgent, abc.ABC):
@@ -51,20 +52,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
             prompt = self.system_instruction)
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
-        try:
-            if loop:
-                loop.run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
-            else:
-                asyncio.get_event_loop().run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
-        except RuntimeError as r:
-            if 'This event loop is already running' in str(r):
-                nest_asyncio.apply()
-                if loop:
-                    loop.run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
-                else:
-                    asyncio.get_event_loop().run_until_complete(self.add_mcp_tools_async(additional_tools, loop))
-            else:
-                raise r
+        return do_run_on_event_loop(self.add_mcp_tools_async(additional_tools, loop), lambda s: None, loop)
 
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
@@ -150,50 +138,18 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                     **kwargs: Any,
             ):
                 to_run_loop = self.__loop__
-                close_loop = False
 
-                try:
-                    asyncio.get_running_loop()
-                    return ToolMessage(
-                        content="Failed to run tool. MCP tools cannot run inside already running event loop. "
-                                "Must have called sync inside async, and cannot then call async.",
-                        name=self.name,
-                        tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
-                        status="error")
-                except RuntimeError as r:
-                    pass
-
-                if to_run_loop is None:
-                    try:
-                        to_run_loop = asyncio.get_event_loop()
-                    except:
-                        try:
-                            to_run_loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(to_run_loop)
-                            close_loop = True
-                        except:
-                            pass
-
-                try:
-                    ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
-                                                                   color, callbacks, tags=tags, metadata=metadata,
-                                                                   run_name=run_name, run_id=run_id,
-                                                                   config=config, tool_call_id=tool_call_id, **kwargs))
-                except RuntimeError as e:
-                    if 'This event loop is already running' in str(e):
-                        import nest_asyncio
-                        nest_asyncio.apply()
-                        ran = to_run_loop.run_until_complete(self.arun(tool_input, verbose, start_color,
-                                                                       color, callbacks, tags=tags, metadata=metadata,
-                                                                       run_name=run_name, run_id=run_id,
-                                                                       config=config, tool_call_id=tool_call_id, **kwargs))
-                    else:
-                        raise e
-
-
-                if close_loop:
-                    to_run_loop.close()
-                    asyncio.set_event_loop(None)
+                ran = do_run_on_event_loop(self.arun(tool_input, verbose, start_color,
+                                                     color, callbacks, tags=tags, metadata=metadata,
+                                                     run_name=run_name, run_id=run_id,
+                                                     config=config, tool_call_id=tool_call_id, **kwargs),
+                                           lambda err: ToolMessage(
+                                               content=f"Failed to run tool. MCP tools cannot run inside already running event loop. "
+                                                       f"Must have called sync inside async, and cannot then call async. Err: {err}",
+                                               name=self.name,
+                                               tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
+                                               status="error"),
+                                           to_run_loop)
 
                 if isinstance(ran, str):
                     ran = json.loads(ran)

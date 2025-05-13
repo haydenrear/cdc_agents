@@ -1,35 +1,33 @@
-import json
-import typing
-import nest_asyncio
-import asyncio
 import dataclasses
-import logging
-import importlib
+import json
+import time
+import typing
 import uuid
-from pathlib import Path
-from typing import Dict, List, Any, Optional, AsyncIterable, Sequence
+from typing import Dict, List, Any, Optional
 
-from pydantic import BaseModel
-
+import asyncio
+import injector
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
     TextContent,
     Tool,
-    ClientCapabilities,
 )
+from pydantic import BaseModel
 
-import injector
 from cdc_agents.agent.a2a import A2AAgent
-from cdc_agents.common.types import AgentCard, SendTaskStreamingRequest, TaskSendParams, SendTaskStreamingResponse, \
-    JSONRPCError, JSONRPCResponse, Message, TextPart
-from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.agent.task_manager import AgentTaskManager
+from cdc_agents.common.types import AgentCard, SendTaskStreamingRequest, TaskSendParams, SendTaskStreamingResponse, \
+    JSONRPCResponse, Message, TextPart, CancelTaskRequest, TaskIdParams, TaskState, TaskStatus
+from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
+from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
+from cdc_agents.util.nest_async_util import do_nest_async
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_di.inject.profile_composite_injector.composite_injector import profile_scope
 from python_util.logger.logger import LoggerFacade
+
 
 class PushEvent(BaseModel):
     eventName: str
@@ -38,11 +36,7 @@ class PushEvent(BaseModel):
 # Pydantic models for agent inputs/outputs
 class AgentQuery(BaseModel):
     query: str
-    context: Optional[Dict[str, Any]] = None
 
-
-class TaskStatus(BaseModel):
-    task_id: str
 
 
 class CancelTask(BaseModel):
@@ -88,9 +82,9 @@ class CdcMcpAgents:
         # Initialize agent tools
         self.agents = agents
 
-        self._initialize_agent_tools(agents)
+        self._initialize_agent_tools()
 
-        self.tasks = {agent.agent_name: agent.task_manager for agent in agents}
+        self.tasks: dict[str, AgentTaskManager] = {agent.agent_name: typing.cast(AgentTaskManager, agent.task_manager) for agent in agents}
 
         # Register server methods
         self._register_server_methods()
@@ -98,6 +92,10 @@ class CdcMcpAgents:
         # Start server if configured to do so
         if agent_config_props.initialize_server:
             self.start_server()
+
+    @staticmethod
+    def now():
+        return time.time_ns()
 
     def _initialize_agent_tools(self):
         """Initialize agent tools from the provided agents list"""
@@ -112,12 +110,8 @@ class CdcMcpAgents:
                 agent_config = self.agent_config_props.agents[agent_name]
                 agent_card = agent_config.agent_card
 
-                # Get the most meaningful description
                 description = agent_card.description
-                if hasattr(agent, "orchestrator_prompt") and agent.orchestrator_prompt:
-                    description = agent.orchestrator_prompt
 
-                # Create the tool
                 self.agent_tools.append(
                     AgentTool(
                         name=agent_name,
@@ -141,7 +135,7 @@ class CdcMcpAgents:
                     Tool(
                         name=tool.name,
                         description=tool.description,
-                        inputSchema=AgentQuery.schema()
+                        inputSchema=AgentQuery.model_json_schema()
                     )
                 )
 
@@ -150,17 +144,17 @@ class CdcMcpAgents:
                 Tool(
                     name="get_task_status",
                     description="Get the status of a running or completed task",
-                    inputSchema=TaskStatus.schema()
+                    inputSchema=TaskStatus.model_json_schema()
                 ),
                 Tool(
                     name="cancel_task",
                     description="Cancel a running task",
-                    inputSchema=CancelTask.schema()
+                    inputSchema=CancelTask.model_json_schema()
                 ),
                 Tool(
                     name="list_tasks",
                     description="List all tasks with optional status filtering",
-                    inputSchema=ListTasks.schema()
+                    inputSchema=ListTasks.model_json_schema()
                 )
             ])
 
@@ -191,8 +185,8 @@ class CdcMcpAgents:
 
             # Generate task ID and prepare for execution
             task_id = str(uuid.uuid4())
+
             query = arguments.get("query", "")
-            context = arguments.get("context", {})
 
             if not query:
                 return [TextContent(
@@ -207,7 +201,13 @@ class CdcMcpAgents:
             res = self._call_agent_tool_get_responses(agent_tool.agent, query, task_id)
 
             if isinstance(res, JSONRPCResponse):
-                return [TextContent(type="test", text=PushEvent(eventName="", data={}))]
+                return [TextContent(type="text", text=json.dumps(PushEvent(eventName="agent_response", data={
+                    "content": res.result,
+                    "is_final": False,
+                    "agent": agent_tool.name,
+                    "task_id": task_id,
+                    "timestamp": self.now()
+                })))]
 
             server_response = []
 
@@ -222,7 +222,7 @@ class CdcMcpAgents:
                                 "is_final": False,
                                 "agent": agent_tool.name,
                                 "task_id": task_id,
-                                "timestamp": self.server.now()
+                                "timestamp": self.now()
                             }
                         ))))
 
@@ -231,7 +231,7 @@ class CdcMcpAgents:
                     # Check if task was cancelled
                     if manager:
                         task = manager.task(task_id)
-                        if task.status.state == TaskState.CANCELLED:
+                        if task.status.state == TaskState.CANCELED:
                             _push_cancelled_task(agent_tool, server_response, task_id)
                             break
 
@@ -257,7 +257,7 @@ class CdcMcpAgents:
             LoggerFacade.error(error_msg)
             if manager:
                 task_status = TaskStatus(state=TaskState.FAILED,
-                                         message=Message(role="system", parts=[{"type": "text", "text": str(e)}]))
+                                         message=Message(role="agent", parts=[{"type": "text", "text": str(e)}]))
                 manager.update_store(task_id, task_status)
             _push_task_error(agent_tool, error_msg, server_push, task_id)
             return server_push
@@ -265,7 +265,7 @@ class CdcMcpAgents:
         async def _do_handle_call_tool_cancelled(agent_tool, manager, server_push, task_id):
             # Task was cancelled
             if manager:
-                task_status = TaskStatus(state=TaskState.CANCELLED)
+                task_status = TaskStatus(state=TaskState.CANCELED)
                 manager.update_store(task_id, task_status)
             _push_cancelled_task(agent_tool, server_push, task_id)
             return server_push
@@ -274,45 +274,47 @@ class CdcMcpAgents:
             server_push.append(
                 TextContent(
                     type="text",
-                    text=PushEvent(
+                    text=json.dumps(PushEvent(
                         eventName="agent_response",
                         data={
                             "content": text_content,
                             "is_final": False,
                             "agent": agent_tool.name,
                             "task_id": task_id,
-                            "timestamp": self.server.now()
+                            "timestamp": self.now()
                         }
-                    )))
+                    ))))
 
         def _push_task_error(agent_tool, error_msg, server_push, task_id):
             server_push.append(
-                PushEvent(
+                TextContent(
+                    type="text",
+                text=json.dumps(PushEvent(
                     eventName="agent_response",
                     data={
                         "content": f"Error: {error_msg}",
                         "is_final": True,
                         "agent": agent_tool.name,
                         "task_id": task_id,
-                        "timestamp": self.server.now()
+                        "timestamp": self.now()
                     }
-                )
+                )))
             )
 
         def _push_cancelled_task(agent_tool, server_push, task_id):
             server_push.append(
                 TextContent(
                     type="text",
-                    text=PushEvent(
+                    text=json.dumps(PushEvent(
                         eventName="agent_response",
                         data={
                             "content": "Task was cancelled",
                             "is_final": True,
                             "agent": agent_tool.name,
                             "task_id": task_id,
-                            "timestamp": self.server.now()
+                            "timestamp": self.now()
                         }
-                    )))
+                    ))))
 
     async def _call_agent_tool_get_responses(self, agent: A2AAgent, query: str, task_id: str) -> typing.Generator[SendTaskStreamingResponse, None, None] | JSONRPCResponse:
         """
@@ -387,7 +389,7 @@ class CdcMcpAgents:
 
         # Update task status in task manager
         if task_found and can_cancel:
-            task_status = TaskStatus(state=TaskState.CANCELLED)
+            task_status = TaskStatus(state=TaskState.CANCELED)
             task_manager.update_store(task_id, task_status)
 
             # Create a cancel task request
@@ -437,6 +439,6 @@ class CdcMcpAgents:
 
     def start_server_sync(self):
         """Start the server synchronously (for non-async contexts)"""
-        nest_asyncio.apply()
+        do_nest_async()
         asyncio.run(self.start_server())
 
