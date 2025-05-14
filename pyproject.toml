@@ -51,7 +51,7 @@ build-backend = "hatchling.build"
 [project.scripts]
 run-cdc-agents = "cdc_agents.main.run_cdc_agents:CdcAgentsApplication"
 test-cdc-agents = "cdc_agents.test.run_cdc_agents:main"
-run-mcp-client = "cdc_agents.mcp_client.cdc_agents_mcp:main"
+run-mcp-client = "cdc_agents.mcp_client.mcp_client_main:CdcAgentsApplication"
 
 [tool.setuptools]
 packages = ["cdc_agents"]

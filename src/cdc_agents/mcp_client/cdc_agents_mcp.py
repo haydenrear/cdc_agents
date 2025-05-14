@@ -21,6 +21,7 @@ from cdc_agents.common.types import AgentCard, SendTaskStreamingRequest, TaskSen
     JSONRPCResponse, Message, TextPart, CancelTaskRequest, TaskIdParams, TaskState, TaskStatus
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.config.agent_config_props import AgentConfigProps
+from cdc_agents.config.runner_props import RunnerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.util.nest_async_util import do_nest_async
 from python_di.configs.autowire import injectable
@@ -68,6 +69,7 @@ class CdcMcpAgents:
     def __init__(
         self,
         agent_config_props: AgentConfigProps,
+        runner_config_props: RunnerConfigProps,
         model_provider: ModelProvider,
         memory_saver = None,
         agents: List[A2AAgent] = None
@@ -90,8 +92,8 @@ class CdcMcpAgents:
         self._register_server_methods()
 
         # Start server if configured to do so
-        if agent_config_props.initialize_server:
-            self.start_server()
+        if runner_config_props.is_mcp():
+            self.start_server_sync()
 
     @staticmethod
     def now():
@@ -104,7 +106,6 @@ class CdcMcpAgents:
 
             task_manager = AgentTaskManager(agent, PushNotificationSenderAuth())
             agent.set_task_manager(task_manager)
-            self.tasks[agent_name] = task_manager
 
             if agent_name in self.agent_config_props.agents:
                 agent_config = self.agent_config_props.agents[agent_name]

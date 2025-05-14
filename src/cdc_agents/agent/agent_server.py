@@ -15,6 +15,7 @@ from cdc_agents.common.server.server import DynamicA2AServer, create_json_respon
 from cdc_agents.common.types import DiscoverAgents, AgentCard
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.config.agent_config_props import AgentConfigProps
+from cdc_agents.config.runner_props import RunnerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
@@ -37,6 +38,7 @@ class AgentServerRunner:
     def __init__(self,
                  agent_config_props: AgentConfigProps,
                  memory: MemorySaver,
+                 runner_config_props: RunnerConfigProps,
                  model_server_provider: ModelProvider,
                  starlette: Starlette,
                  agents: typing.List[A2AAgent] = None):
@@ -50,7 +52,7 @@ class AgentServerRunner:
         # self.start_dynamic_agent_cards() # TODO:
         self.starlette = self.load_server(agent_config_props.host, agent_config_props.port, starlette)
 
-        if agent_config_props.initialize_server:
+        if runner_config_props.is_a2a():
             self.run_server()
 
     # def start_dynamic_agent_cards(self):

@@ -362,15 +362,15 @@ class AgentDescriptor(BaseModel):
         return read_from_file_if(orchestrator_instruction)
 
     @field_serializer('orchestration_instruction')
-    def serialize_orchestrator_instruction(self, orchestration_instruction: str):
+    def serialize_orchestration_instruction(self, orchestration_instruction: str):
         return read_from_file_if(orchestration_instruction)
 
     @field_serializer('orchestration_message')
-    def serialize_orchestrator_instruction(self, orchestration_message: str):
+    def serialize_orchestrator_message(self, orchestration_message: str):
         return read_from_file_if(orchestration_message)
 
     @field_serializer('system_instruction')
-    def serialize_orchestrator_instruction(self, system_instruction: str):
+    def serialize_system_instruction(self, system_instruction: str):
         return read_from_file_if(system_instruction)
 
 AgentCardForward = typing.ForwardRef("AgentCard")

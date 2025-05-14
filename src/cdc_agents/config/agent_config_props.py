@@ -27,5 +27,4 @@ class AgentConfigProps(ConfigurationProperties):
     orchestrator_max_recurs: typing.Optional[int] = 5000
     host: typing.Optional[str] = "0.0.0.0"
     port: typing.Optional[int] = 50000
-    initialize_server: typing.Optional[bool] = True
     max_tokens_message_state: int = 20000
