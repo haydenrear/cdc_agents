@@ -3,6 +3,7 @@ import asyncio
 import atexit
 
 import nest_asyncio
+from python_util.logger.logger import LoggerFacade
 
 from cdc_agents.agent.a2a import A2AAgent
 import json
@@ -47,6 +48,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
         A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
+        self.add_mcp_tools(self.agent_config.mcp_tools)
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
@@ -57,6 +59,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
             for k,v in additional_tools.items():
+                LoggerFacade.info(f"Loading tool {k} for {self.__class__.__name__}")
                 async with MultiServerMCPClient({k: v.tool_options}) as client:
                     tools = client.get_tools()
                     for t in tools:
@@ -70,12 +73,19 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                         self.tools.append(await self._next_tool(loop, t, k, v))
 
                     if v.stop_tool:
-                        subprocess.run(v.stop_tool, shell=True)
-                        atexit.register(lambda: subprocess.run(v.stop_tool, shell=True))
+                        stop_tool = v.stop_tool
+                        self.do_run_stop(stop_tool)
+                        atexit.register(lambda stop_tool_=stop_tool: self.do_run_stop(stop_tool_))
 
             self.graph = create_react_agent(
                 self.model, tools=self.tools, checkpointer=self.memory,
                 prompt = self.system_instruction)
+
+    def do_run_stop(self, stop_tool_):
+        try:
+            subprocess.run(stop_tool_, shell=True)
+        except Exception as e:
+            pass
 
     async def _next_tool(self, loop, t, k, v):
         class SynchronousMcpAdapter(StructuredTool):

@@ -75,8 +75,6 @@ class AgentServerRunner:
             if name not in self.agents.keys():
                 raise ValueError(f"Could not find agent: {name}.")
 
-            # self.agents[name].agent.add_mcp_tools(a.mcp_tools)
-
             task_manager = AgentTaskManager(agent=self.agents[name].agent, notification_sender_auth=notification_sender_auth)
             self.agents[name].agent.set_task_manager(task_manager)
             self.agents[name].agent.system_instruction = a.agent_descriptor.system_instruction
