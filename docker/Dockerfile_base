@@ -15,12 +15,6 @@ RUN apt-get update && \
     apt-get install -y docker-ce-cli && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./build /home/cdc_agents/sources
-
 ENV PATH="/app/.venv/bin:/uv:$PATH"
 
-COPY ./build/.env /home/cdc_agents/sources/.env
-COPY ./build/test /home/cdc_agents/sources/test
-COPY ./build/src /home/cdc_agents/sources/src
-
-WORKDIR /home/cdc_agents/sources
+WORKDIR /home/python_parent/sources

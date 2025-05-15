@@ -2,4 +2,7 @@
 FROM cdc_agents_base:latest
 
 # when running the container, add --db-path and a bind mount to the host's db file
+
+ENV SPRING_PROFILES_ACTIVE='a2a'
+
 ENTRYPOINT ["uv", "run", "run-cdc-agents"]
