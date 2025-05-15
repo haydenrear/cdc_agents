@@ -16,8 +16,8 @@ dependencies=[
     "setuptools==68.0.0",
     "uvicorn>=0.34.0",
     "python-dotenv==1.0.0",
-    "torch==2.0.1",
     "jwcrypto>=1.5.6",
+    "torch==2.7.0",
     "pyjwt>=2.10.1",
     "injector==0.22.0",
     "networkx==3.1",
@@ -39,10 +39,10 @@ dependencies=[
 requires-python = ">=3.10"
 
 [tool.uv.sources]
-drools_py = { path = "../drools_py", editable = true }
-python_di = { path = "../python_di", editable = true }
-python_util = { path = "../python_util", editable = true }
-aisuite = { path = "../../ml/integrations/aisuite", editable = true }
+drools_py = { workspace = true }
+python_di = { workspace = true }
+python_util = { workspace = true }
+aisuite = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
