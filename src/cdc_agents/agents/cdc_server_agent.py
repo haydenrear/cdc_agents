@@ -1,20 +1,20 @@
 import dataclasses
 import enum
 import typing
-from typing import Any, Dict, AsyncIterable
 
 import injector
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 
-from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.agent.a2a import A2AAgent
+from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
+from python_util.logger.logger import LoggerFacade
 
 
 class GitAction(enum.Enum):
@@ -60,6 +60,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
 
     @tool
     def perform_commit_diff_context_git_actions(actions_to_perform: typing.List[str] | str | typing.List[GitAction],
+                                                session_id: str,
                                                 git_repo_url: str, git_branch: str = "main",
                                                 perform_ops_async: bool = True) -> GitRepoResult:
         """Use this to embed a git repository for code context.
@@ -67,6 +68,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
         Args:
             git_repo_url: the git repo URL for the repository to embed.
             git_branch: the branch of the repository to embed.
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
             actions_to_perform: a list of actions to perform.
                 Options are:
                  - 'ADD_BRANCH': add a single branch for a repository to the commit diff vector database
@@ -128,7 +130,10 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
                 "gitRepo": {
                     "path": git_repo_url
                 },
-                "async": perform_ops_async
+                "async": perform_ops_async,
+                "sessionKey": {
+                    "key": session_id
+                }
             }
         }
 
@@ -158,7 +163,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
                 serverSessionKey=ServerSessionKey(key=result.get("sessionKey", {}).get("key", ""))
             )
         except Exception as e:
-            print(f"GraphQL request failed: {str(e)}")
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return GitRepoResult(
                 branch="",
                 url="",
@@ -191,10 +196,13 @@ class CommitDiffFileResult:
 
 def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_commit_diff_code_context(git_repos: typing.List[GitRepo], query: str) -> CommitDiffFileResult:
+    def retrieve_commit_diff_code_context(git_repos: typing.List[GitRepo],
+                                          session_id: str,
+                                          query: str) -> CommitDiffFileResult:
         """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts.
 
         Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
             git_repos: a list of git repositories to sample from. These should have been previously embedded using perform_git_actions function.
             query: a code snippet or embedding to use to condition the response. Will be used to search the database for related commit diffs.
 
@@ -236,7 +244,7 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
                 },
                 "branchName": repo.git_branch,
                 "sessionKey": {
-                    "key": "session-key"  # You would need to get this from somewhere
+                    "key": session_id  # You would need to get this from somewhere
                 },
                 "codeQuery": {
                     "codeString": query
@@ -268,7 +276,7 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
                 errs=[Error(message=err["message"]) for err in result.get("errs", [])]
             )
         except Exception as e:
-            print(f"GraphQL request failed: {str(e)}")
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return CommitDiffFileResult(
                 errs=[Error(message=f"Failed to retrieve commit diff context: {str(e)}")],
                 files=[]
@@ -277,10 +285,13 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
 
 def produce_retrieve_next_code_commit(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_next_code_commit(git_repo: GitRepo, branch_name: str, query: str = None):
+    def retrieve_next_code_commit(git_repo: GitRepo,
+                                  session_id: str,
+                                  branch_name: str, query: str = None):
         """Retrieve the next code commit recommendation.
 
         Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
             git_repo: Git repository information.
             branch_name: The branch name to work with.
             query: Optional code query to condition the commit recommendation.
@@ -327,7 +338,7 @@ def produce_retrieve_next_code_commit(cdc_server: CdcServerConfigProps):
                 },
                 "branchName": branch_name,
                 "sessionKey": {
-                    "key": "session-key"  # Replace with actual session key
+                    "key": session_id
                 }
             }
         }
@@ -354,16 +365,19 @@ def produce_retrieve_next_code_commit(cdc_server: CdcServerConfigProps):
             response.raise_for_status()
             return response.json().get("data", {}).get("doCommit", {})
         except Exception as e:
-            print(f"GraphQL request failed: {str(e)}")
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return {"errors": [{"message": f"Failed to retrieve next code commit: {str(e)}"}]}
     return retrieve_next_code_commit
 
 def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
     @tool
-    def apply_code_commit(git_repo: GitRepo, branch_name: str, diffs: typing.List[dict], commit_message: str):
+    def apply_code_commit(git_repo: GitRepo,
+                          session_id: str,
+                          branch_name: str, diffs: typing.List[dict], commit_message: str):
         """Apply a code commit to the repository.
 
         Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
             git_repo: Git repository information.
             branch_name: The branch name to apply the commit to.
             diffs: List of diff objects to apply.
@@ -405,7 +419,7 @@ def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
                     "value": commit_message
                 },
                 "sessionKey": {
-                    "key": "session-key"  # Replace with actual session key
+                    "key": session_id
                 },
                 "staged": {
                     "diffs": [{"underlyingDiff": diff} for diff in diffs]
@@ -430,16 +444,19 @@ def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
             response.raise_for_status()
             return response.json().get("data", {}).get("doCommit", {})
         except Exception as e:
-            print(f"GraphQL request failed: {str(e)}")
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return {"errors": [{"message": f"Failed to apply code commit: {str(e)}"}]}
     return apply_code_commit
 
 def produce_retrieve_and_apply_code_commit(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_and_apply_code_commit(git_repo: GitRepo, branch_name: str, query: str = None):
+    def retrieve_and_apply_code_commit(git_repo: GitRepo,
+                                       session_id: str,
+                                       branch_name: str, query: str = None):
         """Retrieve and apply a code commit in a single operation.
 
         Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
             git_repo: Git repository information.
             branch_name: The branch name to work with.
             query: Optional code query to condition the commit recommendation.
@@ -480,7 +497,7 @@ def produce_retrieve_and_apply_code_commit(cdc_server: CdcServerConfigProps):
                 },
                 "branchName": branch_name,
                 "sessionKey": {
-                    "key": "session-key"  # Replace with actual session key
+                    "key": session_id
                 },
                 "applyCommit": True
             }
@@ -508,17 +525,20 @@ def produce_retrieve_and_apply_code_commit(cdc_server: CdcServerConfigProps):
             response.raise_for_status()
             return response.json().get("data", {}).get("doCommit", {})
         except Exception as e:
-            print(f"GraphQL request failed: {str(e)}")
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return {"errors": [{"message": f"Failed to retrieve and apply code commit: {str(e)}"}]}
 
     return retrieve_and_apply_code_commit
 
 def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_current_repository_staged(git_repo: GitRepo, branch_name: str):
+    def retrieve_current_repository_staged(git_repo: GitRepo,
+                                           session_id: str,
+                                           branch_name: str):
         """Retrieve current staged changes in the repository.
 
         Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
             git_repo: Git repository information.
             branch_name: The branch name to get staged changes from.
 
@@ -548,7 +568,7 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
                 },
                 "branchName": branch_name,
                 "sessionKey": {
-                    "key": "session-key"  # Replace with actual session key
+                    "key": session_id
                 },
                 "getStagedOnly": True  # Flag to indicate we want only staged changes
             }
@@ -571,7 +591,7 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
             response.raise_for_status()
             return response.json().get("data", {}).get("buildCommitDiffContext", {})
         except Exception as e:
-            print(f"GraphQL request failed: {str(e)}")
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return {"errs": [{"message": f"Failed to retrieve staged changes: {str(e)}"}]}
 
     return retrieve_current_repository_staged
@@ -587,7 +607,7 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
         DeepResearchOrchestrated.__init__(self, self_card)
         A2AReactAgent.__init__(self, agent_config,
                                [produce_retrieve_commit_diff_code_context(cdc_server),
-                                produce_retrieve_current_repository_staged(cdc_server),
+                                # produce_retrieve_current_repository_staged(cdc_server),
                                 produce_perform_commit_diff_context_git_actions(cdc_server)],
                                self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
 

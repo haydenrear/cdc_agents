@@ -2,7 +2,7 @@ runner:
   runner_option: SKIP
 
 cdc_server:
-  graphql_endpoint: localhost:9991
+  graphql_endpoint: http://localhost:8080/graphql
 model_server:
   host: localhost
   port: 9991
@@ -16,6 +16,21 @@ agent_config:
   orchestrator_max_recurs: 100
   agents:
     SummarizerAgent:
+      mcp_tools:
+        memory:
+          name: memory
+          tool_prompt: >
+            Save information to be recollected later for summarizing.
+          tool_options:
+            command: docker
+            args:
+              - run
+              - -i
+              - -v
+              - summarizer_memory:/app/dist
+              - --rm
+              - mcp/memory-summarizer
+            env:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:3b
         agent_name: SummarizerAgent
@@ -24,6 +39,9 @@ agent_config:
           provide to the agent, and then this information can be summarized or compactified so as to reduce the burden
           on the next agents.
         system_instruction: >
+          You are a specialized agent that summarized information in the context, to be used when there is too much information
+          and it needs to be summarized. You have the option of using a memory tool so that you can better organize and remember
+          your thoughts to support your summarization.
       agent_card:
         name: SummarizerAgent
         path: /summarizer
@@ -45,6 +63,37 @@ agent_config:
         description:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.library_enumeration_agent.LibraryEnumerationAgent
+#      mcp_tools:
+#        github:
+#          name: github
+#          tool_prompt: >
+#            Use Github to look up repository URLs and browse issues and repositories for context.
+#          tool_options:
+#            command: docker
+#            args:
+#              - run
+#              - -i
+#              - --rm
+#              - -e
+#              - GITHUB_PERSONAL_ACCESS_TOKEN=${{X_GITHUB_TOKEN}}
+#              - mcp/github-library-enumeration
+#            env:
+#        gitlab:
+#          name: gitlab
+#          tool_prompt: >
+#            Use Gitlab to look up repository URLs and browse issues and repositories for context.
+#          tool_options:
+#            command: docker
+#            args:
+#              - run
+#              - -i
+#              - --rm
+#              - -e
+#              - GITHUB_PERSONAL_ACCESS_TOKEN=${{X_GITLAB_TOKEN}}
+#              - -e
+#              - GITLAB_API_URL=https://gitlab.com
+#              - mcp/gitlab-library-enumeration
+#            env:
     HumanDelegateAgent:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:3b
@@ -78,13 +127,13 @@ agent_config:
           Otherwise, using the information provided to you, run the code and provide feedback about the changes, such as by loading the log.
           
           Make sure to build the Docker container, run it, and then return the results. The test Docker container is located
-          in /Users/hayde/IdeaProjects/drools/cdc_agents/Dockerfile_testmcp and the deploy Docker container is located in
-          /Users/hayde/IdeaProjects/drools/cdc_agents/Dockerfile_mcp.  
+          in /Users/hayde/IdeaProjects/drools/cdc_agents/build/Dockerfile_testmcp and the deploy Docker container is located in
+          /Users/hayde/IdeaProjects/drools/cdc_agents/build/Dockerfile_mcp, and the base Dockerfile /Users/hayde/IdeaProjects/drools/cdc_agents/docker/Dockerfile_base.  
           
           If you would like to run the tests you can run the following docker command:
           
           ```shell
-          docker run -v '/Users/hayde/IdeaProjects/drools/python_di:/home/cdc_agents/python_di'  -v '/Users/hayde/IdeaProjects/drools/python_util:/home/cdc_agents/python_util' -v '/Users/hayde/IdeaProjects/drools/drools_py:/home/cdc_agents/drools_py' -v '/Users/hayde/IdeaProjects/ml/integrations/aisuite:/home/ml/integrations/aisuite' -v 'environment:/home/cdc_agents/sources/.venv' -v '/var/run/docker.sock:/var/run/docker.sock' --name cdc_agents_test mcp/cdc_agents_test          
+          docker run -v '/Users/hayde/IdeaProjects/drools/python_di:/home/cdc_agents/python_di'  -v '/Users/hayde/IdeaProjects/drools/python_util:/home/cdc_agents/python_util' -v '/Users/hayde/IdeaProjects/drools/drools_py:/home/cdc_agents/drools_py' -v '/Users/hayde/IdeaProjects/ml/integrations/aisuite:/home/ml/integrations/aisuite' -v 'environment:/home/cdc_agents/sources/.venv' -v '/var/run/docker.sock:/var/run/docker.sock' -v './application-test.yml:/home/cdc_agents/sources/resources/application.yml'  --name cdc_agents_test mcp/cdc_agents_test
           ```
           
           Then you can check the logs with 
@@ -102,6 +151,8 @@ agent_config:
           Feel free, if you need to patch existing library code,
           to create a new Dockerfile and build and run that. Please note the build tool is uv and see existing dependencies
           in /Users/hayde/IdeaProjects/drools/cdc_agents/pyproject.toml.
+          
+          If necessary, you can check with the filesystem in /Users/hayde/IdeaProjects/drools/cdc_agents/docker/build.sh to see the full build process and optional run commands.
       agent_card:
         name: CodeRunnerAgent
         path: /code-runner
