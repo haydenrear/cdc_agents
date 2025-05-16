@@ -182,11 +182,13 @@ class CdcMcpAgents:
         return handler
 
     def _create_agent_tool_handler(self, agent_tool: AgentTool):
-        async def handler(arguments: AgentQuery) -> AsyncGenerator[PushEvent, None]:
+        async def handler(arguments: AgentQuery) -> typing.List[PushEvent]:
             # Generate task ID and prepare for execution
             task_id = str(uuid.uuid4()) if not arguments.task_id else arguments.task_id
 
             query = arguments.query
+
+            events = []
 
             if not query:
                 error_event = PushEvent(
@@ -199,31 +201,21 @@ class CdcMcpAgents:
                         "timestamp": self.now()
                     }
                 )
-                yield error_event
-                return
+                events.append(error_event)
+                return events
 
             # Use TaskManager to create task
             manager: AgentTaskManager = self.tasks.get(agent_tool.agent.agent_name)
 
             if not manager:
-                yield await _cancelled_event(agent_tool)
-                return
+                events.append(await _cancelled_event(agent_tool))
+                return events
 
             res = await self._call_agent_tool_get_responses(agent_tool.agent, query, task_id)
 
             if isinstance(res, JSONRPCResponse):
-                response_event = PushEvent(
-                    eventName="agent_response",
-                    data={
-                        "content": res.result,
-                        "is_final": False,
-                        "agent": agent_tool.name,
-                        "task_id": task_id,
-                        "timestamp": self.now()
-                    }
-                )
-                yield response_event
-                return
+                events.append(await parse_agent_json_resp(res, task_id))
+                return events
 
             try:
                 # Initial response
@@ -239,7 +231,7 @@ class CdcMcpAgents:
                 )
 
                 # For FastMCP, we need to yield responses directly as streaming
-                yield initial_response
+                events.append(initial_response)
 
                 async for chunk in res:
                     if not chunk:
@@ -252,7 +244,7 @@ class CdcMcpAgents:
                         task = manager.task(task_id)
                         if task and task.status and task.status.state == TaskState.CANCELED:
                             cancel_event = await _cancelled_event(task_id)
-                            yield cancel_event
+                            events.append(cancel_event)
                             break
                     except Exception as e:
                         LoggerFacade.error(f"Error checking task status: {str(e)}")
@@ -260,15 +252,32 @@ class CdcMcpAgents:
                     parts = chunk.result.status.message.parts
 
                     for p in parts:
-                        yield await parse_agent_part(p, task_id)
+                        events.append(await parse_agent_part(p, task_id))
+
+                return events
 
             except asyncio.CancelledError:
                 cancel_event = await _cancelled_event(task_id)
-                yield cancel_event
+                events.append(cancel_event)
+                return events
 
             except Exception as e:
                 error_event = await _error_event(e, task_id)
-                yield error_event
+                events.append(error_event)
+                return events
+
+        async def parse_agent_json_resp(res, task_id):
+            response_event = PushEvent(
+                eventName="agent_response",
+                data={
+                    "content": res.result,
+                    "is_final": False,
+                    "agent": agent_tool.name,
+                    "task_id": task_id,
+                    "timestamp": self.now()
+                }
+            )
+            return response_event
 
         async def _error_event(e, task_id):
             error_event = PushEvent(
