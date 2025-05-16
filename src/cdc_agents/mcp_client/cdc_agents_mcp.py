@@ -1,29 +1,28 @@
 import dataclasses
-import json
 import time
 import typing
 import uuid
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union, AsyncGenerator
 
 import asyncio
 import injector
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import (
-    TextContent,
-    Tool,
-)
+from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 
 from cdc_agents.agent.a2a import A2AAgent
 from cdc_agents.agent.task_manager import AgentTaskManager
-from cdc_agents.common.types import AgentCard, SendTaskStreamingRequest, TaskSendParams, SendTaskStreamingResponse, \
-    JSONRPCResponse, Message, TextPart, CancelTaskRequest, TaskIdParams, TaskState, TaskStatus
+from cdc_agents.common.types import (
+    AgentCard, SendTaskStreamingRequest, TaskSendParams, SendTaskStreamingResponse,
+    JSONRPCResponse, Message, TextPart, CancelTaskRequest, TaskIdParams, TaskState, TaskStatus,
+    Task, FilePart, DataPart, Part
+)
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.runner_props import RunnerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.util.nest_async_util import do_nest_async
+from logging import getLogger
+
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_di.inject.profile_composite_injector.composite_injector import profile_scope
@@ -37,15 +36,19 @@ class PushEvent(BaseModel):
 # Pydantic models for agent inputs/outputs
 class AgentQuery(BaseModel):
     query: str
+    task_id: typing.Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 
 class CancelTask(BaseModel):
     task_id: str
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class ListTasks(BaseModel):
-    status: Optional[str] = "all"
+    status: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclasses.dataclass
@@ -78,15 +81,15 @@ class CdcMcpAgents:
         self.model_provider = model_provider
         self.memory_saver = memory_saver
 
-        self.server = Server("cdc-agents-mcp")
+        self.server: FastMCP = FastMCP("cdc-agents-mcp")
         self.agent_tools: List[AgentTool] = []
 
         # Initialize agent tools
-        self.agents = agents
+        self.agents = agents or []
 
         self._initialize_agent_tools()
 
-        self.tasks: dict[str, AgentTaskManager] = {agent.agent_name: typing.cast(AgentTaskManager, agent.task_manager) for agent in agents}
+        self.tasks: dict[str, AgentTaskManager] = {agent.agent_name: typing.cast(AgentTaskManager, agent.task_manager) for agent in self.agents}
 
         # Register server methods
         self._register_server_methods()
@@ -108,17 +111,17 @@ class CdcMcpAgents:
             agent.set_task_manager(task_manager)
 
             if agent_name in self.agent_config_props.agents:
-                agent_config = self.agent_config_props.agents[agent_name]
-                agent_card = agent_config.agent_card
+                agent_config = self.agent_config_props.agents.get(agent_name)
+                if agent_config and agent_config.agent_card:
+                    agent_card = agent_config.agent_card
+                    description = agent_card.description or f"Agent tool for {agent_name}"
 
-                description = agent_card.description
-
-                self.agent_tools.append(
-                    AgentTool(
-                        name=agent_name,
-                        description=description,
-                        agent=agent,
-                        agent_card=agent_card))
+                    self.agent_tools.append(
+                        AgentTool(
+                            name=agent_name,
+                            description=description,
+                            agent=agent,
+                            agent_card=agent_card))
                 LoggerFacade.info(f"Added agent tool: {agent_name}")
             else:
                 LoggerFacade.warn(f"Agent {agent_name} not found in configuration, skipping")
@@ -126,198 +129,259 @@ class CdcMcpAgents:
     def _register_server_methods(self):
         """Register all the server method decorators"""
 
-        @self.server.list_tools()
-        async def list_tools() -> List[Tool]:
-            tools = []
+        # Register each agent tool individually
+        for tool in self.agent_tools:
+            self.server.add_tool(
+                fn=self._create_agent_tool_handler(tool),
+                name=tool.name,
+                description=tool.description
+            )
 
-            # Add tools for each agent
-            for tool in self.agent_tools:
-                tools.append(
-                    Tool(
-                        name=tool.name,
-                        description=tool.description,
-                        inputSchema=AgentQuery.model_json_schema()
-                    )
-                )
+        # Add management tools
+        self.server.add_tool(
+            fn=self._create_get_task_status_handler(),
+            name="get_task_status",
+            description="Get the status of a running or completed task"
+        )
 
-            # Add management tools
-            tools.extend([
-                Tool(
-                    name="get_task_status",
-                    description="Get the status of a running or completed task",
-                    inputSchema=TaskStatus.model_json_schema()
-                ),
-                Tool(
-                    name="cancel_task",
-                    description="Cancel a running task",
-                    inputSchema=CancelTask.model_json_schema()
-                ),
-                Tool(
-                    name="list_tasks",
-                    description="List all tasks with optional status filtering",
-                    inputSchema=ListTasks.model_json_schema()
-                )
-            ])
+        self.server.add_tool(
+            fn=self._create_cancel_task_handler(),
+            name="cancel_task",
+            description="Cancel a running task"
+        )
 
-            return tools
+        self.server.add_tool(
+            fn=self._create_list_tasks_handler(),
+            name="list_tasks",
+            description="List all tasks with optional status filtering"
+        )
 
-        @self.server.call_tool()
-        async def call_tool(name: str, arguments: dict) -> List[TextContent]:
-            # Check if this is a management tool
-            if name == "get_task_status":
-                result = await self._handle_get_task_status(arguments)
-                return [TextContent(type="text", text=json.dumps(result))]
+    def _create_get_task_status_handler(self):
+        async def handler(arguments: TaskIdParams) -> Dict[str, Any]:
+            result = await self._handle_get_task_status(arguments)
+            return result
+        return handler
 
-            elif name == "cancel_task":
-                result = await self._handle_cancel_task(arguments)
-                return [TextContent(type="text", text=json.dumps(result))]
+    def _create_cancel_task_handler(self):
+        async def handler(arguments: CancelTask) -> Task:
+            result = await self._handle_cancel_task(arguments)
+            return result
+        return handler
 
-            elif name == "list_tasks":
-                result = await self._handle_list_tasks(arguments)
-                return [TextContent(type="text", text=json.dumps(result))]
+    def _create_list_tasks_handler(self):
+        async def handler(arguments: ListTasks) -> List[Dict[str, Any]]:
+            result = await self._handle_list_tasks(arguments)
+            return result
+        return handler
 
-            # Otherwise, it's an agent tool - find the agent
-            agent_tool = next((t for t in self.agent_tools if t.name == name), None)
-            if not agent_tool:
-                return [TextContent(
-                    type="text",
-                    text=f"Error: Unknown tool '{name}'"
-                )]
-
+    def _create_agent_tool_handler(self, agent_tool: AgentTool):
+        async def handler(arguments: AgentQuery) -> AsyncGenerator[PushEvent, None]:
             # Generate task ID and prepare for execution
-            task_id = str(uuid.uuid4())
+            task_id = str(uuid.uuid4()) if not arguments.task_id else arguments.task_id
 
-            query = arguments.get("query", "")
+            query = arguments.query
 
             if not query:
-                return [TextContent(
-                    type="text",
-                    text="Error: Query parameter is required"
-                )]
-
-
-            # Use TaskManager to create task
-            manager: AgentTaskManager = self.tasks.get(agent_tool.name)
-
-            res = self._call_agent_tool_get_responses(agent_tool.agent, query, task_id)
-
-            if isinstance(res, JSONRPCResponse):
-                return [TextContent(type="text", text=json.dumps(PushEvent(eventName="agent_response", data={
-                    "content": res.result,
-                    "is_final": False,
-                    "agent": agent_tool.name,
-                    "task_id": task_id,
-                    "timestamp": self.now()
-                })))]
-
-            server_response = []
-
-            try:
-                server_response.append(
-                    TextContent(
-                        type="text",
-                        text=json.dumps(PushEvent(
-                            eventName="agent_response",
-                            data={
-                                "content": f"Starting {agent_tool.name} agent with query: {query}",
-                                "is_final": False,
-                                "agent": agent_tool.name,
-                                "task_id": task_id,
-                                "timestamp": self.now()
-                            }
-                        ))))
-
-                async for chunk in res:
-                    chunk: SendTaskStreamingResponse = chunk
-                    # Check if task was cancelled
-                    if manager:
-                        task = manager.task(task_id)
-                        if task.status.state == TaskState.CANCELED:
-                            _push_cancelled_task(agent_tool, server_response, task_id)
-                            break
-
-                    parts = chunk.result.status.message.parts
-                    for p in parts:
-                        if not isinstance(p, TextPart):
-                            _push_task_error(agent_tool, f"Could not push part of type: {p.type}", server_response, task_id)
-                        else:
-                            _push_response(agent_tool, p.text, server_response, task_id)
-
-
-                return server_response
-
-            except asyncio.CancelledError:
-                return await _do_handle_call_tool_cancelled(agent_tool, manager, server_response, task_id)
-
-            except Exception as e:
-                return await _do_handle_call_tool_exception(agent_tool, e, manager, server_response, task_id)
-
-        async def _do_handle_call_tool_exception(agent_tool, e, manager, server_push, task_id):
-            # Handle errors
-            error_msg = f"Error executing agent {agent_tool.name}: {str(e)}"
-            LoggerFacade.error(error_msg)
-            if manager:
-                task_status = TaskStatus(state=TaskState.FAILED,
-                                         message=Message(role="agent", parts=[{"type": "text", "text": str(e)}]))
-                manager.update_store(task_id, task_status)
-            _push_task_error(agent_tool, error_msg, server_push, task_id)
-            return server_push
-
-        async def _do_handle_call_tool_cancelled(agent_tool, manager, server_push, task_id):
-            # Task was cancelled
-            if manager:
-                task_status = TaskStatus(state=TaskState.CANCELED)
-                manager.update_store(task_id, task_status)
-            _push_cancelled_task(agent_tool, server_push, task_id)
-            return server_push
-
-        def _push_response(agent_tool, text_content, server_push, task_id):
-            server_push.append(
-                TextContent(
-                    type="text",
-                    text=json.dumps(PushEvent(
-                        eventName="agent_response",
-                        data={
-                            "content": text_content,
-                            "is_final": False,
-                            "agent": agent_tool.name,
-                            "task_id": task_id,
-                            "timestamp": self.now()
-                        }
-                    ))))
-
-        def _push_task_error(agent_tool, error_msg, server_push, task_id):
-            server_push.append(
-                TextContent(
-                    type="text",
-                text=json.dumps(PushEvent(
-                    eventName="agent_response",
+                error_event = PushEvent(
+                    eventName="agent_error",
                     data={
-                        "content": f"Error: {error_msg}",
+                        "content": "Query parameter is required",
                         "is_final": True,
                         "agent": agent_tool.name,
                         "task_id": task_id,
                         "timestamp": self.now()
                     }
-                )))
+                )
+                yield error_event
+                return
+
+            # Use TaskManager to create task
+            manager: AgentTaskManager = self.tasks.get(agent_tool.agent.agent_name)
+
+            if not manager:
+                yield await _cancelled_event(agent_tool)
+                return
+
+            res = await self._call_agent_tool_get_responses(agent_tool.agent, query, task_id)
+
+            if isinstance(res, JSONRPCResponse):
+                response_event = PushEvent(
+                    eventName="agent_response",
+                    data={
+                        "content": res.result,
+                        "is_final": False,
+                        "agent": agent_tool.name,
+                        "task_id": task_id,
+                        "timestamp": self.now()
+                    }
+                )
+                yield response_event
+                return
+
+            try:
+                # Initial response
+                initial_response = PushEvent(
+                    eventName="agent_response",
+                    data={
+                        "content": f"Starting {agent_tool.name} agent with query: {query}",
+                        "is_final": False,
+                        "agent": agent_tool.name,
+                        "task_id": task_id,
+                        "timestamp": self.now()
+                    }
+                )
+
+                # For FastMCP, we need to yield responses directly as streaming
+                yield initial_response
+
+                async for chunk in res:
+                    if not chunk:
+                        continue
+
+                    chunk: SendTaskStreamingResponse = chunk
+
+                    # Check if task was cancelled
+                    try:
+                        task = manager.task(task_id)
+                        if task and task.status and task.status.state == TaskState.CANCELED:
+                            cancel_event = await _cancelled_event(task_id)
+                            yield cancel_event
+                            break
+                    except Exception as e:
+                        LoggerFacade.error(f"Error checking task status: {str(e)}")
+
+                    parts = chunk.result.status.message.parts
+
+                    for p in parts:
+                        yield await parse_agent_part(p, task_id)
+
+            except asyncio.CancelledError:
+                cancel_event = await _cancelled_event(task_id)
+                yield cancel_event
+
+            except Exception as e:
+                error_event = await _error_event(e, task_id)
+                yield error_event
+
+        async def _error_event(e, task_id):
+            error_event = PushEvent(
+                eventName="agent_error",
+                data={
+                    "content": f"Error: {str(e)}",
+                    "is_final": True,
+                    "agent": agent_tool.name,
+                    "task_id": task_id,
+                    "timestamp": self.now()
+                }
             )
+            return error_event
 
-        def _push_cancelled_task(agent_tool, server_push, task_id):
-            server_push.append(
-                TextContent(
-                    type="text",
-                    text=json.dumps(PushEvent(
-                        eventName="agent_response",
-                        data={
-                            "content": "Task was cancelled",
-                            "is_final": True,
-                            "agent": agent_tool.name,
-                            "task_id": task_id,
-                            "timestamp": self.now()
-                        }
-                    ))))
+        async def parse_agent_part(p, task_id):
+            if not isinstance(p, TextPart):
+                error_event = PushEvent(
+                    eventName="agent_error",
+                    data={
+                        "content": f"Could not push part of type: {p.type}",
+                        "is_final": False,
+                        "agent": agent_tool.name,
+                        "task_id": task_id,
+                        "timestamp": self.now()
+                    }
+                )
+                return error_event
+            else:
+                text_event = PushEvent(
+                    eventName="agent_response",
+                    data={
+                        "content": p.text,
+                        "is_final": False,
+                        "agent": agent_tool.name,
+                        "task_id": task_id,
+                        "timestamp": self.now()
+                    }
+                )
+                return text_event
 
-    async def _call_agent_tool_get_responses(self, agent: A2AAgent, query: str, task_id: str) -> typing.Generator[SendTaskStreamingResponse, None, None] | JSONRPCResponse:
+        async def _cancelled_event(task_id):
+            cancel_event = PushEvent(
+                eventName="agent_cancelled",
+                data={
+                    "content": "Task was cancelled",
+                    "is_final": True,
+                    "agent": agent_tool.name,
+                    "task_id": task_id,
+                    "timestamp": self.now()
+                }
+            )
+            return cancel_event
+
+        return handler
+
+    async def _do_handle_call_tool_exception(self, agent_tool, e, manager, server_push, task_id):
+        # Handle errors
+        error_msg = f"Error executing agent {agent_tool.name}: {str(e)}"
+        LoggerFacade.error(error_msg)
+        if manager:
+            task_status = TaskStatus(state=TaskState.FAILED,
+                                     message=Message(role="agent", parts=[{"type": "text", "text": str(e)}]))
+            manager.update_store(task_id, task_status)
+        self._push_task_error(agent_tool, error_msg, server_push, task_id)
+        return server_push
+
+    async def _do_handle_call_tool_cancelled(self, agent_tool, manager, server_push, task_id):
+        # Task was cancelled
+        if manager:
+            task_status = TaskStatus(state=TaskState.CANCELED)
+            manager.update_store(task_id, task_status)
+        self._push_cancelled_task(agent_tool, server_push, task_id)
+        return server_push
+
+    def _push_response(self, agent_tool: AgentTool, text: str, server_response: List, task_id: str) -> List[Dict[str, Any]]:
+        response = PushEvent(
+            eventName="agent_response",
+            data={
+                "content": text,
+                "is_final": False,
+                "agent": agent_tool.name,
+                "task_id": task_id,
+                "timestamp": self.now()
+            }
+        )
+        serialized = response.model_dump()
+        server_response.append(serialized)
+        return server_response
+
+    def _push_task_error(self, agent_tool: AgentTool, error_msg: str, server_push: List, task_id: str) -> List[Dict[str, Any]]:
+        response = PushEvent(
+            eventName="agent_error",
+            data={
+                "content": error_msg,
+                "is_final": True,
+                "agent": agent_tool.name,
+                "task_id": task_id,
+                "timestamp": self.now()
+            }
+        )
+        serialized = response.model_dump()
+        server_push.append(serialized)
+        return server_push
+
+    def _push_cancelled_task(self, agent_tool: AgentTool, server_push: List, task_id: str) -> List[Dict[str, Any]]:
+        response = PushEvent(
+            eventName="agent_cancelled",
+            data={
+                "content": "Task was cancelled",
+                "is_final": True,
+                "agent": agent_tool.name,
+                "task_id": task_id,
+                "timestamp": self.now()
+            }
+        )
+        serialized = response.model_dump()
+        server_push.append(serialized)
+        return server_push
+
+    async def _call_agent_tool_get_responses(self, agent: A2AAgent, query: str, task_id: str) -> Union[AsyncGenerator[SendTaskStreamingResponse, None], JSONRPCResponse]:
         """
         Process agent response as an async iterable to enable streaming
 
@@ -329,18 +393,42 @@ class CdcMcpAgents:
         Yields:
             Chunks of the response as they become available
         """
-        tasks: AgentTaskManager = self.tasks[agent.agent_name]
-        # Create task in the task manager
-        message = Message(role="user", parts=[{"type": "text", "text": query}])
-        task_send_params = TaskSendParams(
-            id=task_id,
-            sessionId=task_id,  # Use task_id as session_id for simplicity
-            message=message,
-            acceptedOutputModes=["text"])
-        return tasks.on_send_task_subscribe(SendTaskStreamingRequest(params=task_send_params))
+        try:
+            tasks: AgentTaskManager = self.tasks.get(agent.agent_name)
+            if not tasks:
+                return JSONRPCResponse(result=f"No task manager found for agent {agent.agent_name}")
+
+            # Create task in the task manager
+            message = Message(role="user", parts=[TextPart(type="text", text=query)])
+            task_send_params = TaskSendParams(
+                id=task_id,
+                sessionId=task_id,  # Use task_id as session_id for simplicity
+                message=message,
+                acceptedOutputModes=["text"])
+
+            response = tasks.on_send_task_subscribe(SendTaskStreamingRequest(params=task_send_params))
+
+            # If it's a JSONRPCResponse, return it directly
+            if isinstance(response, JSONRPCResponse):
+                return response
+
+            # If it's already an async generator, return it
+            if hasattr(response, '__aiter__'):
+                return response
+
+            # If it's a regular generator, convert it to an async generator
+            async def async_generator():
+                for item in response:
+                    yield item
+                    await asyncio.sleep(0)  # Allow other tasks to run
+
+            return async_generator()
+        except Exception as e:
+            LoggerFacade.error(f"Error in _call_agent_tool_get_responses: {str(e)}")
+            return JSONRPCResponse(result=f"Error processing request: {str(e)}")
 
 
-    async def _handle_get_task_status(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_get_task_status(self, arguments: TaskIdParams) -> Dict[str, Any]:
         """Handle get task status requests"""
         task_id = arguments.get("task_id")
         if not task_id:
@@ -367,9 +455,9 @@ class CdcMcpAgents:
             LoggerFacade.warn(f"Task status requested for unknown task ID: {task_id}")
             return {"error": f"Task {task_id} not found", "status": "unknown", "task_id": task_id}
 
-    async def _handle_cancel_task(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_cancel_task(self, arguments: CancelTask) -> Dict[str, Any]:
         """Handle task cancellation requests"""
-        task_id = arguments.get("task_id")
+        task_id = arguments.task_id
         if not task_id:
             return {"error": "Task ID is required", "success": False}
 
@@ -407,7 +495,7 @@ class CdcMcpAgents:
 
         return {"success": True, "message": f"Task {task_id} cancelled successfully"}
 
-    async def _handle_list_tasks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_list_tasks(self, arguments: ListTasks) -> Dict[str, Any]:
         """Handle listing tasks"""
         status_filter = arguments.get("status", "all")
 
@@ -430,16 +518,36 @@ class CdcMcpAgents:
 
         return {"tasks": tasks}
 
-    async def start_server(self):
+    async def start_server(self, host="0.0.0.0", port=8000):
         """Start the MCP server - Expose agents as tools themselves for easy integration"""
-        LoggerFacade.info("Starting MCP server for CDC agents")
-        
-        options = self.server.create_initialization_options()
-        async with stdio_server() as (read_stream, write_stream):
-            await self.server.run(read_stream, write_stream, options, raise_exceptions=True)
+        LoggerFacade.info(f"Starting FastMCP server for CDC agents on {host}:{port}")
 
-    def start_server_sync(self):
+        # Run the FastMCP server
+        try:
+            # Check which parameters are supported by the FastMCP run method
+            import inspect
+            server_run_params = inspect.signature(self.server.run).parameters
+            run_kwargs = {}
+
+            if "host" in server_run_params:
+                run_kwargs["host"] = host
+            if "port" in server_run_params:
+                run_kwargs["port"] = port
+
+            # Try different parameter names for path prefix
+            if "prefix" in server_run_params:
+                run_kwargs["prefix"] = "/mcp"
+            elif "path_prefix" in server_run_params:
+                run_kwargs["path_prefix"] = "/mcp"
+
+            LoggerFacade.info(f"Starting FastMCP server with parameters: {run_kwargs}")
+            await self.server.run(**run_kwargs)
+        except Exception as e:
+            LoggerFacade.error(f"Error starting FastMCP server: {str(e)}")
+            raise
+
+    def start_server_sync(self, host="0.0.0.0", port=8000):
         """Start the server synchronously (for non-async contexts)"""
         do_nest_async()
-        asyncio.run(self.start_server())
+        asyncio.run(self.start_server(host=host, port=port))
 

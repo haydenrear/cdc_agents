@@ -10,7 +10,7 @@ model_server:
 human_delegate:
   base_dir: ./human_delegate_data
 checkpoint:
-  uri:
+  uri: postgresql://localhost:5450/postgres
 
 agent_config:
   orchestrator_max_recurs: 100
@@ -32,7 +32,7 @@ agent_config:
               - mcp/memory-summarizer
             env:
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: SummarizerAgent
         orchestrator_instruction: >
           An agent that summarizes the information to be provided. Used when there is too much data in the context to
@@ -41,7 +41,11 @@ agent_config:
         system_instruction: >
           You are a specialized agent that summarized information in the context, to be used when there is too much information
           and it needs to be summarized. You have the option of using a memory tool so that you can better organize and remember
-          your thoughts to support your summarization.
+          your thoughts to support your summarization. In particular, when applied to our codegen workflow, there may be
+          a lot of error logs or git diffs that need to be summarized and stored for later. Perhaps identifying the cause
+          of the error and the nature of the change to the git repository instead of the full error message for summary,
+          and then saving the important pieces in the knowledge base so you can remember the workflow if it comes up 
+          later.
       agent_card:
         name: SummarizerAgent
         path: /summarizer
@@ -50,7 +54,7 @@ agent_config:
       agent_clazz: cdc_agents.agent.agent.summarizer_agent.SummarizerAgent
     LibraryEnumerationAgent:
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: LibraryEnumerationAgent
         orchestrator_instruction: >
           An agent that identifies important dependencies in the repository to be included in the code search when including
@@ -96,7 +100,7 @@ agent_config:
 #            env:
     HumanDelegateAgent:
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: HumanDelegateAgent
         orchestrator_instruction: >
           An agent that facilitates communication with human representatives, such as refining ticket or business requirements.
@@ -114,7 +118,7 @@ agent_config:
       agent_clazz: cdc_agents.agent.agent.human_delegate_agent.HumanDelegateAgent
     CodeRunnerAgent:
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CodeRunnerAgent
         orchestrator_instruction: >
           An agent that facilitates the running of the code after making code changes, to validate code changes with respect
@@ -238,7 +242,7 @@ agent_config:
               - postgresql://postgres:postgres@host.docker.internal:5450/postgres
             env:
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodegenAgent
         system_instruction: >
           You are a specialized assistant for generating commits for implementation of software projects.
@@ -258,7 +262,7 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodeSearchAgent
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:3b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodeSearchAgent
         system_instruction: >
           You are a specialized assistant for searching for code context information.
@@ -290,7 +294,7 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeAgent
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:7b
+        model: ollama_chat://ollama_chat/hermes3:70b
         agent_name: DeepCodeAgent
         orchestration_instruction: >
           You are the orchestrator agent for code generation. Your job is to orchestrate a group of agents to implement tickets for software projects.

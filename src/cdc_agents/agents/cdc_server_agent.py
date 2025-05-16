@@ -63,7 +63,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
                                                 session_id: str,
                                                 git_repo_url: str, git_branch: str = "main",
                                                 perform_ops_async: bool = True) -> GitRepoResult:
-        """Use this to embed a git repository for code context.
+        """Use this to embed a git repository for code context. If you would like to add a branch and set the embeddings, pass a list in actions_to_perform [ADD_BRANCH, SET_EMBEDDING, PARSE_BLAME_TREE]. If you do not pass perform_ops_async, this operation will take hours, but the server can respond while it's processing if you pass perform_ops_async.
 
         Args:
             git_repo_url: the git repo URL for the repository to embed.
@@ -71,7 +71,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
             actions_to_perform: a list of actions to perform.
                 Options are:
-                 - 'ADD_BRANCH': add a single branch for a repository to the commit diff vector database
+                 - 'ADD_BRANCH': add commit diffs for a single branch to the repository - does not embed changes
                  - 'REMOVE_BRANCH': remove a single branch from the commit diff vector database
                  - 'REMOVE_REPO': remove the repository from the commit diff vector database
                  - 'PARSE_BLAME_TREE': add additional embeddings based on parsing the git blame tree
@@ -192,7 +192,7 @@ class CommitDiffFileItem:
 @dataclasses.dataclass(init=True)
 class CommitDiffFileResult:
     errs: typing.List[Error]
-    files: typing.List
+    files: typing.List[CommitDiffFileItem]
 
 def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
     @tool
@@ -530,11 +530,32 @@ def produce_retrieve_and_apply_code_commit(cdc_server: CdcServerConfigProps):
 
     return retrieve_and_apply_code_commit
 
+@dataclasses.dataclass(init=True)
+class RelevantFileItemOut:
+    name: str
+    linesWithLineNumbers: str
+
+@dataclasses.dataclass(init=True)
+class RelevantFileItemsOut:
+    beforeApplyDiff: RelevantFileItemOut
+    afterApplyDiff: RelevantFileItemOut
+
+@dataclasses.dataclass(init=True)
+class StagedOut:
+    files: typing.List[RelevantFileItemsOut]
+
+@dataclasses.dataclass(init=True)
+class GitStagedResult:
+    staged: StagedOut = None
+    sessionKey: ServerSessionKey = None
+    error: typing.List[Error] = None
+
+
 def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps):
     @tool
     def retrieve_current_repository_staged(git_repo: GitRepo,
                                            session_id: str,
-                                           branch_name: str):
+                                           branch_name: str) -> GitStagedResult:
         """Retrieve current staged changes in the repository.
 
         Args:
@@ -548,14 +569,25 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
         import requests
 
         query = """
-        mutation GetStagedChanges($request: GitRepoPromptingRequest!) {
-            buildCommitDiffContext(commitDiffContextRequest: $request) {
-                files {
-                    path
-                    source
+        mutation GetStaged($request: GitRepoQueryRequest!) {
+            getStaged(repoRequest: $request) {
+                staged {
+                    files {
+                        beforeApplyDiff {
+                            name
+                            linesWithLineNumbers
+                        }
+                        afterApplyDiff {
+                            name
+                            linesWithLineNumbers
+                        }
+                    } 
                 }
-                errs {
+                error {
                     message
+                }
+                sessionKey {
+                    key
                 }
             }
         }
@@ -566,11 +598,12 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
                 "gitRepo": {
                     "path": git_repo.git_repo_url
                 },
-                "branchName": branch_name,
+                "gitBranch": {
+                    "branch": branch_name
+                },
                 "sessionKey": {
                     "key": session_id
-                },
-                "getStagedOnly": True  # Flag to indicate we want only staged changes
+                }
             }
         }
 
@@ -596,6 +629,162 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
 
     return retrieve_current_repository_staged
 
+def produce_apply_last_staged(cdc_server: CdcServerConfigProps):
+    @tool
+    def apply_last_staged(git_repo: GitRepo,
+                          session_id: str,
+                          branch_name: str) -> GitStagedResult:
+        """Apply changes created last in the commit diff context session
+
+        Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
+            git_repo: Git repository information.
+            branch_name: The branch name to get staged changes from.
+
+        Returns:
+            Apply the staged changes from the last next commit call to the repository so the code can be tested and ran
+        """
+        import requests
+
+        query = """
+        mutation ApplyLastStaged($request: GitRepoQueryRequest!) {
+            applyLastStaged(repoRequest: $request) {
+                staged {
+                    files {
+                        beforeApplyDiff {
+                            name
+                            linesWithLineNumbers
+                        }
+                        afterApplyDiff {
+                            name
+                            linesWithLineNumbers
+                        }
+                    } 
+                }
+                error {
+                    message
+                }
+                sessionKey {
+                    key
+                }
+            }
+        }
+        """
+
+        variables = {
+            "request": {
+                "gitRepo": {
+                    "path": git_repo.git_repo_url
+                },
+                "gitBranch": {
+                    "branch": branch_name
+                },
+                "sessionKey": {
+                    "key": session_id
+                }
+            }
+        }
+
+        # Make the GraphQL request
+        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "query": query,
+            "variables": variables
+        }
+
+        try:
+            response = requests.post(endpoint, headers=headers, json=data)
+            response.raise_for_status()
+            return response.json().get("data", {}).get("buildCommitDiffContext", {})
+        except Exception as e:
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
+            return {"errors": [{"message": f"Failed to retrieve staged changes: {str(e)}"}]}
+
+    return apply_last_staged
+
+def produce_reset_any_staged(cdc_server: CdcServerConfigProps):
+    @tool
+    def reset_any_staged(git_repo: GitRepo,
+                         session_id: str,
+                         branch_name: str) -> GitStagedResult:
+        """Reset the repository from any application of staged.
+
+        Args:
+            session_id: the session ID of the graph, notated as the thread_id in langgraph.
+            git_repo: Git repository information.
+            branch_name: The branch name to get staged changes from.
+
+        Returns:
+            If any changes are staged in the repository, reset them. This will return the changes that were staged.
+        """
+        import requests
+
+        query = """
+        mutation ResetAnyStaged($request: GitRepoQueryRequest!) {
+            resetAnyStaged(repoRequest: $request) {
+                staged {
+                    files {
+                        beforeApplyDiff {
+                            name
+                            linesWithLineNumbers
+                        }
+                        afterApplyDiff {
+                            name
+                            linesWithLineNumbers
+                        }
+                    } 
+                }
+                error {
+                    message
+                }
+                sessionKey {
+                    key
+                }
+            }
+        }
+        """
+
+        variables = {
+            "request": {
+                "gitRepo": {
+                    "path": git_repo.git_repo_url
+                },
+                "gitBranch": {
+                    "branch": branch_name
+                },
+                "sessionKey": {
+                    "key": session_id
+                }
+            }
+        }
+
+        # Make the GraphQL request
+        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "query": query,
+            "variables": variables
+        }
+
+        try:
+            response = requests.post(endpoint, headers=headers, json=data)
+            response.raise_for_status()
+            return response.json().get("data", {}).get("buildCommitDiffContext", {})
+        except Exception as e:
+            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
+            return {"errors": [{"message": f"Failed to retrieve staged changes: {str(e)}"}]}
+
+    return reset_any_staged
+
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
 class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
@@ -607,7 +796,9 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
         DeepResearchOrchestrated.__init__(self, self_card)
         A2AReactAgent.__init__(self, agent_config,
                                [produce_retrieve_commit_diff_code_context(cdc_server),
-                                # produce_retrieve_current_repository_staged(cdc_server),
+                                produce_retrieve_current_repository_staged(cdc_server),
+                                produce_apply_last_staged(cdc_server),
+                                produce_reset_any_staged(cdc_server),
                                 produce_perform_commit_diff_context_git_actions(cdc_server)],
                                self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
 
