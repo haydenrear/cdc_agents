@@ -18,7 +18,7 @@ from cdc_agents.common.server import TaskManager
 from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 from cdc_agents.config.agent_config_props import AgentMcpTool
 from python_util.logger.logger import LoggerFacade
-
+from pydantic import BaseModel
 
 class BaseAgent(abc.ABC):
 
