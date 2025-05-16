@@ -6,10 +6,13 @@ from typing import Dict, List, Any, Optional, Union, AsyncGenerator
 
 import asyncio
 import injector
+import mcp.client.session
+import nest_asyncio
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 
 from cdc_agents.agent.a2a import A2AAgent
+from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.common.types import (
     AgentCard, SendTaskStreamingRequest, TaskSendParams, SendTaskStreamingResponse,
@@ -81,11 +84,15 @@ class CdcMcpAgents:
         self.model_provider = model_provider
         self.memory_saver = memory_saver
 
-        self.server: FastMCP = FastMCP("cdc-agents-mcp")
+        self.server: FastMCP = FastMCP("cdc-agents-mcp", stateless_http=True, json_response=True)
         self.agent_tools: List[AgentTool] = []
 
         # Initialize agent tools
         self.agents = agents or []
+
+        for a in agents:
+            if isinstance(a, A2AReactAgent):
+                a.add_mcp_tools(a.agent_config.mcp_tools)
 
         self._initialize_agent_tools()
 
@@ -518,36 +525,6 @@ class CdcMcpAgents:
 
         return {"tasks": tasks}
 
-    async def start_server(self, host="0.0.0.0", port=8000):
-        """Start the MCP server - Expose agents as tools themselves for easy integration"""
-        LoggerFacade.info(f"Starting FastMCP server for CDC agents on {host}:{port}")
-
-        # Run the FastMCP server
-        try:
-            # Check which parameters are supported by the FastMCP run method
-            import inspect
-            server_run_params = inspect.signature(self.server.run).parameters
-            run_kwargs = {}
-
-            if "host" in server_run_params:
-                run_kwargs["host"] = host
-            if "port" in server_run_params:
-                run_kwargs["port"] = port
-
-            # Try different parameter names for path prefix
-            if "prefix" in server_run_params:
-                run_kwargs["prefix"] = "/mcp"
-            elif "path_prefix" in server_run_params:
-                run_kwargs["path_prefix"] = "/mcp"
-
-            LoggerFacade.info(f"Starting FastMCP server with parameters: {run_kwargs}")
-            await self.server.run(**run_kwargs)
-        except Exception as e:
-            LoggerFacade.error(f"Error starting FastMCP server: {str(e)}")
-            raise
-
-    def start_server_sync(self, host="0.0.0.0", port=8000):
+    def start_server_sync(self):
         """Start the server synchronously (for non-async contexts)"""
-        do_nest_async()
-        asyncio.run(self.start_server(host=host, port=port))
-
+        self.server.run(transport='stdio')

@@ -48,18 +48,16 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
         A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
-        self.add_mcp_tools(self.agent_config.mcp_tools)
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
-        return do_run_on_event_loop(self.add_mcp_tools_async(additional_tools, loop), lambda s: None, loop)
+        done = do_run_on_event_loop(self.add_mcp_tools_async(additional_tools, loop), lambda s: None, loop)
 
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
             for k,v in additional_tools.items():
-                LoggerFacade.info(f"Loading tool {k} for {self.__class__.__name__}")
                 async with MultiServerMCPClient({k: v.tool_options}) as client:
                     tools = client.get_tools()
                     for t in tools:

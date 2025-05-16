@@ -13,10 +13,6 @@ LogLevel.set_log_level(LogLevelFacade.Ctx)
 
 os.environ['SPRING_PROFILES_ACTIVE'] = 'mcp'
 
-with open("txt.txt", 'w') as f:
-    print("Process ID:")
-    print(os.getpid())
-    f.write(str(os.getpid()))
 
 @boot_application(root_dir_cls=CdcMcpAgents)
 class CdcAgentsApplication:
