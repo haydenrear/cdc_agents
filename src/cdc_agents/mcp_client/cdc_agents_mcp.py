@@ -6,8 +6,6 @@ from typing import Dict, List, Any, Optional, Union, AsyncGenerator
 
 import asyncio
 import injector
-import mcp.client.session
-import nest_asyncio
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 
@@ -17,15 +15,12 @@ from cdc_agents.agent.task_manager import AgentTaskManager
 from cdc_agents.common.types import (
     AgentCard, SendTaskStreamingRequest, TaskSendParams, SendTaskStreamingResponse,
     JSONRPCResponse, Message, TextPart, CancelTaskRequest, TaskIdParams, TaskState, TaskStatus,
-    Task, FilePart, DataPart, Part
+    Task
 )
 from cdc_agents.common.utils.push_notification_auth import PushNotificationSenderAuth
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.runner_props import RunnerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
-from cdc_agents.util.nest_async_util import do_nest_async
-from logging import getLogger
-
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_di.inject.profile_composite_injector.composite_injector import profile_scope
@@ -34,6 +29,7 @@ from python_util.logger.logger import LoggerFacade
 
 class PushEvent(BaseModel):
     eventName: str
+    task_id: str
     data: dict[str, Any]
 
 # Pydantic models for agent inputs/outputs
@@ -41,8 +37,6 @@ class AgentQuery(BaseModel):
     query: str
     task_id: typing.Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
-
-
 
 class CancelTask(BaseModel):
     task_id: str
@@ -77,12 +71,10 @@ class CdcMcpAgents:
         agent_config_props: AgentConfigProps,
         runner_config_props: RunnerConfigProps,
         model_provider: ModelProvider,
-        memory_saver = None,
         agents: List[A2AAgent] = None
     ):
         self.agent_config_props = agent_config_props
         self.model_provider = model_provider
-        self.memory_saver = memory_saver
 
         self.server: FastMCP = FastMCP("cdc-agents-mcp", stateless_http=True, json_response=True)
         self.agent_tools: List[AgentTool] = []
@@ -192,6 +184,7 @@ class CdcMcpAgents:
 
             if not query:
                 error_event = PushEvent(
+                    task_id=task_id,
                     eventName="agent_error",
                     data={
                         "content": "Query parameter is required",
@@ -220,6 +213,7 @@ class CdcMcpAgents:
             try:
                 # Initial response
                 initial_response = PushEvent(
+                    task_id=task_id,
                     eventName="agent_response",
                     data={
                         "content": f"Starting {agent_tool.name} agent with query: {query}",
@@ -268,6 +262,7 @@ class CdcMcpAgents:
 
         async def parse_agent_json_resp(res, task_id):
             response_event = PushEvent(
+                task_id=task_id,
                 eventName="agent_response",
                 data={
                     "content": res.result,
@@ -281,6 +276,7 @@ class CdcMcpAgents:
 
         async def _error_event(e, task_id):
             error_event = PushEvent(
+                task_id=task_id,
                 eventName="agent_error",
                 data={
                     "content": f"Error: {str(e)}",
@@ -295,6 +291,7 @@ class CdcMcpAgents:
         async def parse_agent_part(p, task_id):
             if not isinstance(p, TextPart):
                 error_event = PushEvent(
+                    task_id=task_id,
                     eventName="agent_error",
                     data={
                         "content": f"Could not push part of type: {p.type}",
@@ -307,6 +304,7 @@ class CdcMcpAgents:
                 return error_event
             else:
                 text_event = PushEvent(
+                    task_id=task_id,
                     eventName="agent_response",
                     data={
                         "content": p.text,
@@ -320,6 +318,7 @@ class CdcMcpAgents:
 
         async def _cancelled_event(task_id):
             cancel_event = PushEvent(
+                task_id=task_id,
                 eventName="agent_cancelled",
                 data={
                     "content": "Task was cancelled",
@@ -354,6 +353,7 @@ class CdcMcpAgents:
 
     def _push_response(self, agent_tool: AgentTool, text: str, server_response: List, task_id: str) -> List[Dict[str, Any]]:
         response = PushEvent(
+            task_id=task_id,
             eventName="agent_response",
             data={
                 "content": text,
@@ -369,6 +369,7 @@ class CdcMcpAgents:
 
     def _push_task_error(self, agent_tool: AgentTool, error_msg: str, server_push: List, task_id: str) -> List[Dict[str, Any]]:
         response = PushEvent(
+            task_id=task_id,
             eventName="agent_error",
             data={
                 "content": error_msg,
@@ -384,6 +385,7 @@ class CdcMcpAgents:
 
     def _push_cancelled_task(self, agent_tool: AgentTool, server_push: List, task_id: str) -> List[Dict[str, Any]]:
         response = PushEvent(
+            task_id=task_id,
             eventName="agent_cancelled",
             data={
                 "content": "Task was cancelled",
