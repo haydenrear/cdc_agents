@@ -1,6 +1,6 @@
 # Use a Python image with uv pre-installed
 FROM cdc_agents_base:latest
 
-ENV SPRING_PROFILES_ACTIVE='mcp'
+ENV SPRING_PROFILES_ACTIVE='mcp,docker'
 
 ENTRYPOINT ["uv", "run", "run-mcp-client"]

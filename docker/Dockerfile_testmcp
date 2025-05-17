@@ -1,4 +1,6 @@
 # Use a Python image with uv pre-installed
 FROM cdc_agents_base:latest
 
+ENV SPRING_PROFILES_ACTIVE='docker'
+
 ENTRYPOINT ["uv", "run", "test-cdc-agents"]
