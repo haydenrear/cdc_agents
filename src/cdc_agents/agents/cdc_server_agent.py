@@ -1,6 +1,6 @@
-import dataclasses
-import enum
 import typing
+import requests
+from typing import Dict, Any, TypeVar, Type, Union, List, cast, Optional
 
 import injector
 from langchain_core.tools import tool
@@ -14,52 +14,102 @@ from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
-from python_util.logger.logger import LoggerFacade
+
+# Import GraphQL models
+from cdc_agents.common.graphql_models import (
+    Error as GraphQLError,
+    ServerSessionKey,
+    GitRepoResult,
+    GitRepoQueryRequest,
+    GitBranch,
+    GitRepo as GitRepoModel,
+    SessionKey,
+    CommitMessage,
+    ServerCommitMessage,
+    GitRepoPromptingRequest,
+    PromptDiff,
+    DiffInput,
+    Staged,
+    NextCommit,
+    GitStagedResult,
+    StagedOut,
+    CodeQuery,
+    CommitDiffFileResult,
+    RepoStatus,
+    CdcGitRepoBranch,
+    GitAction
+)
+class LoggerFacade:
+    @staticmethod
+    def error(message):
+        print(f"ERROR: {message}")
 
 
-class GitAction(enum.Enum):
-    ADD_BRANCH = 0
-    REMOVE_BRANCH = 1
-    REMOVE_REPO = 2
-    PARSE_BLAME_TREE = 3
-    SET_EMBEDDINGS = 4
-    ADD_REPO = 5
+T = TypeVar('T')
 
-class RepoStatus(enum.Enum):
-    ADDED = 0
-    REMOVED = 1
-    FAIL = 2
-    ASYNC = 3
+def _get_err(e):
+    return GraphQLError(message=f"Failed to retrieve commit diff context: {str(e)}")
 
-@dataclasses.dataclass(init=True)
-class Error:
-    message: str
 
-@dataclasses.dataclass(init=True)
-class ServerSessionKey:
-    key: str
+def execute_graphql_request(
+    endpoint: str,
+    query: str,
+    variables: Dict[str, Any],
+    result_key: str,
+    model_class: Type[T]
+) -> T:
+    """
+    Execute a GraphQL request and parse the response into the specified model.
+    
+    Args:
+        endpoint: GraphQL endpoint URL
+        query: GraphQL query or mutation
+        variables: Variables for the GraphQL query
+        result_key: Key in the response data to extract
+        model_class: Pydantic model class to parse the response into
+        
+    Returns:
+        Parsed response data as a Pydantic model
+    """
+    headers = {
+        "Content-Type": "application/json",
+    }
 
-@dataclasses.dataclass(init=True)
-class GitRepoValidatableDiffItem:
-    value: str
+    data = {
+        "query": query,
+        "variables": variables
+    }
 
-@dataclasses.dataclass(init=True)
-class GitRepoValidatableDiff:
-    items: typing.List[GitRepoValidatableDiffItem]
-    numDiffs: int
+    try:
+        response = requests.post(endpoint, headers=headers, json=data)
+        response.raise_for_status()
 
-@dataclasses.dataclass(init=True)
-class GitRepoResult:
-    branch: str = None
-    url: str = None
-    repoStatus: typing.List[RepoStatus] = None
-    error: typing.List[Error] = None
-    serverSessionKey: ServerSessionKey = None
+        response_json = response.json()
+        result_data = response_json.get("data", {}).get(result_key, {})
+
+        # Safely handle model instantiation regardless of Pydantic version
+        try:
+            # Try Pydantic v2 style
+            if hasattr(model_class, 'model_validate'):
+                return model_class.model_validate(result_data)
+            # Try Pydantic v1 style
+            elif hasattr(model_class, 'parse_obj'):
+                return model_class.parse_obj(result_data)
+            # Fallback to direct instantiation
+            else:
+                return cast(T, model_class(**result_data))
+        except TypeError:
+            # If all else fails, try direct instantiation
+            return cast(T, model_class(**result_data))
+    except Exception as e:
+        LoggerFacade.error(f"GraphQL request failed: {str(e)}")
+        raise e
+
 
 def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigProps):
 
     @tool
-    def perform_commit_diff_context_git_actions(actions_to_perform: typing.List[str] | str | typing.List[GitAction],
+    def perform_commit_diff_context_git_actions(actions_to_perform: Union[List[str], str, List[GitAction]],
                                                 session_id: str,
                                                 git_repo_url: str, git_branch: str = "main",
                                                 perform_ops_async: bool = True) -> GitRepoResult:
@@ -80,7 +130,6 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
             perform_ops_async: whether to return immediately or wait until all operations are completed
         Returns: a result object containing information about the operations completed
         """
-        import requests
 
         if not git_repo_url:
             return _git_repo_result_err("No git repo URL provided. Cannot perform git code search operation without location of said repository.")
@@ -92,7 +141,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
             if all(isinstance(action, str) for action in actions_to_perform):
                 operations = actions_to_perform
             else:  # Convert GitAction enum to string
-                operations = [action for action in actions_to_perform]
+                operations = [action.value if isinstance(action, GitAction) else str(action) for action in actions_to_perform]
         else:
             return _git_repo_result_err("""No valid operation provided. Could not call server with nothing to do. 
                                            Options are ADD_BRANCH, REMOVE_BRANCH, REMOVE_REPO, PARSE_BLAME_TREE, SET_EMBEDDING, ADD_REPO.""")
@@ -137,66 +186,35 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
             }
         }
 
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query,
-            "variables": variables
-        }
-
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            result = response.json().get("data", {}).get("doGit", {})
-
-            # Convert GraphQL response to GitRepoResult
-            return GitRepoResult(
-                branch=result.get("branch", ""),
-                url=result.get("url", ""),
-                repoStatus=[RepoStatus[status] for status in result.get("repoStatus", [])],
-                error=[Error(message=err["message"]) for err in result.get("error", [])],
-                serverSessionKey=ServerSessionKey(key=result.get("sessionKey", {}).get("key", ""))
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query,
+                variables=variables,
+                result_key="doGit",
+                model_class=GitRepoResult
             )
         except Exception as e:
-            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return GitRepoResult(
                 branch="",
                 url="",
                 repoStatus=[RepoStatus.FAIL],
-                error=[Error(message=f"Failed to execute Git operations: {str(e)}")],
-                serverSessionKey=ServerSessionKey(key="")
+                error=[GraphQLError(message=f"Failed to execute Git operations: {str(e)}")],
+                sessionKey=ServerSessionKey(key="")
             )
 
     return perform_commit_diff_context_git_actions
 
 
 def _git_repo_result_err(repo_):
-    return GitRepoResult(error=[Error(message=repo_)])
+    return GitRepoResult(error=[GraphQLError(message=repo_)])
 
 
-@dataclasses.dataclass(init=True)
-class GitRepo:
-    git_repo_url: str
-    git_branch: str
-
-@dataclasses.dataclass(init=True)
-class CommitDiffFileItem:
-    path: str
-    source: str
-
-@dataclasses.dataclass(init=True)
-class CommitDiffFileResult:
-    errs: typing.List[Error]
-    files: typing.List[CommitDiffFileItem]
+# GitRepo is now defined as CDCGitRepo in graphql_models.py
 
 def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_commit_diff_code_context(git_repos: typing.List[GitRepo],
+    def retrieve_commit_diff_code_context(git_repos: typing.List[CdcGitRepoBranch],
                                           session_id: str,
                                           query: str) -> CommitDiffFileResult:
         """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts.
@@ -209,7 +227,6 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
         Returns:
             a result object containing a list of source files, with the source field containing the XML delimited history of the source code, up to the current state of the file.
         """
-        import requests
 
         # Construct GraphQL query
         query_mutation = """
@@ -222,6 +239,9 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
                 errs {
                     message
                 }
+                sessionKey {
+                    key
+                }
             }
         }
         """
@@ -229,77 +249,55 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
         # If no repositories provided, return error
         if not git_repos:
             return CommitDiffFileResult(
-                errs=[Error(message="No git repositories provided")],
-                files=[]
+                errs=[GraphQLError(message="No git repositories provided")],
+                files=[],
+                sessionKey=ServerSessionKey(key=session_id)
             )
 
         # Use the first repo for the request
         repo = git_repos[0]
 
-        # Construct variables
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": repo.git_repo_url
-                },
-                "branchName": repo.git_branch,
-                "sessionKey": {
-                    "key": session_id  # You would need to get this from somewhere
-                },
-                "codeQuery": {
-                    "codeString": query
-                }
-            }
-        }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query_mutation,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoPromptingRequest(
+            gitRepo=GitRepoModel(path=repo.git_repo_url),
+            branchName=repo.git_branch,
+            sessionKey=SessionKey(key=session_id),
+            codeQuery=CodeQuery(codeString=query)
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            result = response.json().get("data", {}).get("buildCommitDiffContext", {})
-
-            # Convert GraphQL response to CommitDiffFileResult
-            return CommitDiffFileResult(
-                files=[CommitDiffFileItem(path=file["path"], source=file["source"])
-                       for file in result.get("files", [])],
-                errs=[Error(message=err["message"]) for err in result.get("errs", [])]
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query_mutation,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="buildCommitDiffContext",
+                model_class=CommitDiffFileResult
             )
         except Exception as e:
-            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
             return CommitDiffFileResult(
-                errs=[Error(message=f"Failed to retrieve commit diff context: {str(e)}")],
-                files=[]
+                errs=[_get_err(e)],
+                files=[],
+                sessionKey=ServerSessionKey(key=session_id)
             )
+
     return retrieve_commit_diff_code_context
 
 def produce_retrieve_next_code_commit(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_next_code_commit(git_repo: GitRepo,
+    def retrieve_next_code_commit(git_repo_url: str,
                                   session_id: str,
-                                  branch_name: str, query: str = None):
+                                  branch_name: Optional[str] = None, query: Optional[str] = None) -> NextCommit:
         """Retrieve the next code commit recommendation.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repo: Git repository information.
+            git_repo_url: Git repository information.
             branch_name: The branch name to work with.
             query: Optional code query to condition the commit recommendation.
 
         Returns:
             Next commit information including diffs and commit message.
         """
-        import requests
 
         query_mutation = """
         mutation RetrieveNextCodeCommit($request: GitRepoPromptingRequest!) {
@@ -331,54 +329,41 @@ def produce_retrieve_next_code_commit(cdc_server: CdcServerConfigProps):
         }
         """
 
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": git_repo.git_repo_url
-                },
-                "branchName": branch_name,
-                "sessionKey": {
-                    "key": session_id
-                }
-            }
-        }
-
-        if query:
-            variables["request"]["codeQuery"] = {
-                "codeString": query
-            }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query_mutation,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoPromptingRequest(
+            gitRepo=GitRepoModel(path=git_repo_url),
+            branchName=branch_name,
+            sessionKey=SessionKey(key=session_id),
+            codeQuery=CodeQuery(codeString=query) if query is not None else None
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json().get("data", {}).get("doCommit", {})
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query_mutation,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="doCommit",
+                model_class=NextCommit
+            )
         except Exception as e:
             LoggerFacade.error(f"GraphQL request failed: {str(e)}")
-            return {"errors": [{"message": f"Failed to retrieve next code commit: {str(e)}"}]}
+            return NextCommit(
+                diffs=[],
+                commitMessage=ServerCommitMessage(value=""),
+                errors=[GraphQLError(message=f"Failed to retrieve next code commit: {str(e)}")]
+            )
     return retrieve_next_code_commit
 
 def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
     @tool
-    def apply_code_commit(git_repo: GitRepo,
+    def apply_code_commit(git_repo_url: str,
                           session_id: str,
-                          branch_name: str, diffs: typing.List[dict], commit_message: str):
+                          branch_name: str, diffs: List[dict], commit_message: str) -> NextCommit:
         """Apply a code commit to the repository.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repo: Git repository information.
+            git_repo_url: Git repository information.
             branch_name: The branch name to apply the commit to.
             diffs: List of diff objects to apply.
             commit_message: Commit message for the applied changes.
@@ -386,7 +371,6 @@ def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
         Returns:
             Result of applying the commit.
         """
-        import requests
 
         query_mutation = """
         mutation ApplyCodeCommit($request: GitRepoPromptingRequest!) {
@@ -409,62 +393,51 @@ def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
         }
         """
 
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": git_repo.git_repo_url
-                },
-                "branchName": branch_name,
-                "commitMessage": {
-                    "value": commit_message
-                },
-                "sessionKey": {
-                    "key": session_id
-                },
-                "staged": {
-                    "diffs": [{"underlyingDiff": diff} for diff in diffs]
-                }
-            }
-        }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query_mutation,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoPromptingRequest(
+            gitRepo=GitRepoModel(path=git_repo_url),
+            branchName=branch_name,
+            commitMessage=CommitMessage(value=commit_message),
+            sessionKey=SessionKey(key=session_id),
+            staged=Staged(
+                diffs=[PromptDiff(underlyingDiff=DiffInput.model_validate(diff)) for diff in diffs]
+            )
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json().get("data", {}).get("doCommit", {})
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query_mutation,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="doCommit",
+                model_class=NextCommit
+            )
         except Exception as e:
             LoggerFacade.error(f"GraphQL request failed: {str(e)}")
-            return {"errors": [{"message": f"Failed to apply code commit: {str(e)}"}]}
+            return NextCommit(
+                diffs=[],
+                commitMessage=ServerCommitMessage(value=""),
+                errors=[GraphQLError(message=f"Failed to apply code commit: {str(e)}")]
+            )
     return apply_code_commit
 
 def produce_retrieve_and_apply_code_commit(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_and_apply_code_commit(git_repo: GitRepo,
+    def retrieve_and_apply_code_commit(git_repo_url: str,
                                        session_id: str,
-                                       branch_name: str, query: str = None):
+                                       branch_name: Optional[str] = None,
+                                       query: Optional[str] = None) -> NextCommit:
         """Retrieve and apply a code commit in a single operation.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repo: Git repository information.
+            git_repo_url: Git repository information.
             branch_name: The branch name to work with.
             query: Optional code query to condition the commit recommendation.
 
         Returns:
             Result of retrieving and applying the commit.
         """
-        import requests
 
         query_mutation = """
         mutation RetrieveAndApplyCodeCommit($request: GitRepoPromptingRequest!) {
@@ -490,83 +463,49 @@ def produce_retrieve_and_apply_code_commit(cdc_server: CdcServerConfigProps):
         }
         """
 
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": git_repo.git_repo_url
-                },
-                "branchName": branch_name,
-                "sessionKey": {
-                    "key": session_id
-                },
-                "applyCommit": True
-            }
-        }
-
-        if query:
-            variables["request"]["codeQuery"] = {
-                "codeString": query
-            }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query_mutation,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoPromptingRequest(
+            gitRepo=GitRepoModel(path=git_repo_url),
+            branchName=branch_name,
+            sessionKey=SessionKey(key=session_id),
+            codeQuery=CodeQuery(codeString=query) if query is not None else None
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json().get("data", {}).get("doCommit", {})
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query_mutation,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="doCommit",
+                model_class=NextCommit
+            )
         except Exception as e:
             LoggerFacade.error(f"GraphQL request failed: {str(e)}")
-            return {"errors": [{"message": f"Failed to retrieve and apply code commit: {str(e)}"}]}
+            return NextCommit(
+                diffs=[],
+                commitMessage=ServerCommitMessage(value=""),
+                errors=[GraphQLError(message=f"Failed to retrieve and apply code commit: {str(e)}")]
+            )
 
     return retrieve_and_apply_code_commit
 
-@dataclasses.dataclass(init=True)
-class RelevantFileItemOut:
-    name: str
-    linesWithLineNumbers: str
-
-@dataclasses.dataclass(init=True)
-class RelevantFileItemsOut:
-    beforeApplyDiff: RelevantFileItemOut
-    afterApplyDiff: RelevantFileItemOut
-
-@dataclasses.dataclass(init=True)
-class StagedOut:
-    files: typing.List[RelevantFileItemsOut]
-
-@dataclasses.dataclass(init=True)
-class GitStagedResult:
-    staged: StagedOut = None
-    sessionKey: ServerSessionKey = None
-    error: typing.List[Error] = None
 
 
 def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_current_repository_staged(git_repo: GitRepo,
+    def retrieve_current_repository_staged(git_repo_url: str,
                                            session_id: str,
-                                           branch_name: str) -> GitStagedResult:
+                                           branch_name: Optional[str] = None) -> GitStagedResult:
         """Retrieve current staged changes in the repository.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repo: Git repository information.
+            git_repo_url: Git repository information.
             branch_name: The branch name to get staged changes from.
 
         Returns:
             Current staged changes in the repository.
         """
-        import requests
 
         query = """
         mutation GetStaged($request: GitRepoQueryRequest!) {
@@ -593,58 +532,46 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
         }
         """
 
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": git_repo.git_repo_url
-                },
-                "gitBranch": {
-                    "branch": branch_name
-                },
-                "sessionKey": {
-                    "key": session_id
-                }
-            }
-        }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoQueryRequest(
+            gitRepo=GitRepoModel(path=git_repo_url),
+            gitBranch=GitBranch(branch=branch_name),
+            sessionKey=SessionKey(key=session_id)
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json().get("data", {}).get("buildCommitDiffContext", {})
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="getStaged",
+                model_class=GitStagedResult
+            )
         except Exception as e:
             LoggerFacade.error(f"GraphQL request failed: {str(e)}")
-            return {"errs": [{"message": f"Failed to retrieve staged changes: {str(e)}"}]}
+            return GitStagedResult(
+                staged=StagedOut(files=[]),
+                sessionKey=ServerSessionKey(key=session_id),
+                error=[GraphQLError(message=f"Failed to retrieve staged changes: {str(e)}")]
+            )
 
     return retrieve_current_repository_staged
 
 def produce_apply_last_staged(cdc_server: CdcServerConfigProps):
     @tool
-    def apply_last_staged(git_repo: GitRepo,
+    def apply_last_staged(git_repo_url: str,
                           session_id: str,
-                          branch_name: str) -> GitStagedResult:
+                          branch_name: Optional[str] = None) -> GitStagedResult:
         """Apply changes created last in the commit diff context session
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repo: Git repository information.
+            git_repo_url: Git repository information.
             branch_name: The branch name to get staged changes from.
 
         Returns:
             Apply the staged changes from the last next commit call to the repository so the code can be tested and ran
         """
-        import requests
 
         query = """
         mutation ApplyLastStaged($request: GitRepoQueryRequest!) {
@@ -671,58 +598,45 @@ def produce_apply_last_staged(cdc_server: CdcServerConfigProps):
         }
         """
 
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": git_repo.git_repo_url
-                },
-                "gitBranch": {
-                    "branch": branch_name
-                },
-                "sessionKey": {
-                    "key": session_id
-                }
-            }
-        }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoQueryRequest(
+            gitRepo=GitRepoModel(path=git_repo_url),
+            gitBranch=GitBranch(branch=branch_name),
+            sessionKey=SessionKey(key=session_id)
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json().get("data", {}).get("buildCommitDiffContext", {})
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="applyLastStaged",
+                model_class=GitStagedResult
+            )
         except Exception as e:
-            LoggerFacade.error(f"GraphQL request failed: {str(e)}")
-            return {"errors": [{"message": f"Failed to retrieve staged changes: {str(e)}"}]}
+            return GitStagedResult(
+                staged=StagedOut(files=[]),
+                sessionKey=ServerSessionKey(key=session_id),
+                error=[GraphQLError(message=f"Failed to apply staged changes: {str(e)}")]
+            )
 
     return apply_last_staged
 
 def produce_reset_any_staged(cdc_server: CdcServerConfigProps):
     @tool
-    def reset_any_staged(git_repo: GitRepo,
+    def reset_any_staged(git_repo_url: str,
                          session_id: str,
-                         branch_name: str) -> GitStagedResult:
+                         branch_name: Optional[str] = None) -> GitStagedResult:
         """Reset the repository from any application of staged.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repo: Git repository information.
+            git_repo_url: Git repository information.
             branch_name: The branch name to get staged changes from.
 
         Returns:
             If any changes are staged in the repository, reset them. This will return the changes that were staged.
         """
-        import requests
 
         query = """
         mutation ResetAnyStaged($request: GitRepoQueryRequest!) {
@@ -749,39 +663,28 @@ def produce_reset_any_staged(cdc_server: CdcServerConfigProps):
         }
         """
 
-        variables = {
-            "request": {
-                "gitRepo": {
-                    "path": git_repo.git_repo_url
-                },
-                "gitBranch": {
-                    "branch": branch_name
-                },
-                "sessionKey": {
-                    "key": session_id
-                }
-            }
-        }
-
-        # Make the GraphQL request
-        endpoint = cdc_server.graphql_endpoint  # Replace with actual endpoint
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        data = {
-            "query": query,
-            "variables": variables
-        }
+        # Create request with Pydantic models
+        request = GitRepoQueryRequest(
+            gitRepo=GitRepoModel(path=git_repo_url),
+            gitBranch=GitBranch(branch=branch_name),
+            sessionKey=SessionKey(key=session_id)
+        )
 
         try:
-            response = requests.post(endpoint, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json().get("data", {}).get("buildCommitDiffContext", {})
+            return execute_graphql_request(
+                endpoint=cdc_server.graphql_endpoint,
+                query=query,
+                variables={"request": request.model_dump(exclude_none=True)},
+                result_key="resetAnyStaged",
+                model_class=GitStagedResult
+            )
         except Exception as e:
             LoggerFacade.error(f"GraphQL request failed: {str(e)}")
-            return {"errors": [{"message": f"Failed to retrieve staged changes: {str(e)}"}]}
+            return GitStagedResult(
+                staged=StagedOut(files=[]),
+                sessionKey=ServerSessionKey(key=session_id),
+                error=[GraphQLError(message=f"Failed to reset staged changes: {str(e)}")]
+            )
 
     return reset_any_staged
 
