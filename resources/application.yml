@@ -10,7 +10,7 @@ model_server:
 human_delegate:
   base_dir: ./human_delegate_data
 checkpoint:
-  uri: postgresql://localhost:5450/postgres
+  uri: postgresql://postgres:postgres@localhost:5450/postgres?sslmode=disable
 
 agent_config:
   orchestrator_max_recurs: 100

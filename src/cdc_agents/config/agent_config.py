@@ -52,10 +52,18 @@ class AgentConfig:
         try:
             assert checkpoint_config_props.uri
             from langgraph.checkpoint.postgres import PostgresSaver
-            LoggerFacade.info(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
-            return PostgresSaver.from_conn_string(checkpoint_config_props.uri)
-        except:
-            LoggerFacade.info("Loading MemorySaver checkpointer.")
+            from psycopg import Capabilities, Connection, Cursor, Pipeline
+            from psycopg.rows import DictRow, dict_row
+            try:
+                LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
+                conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
+                p = PostgresSaver(conn)
+                p.setup()
+                return p
+            except Exception as e:
+                LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
+                return MemorySaver()
+        except Exception as f:
             return MemorySaver()
 
     @bean()
