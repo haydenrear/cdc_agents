@@ -3,6 +3,7 @@ import os.path
 import typing
 
 import asyncio
+import pydantic
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
@@ -59,6 +60,8 @@ def create_json_response(result: Any) -> JSONResponse | EventSourceResponse:
         return EventSourceResponse(event_generator(result))
     elif isinstance(result, JSONRPCResponse):
         return JSONResponse(result.model_dump(exclude_none=True))
+    elif isinstance(result, pydantic.BaseModel):
+        return JSONResponse(content=result.model_dump(), status_code=200)
     else:
         logger.error(f"Unexpected result type: {type(result)}")
         raise ValueError(f"Unexpected result type: {type(result)}")
@@ -113,25 +116,26 @@ class A2AServer:
 
     async def _process_request(self, request: Request):
         try:
+
             body = await request.json()
             json_rpc_request = A2ARequest.validate_python(body)
 
             if isinstance(json_rpc_request, GetTaskRequest):
-                result = await self.task_manager.on_get_task(json_rpc_request)
+                result = self.task_manager.on_get_task(json_rpc_request)
             elif isinstance(json_rpc_request, SendTaskRequest):
-                result = await self.task_manager.on_send_task(json_rpc_request)
+                result = self.task_manager.on_send_task(json_rpc_request)
             elif isinstance(json_rpc_request, SendTaskStreamingRequest):
-                result = await self.task_manager.on_send_task_subscribe(
+                result = self.task_manager.on_send_task_subscribe(
                     json_rpc_request
                 )
             elif isinstance(json_rpc_request, CancelTaskRequest):
-                result = await self.task_manager.on_cancel_task(json_rpc_request)
+                result = self.task_manager.on_cancel_task(json_rpc_request)
             elif isinstance(json_rpc_request, SetTaskPushNotificationRequest):
-                result = await self.task_manager.on_set_task_push_notification(json_rpc_request)
+                result = self.task_manager.on_set_task_push_notification(json_rpc_request)
             elif isinstance(json_rpc_request, GetTaskPushNotificationRequest):
-                result = await self.task_manager.on_get_task_push_notification(json_rpc_request)
+                result = self.task_manager.on_get_task_push_notification(json_rpc_request)
             elif isinstance(json_rpc_request, TaskResubscriptionRequest):
-                result = await self.task_manager.on_resubscribe_to_task(
+                result = self.task_manager.on_resubscribe_to_task(
                     json_rpc_request)
             else:
                 logger.warning(f"Unexpected request type: {type(json_rpc_request)}")

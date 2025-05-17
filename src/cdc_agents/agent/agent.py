@@ -188,6 +188,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
     def invoke(self, query, sessionId):
         config = {"configurable": {"thread_id": sessionId}}
+        query['messages'].append(f"The session ID is {sessionId}.")
         invoked = self.graph.invoke(query, config)
         next_message = self.pop_to_process_task(sessionId)
         while next_message is not None:

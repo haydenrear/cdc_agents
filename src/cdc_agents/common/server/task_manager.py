@@ -98,7 +98,7 @@ class TaskManager(ABC):
 
     @classmethod
     def get_user_query_message(cls, task_send_params: Message) -> str:
-        return '\n'.join([cls.get_user_query_part(p) for p in task_send_params.parts])
+        return {"messages": [(task_send_params.role, m.text) for m in task_send_params.parts]}
 
     @classmethod
     def get_user_query_part(cls, part: Part) -> str:

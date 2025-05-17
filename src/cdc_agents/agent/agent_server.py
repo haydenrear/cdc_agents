@@ -94,7 +94,7 @@ class AgentServerRunner:
         return starlette
 
     def _parse_discoverable(self):
-        return [discoverable_agent.agent_card for discoverable_agent in self.agents.values()]
+        return [discoverable_agent.agent_card for discoverable_agent in self.agents.values() if discoverable_agent.agent_card is not None]
 
     def _to_discoverable_agent(self, a):
         if a.agent_name in self.agent_config_props.agents.keys():

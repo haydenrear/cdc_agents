@@ -121,7 +121,7 @@ class CdcMcpAgents:
                             description=description,
                             agent=agent,
                             agent_card=agent_card))
-                LoggerFacade.info(f"Added agent tool: {agent_name}")
+                LoggerFacade.debug(f"Added agent tool: {agent_name}")
             else:
                 LoggerFacade.warn(f"Agent {agent_name} not found in configuration, skipping")
 
@@ -176,6 +176,7 @@ class CdcMcpAgents:
     def _create_agent_tool_handler(self, agent_tool: AgentTool):
         async def handler(arguments: AgentQuery) -> typing.List[PushEvent]:
             # Generate task ID and prepare for execution
+            LoggerFacade.debug(f"Received tool call {arguments}")
             task_id = str(uuid.uuid4()) if not arguments.task_id else arguments.task_id
 
             query = arguments.query

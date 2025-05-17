@@ -49,22 +49,22 @@ class AgentConfig:
         :return:
         """
         assert checkpoint_config_props
-        try:
-            assert checkpoint_config_props.uri
-            from langgraph.checkpoint.postgres import PostgresSaver
-            from psycopg import Capabilities, Connection, Cursor, Pipeline
-            from psycopg.rows import DictRow, dict_row
-            try:
-                LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
-                conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
-                p = PostgresSaver(conn)
-                p.setup()
-                return p
-            except Exception as e:
-                LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
-                return MemorySaver()
-        except Exception as f:
-            return MemorySaver()
+        # try:
+        #     assert checkpoint_config_props.uri
+        #     from langgraph.checkpoint.postgres import PostgresSaver
+        #     from psycopg import Capabilities, Connection, Cursor, Pipeline
+        #     from psycopg.rows import DictRow, dict_row
+        #     try:
+        #         LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
+        #         conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
+        #         p = PostgresSaver(conn)
+        #         p.setup()
+        #         return p
+        #     except Exception as e:
+        #         LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
+        #         return MemorySaver()
+        # except Exception as f:
+        return MemorySaver()
 
     @bean()
     def json_parser(self) -> JSONAgentOutputParser:

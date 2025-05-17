@@ -17,4 +17,6 @@ RUN apt-get update && \
 
 ENV PATH="/app/.venv/bin:/uv:$PATH"
 
+ENV LOG_DIR="/home/python_parent/sources/cdc-agents-log.log"
+
 WORKDIR /home/python_parent/sources

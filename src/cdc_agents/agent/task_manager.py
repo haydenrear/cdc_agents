@@ -179,9 +179,11 @@ class AgentTaskManager(InMemoryTaskManager):
         return self._do_on_send_task(self.get_user_query(task_send_params), request_id, task_send_params)
 
     def _do_on_send_task(self, query, request_id, task_send_params: TaskSendParams):
+        self.insert_lock(request_id)
         try:
             agent_response = self.agent.invoke(query, task_send_params.sessionId)
         except Exception as e:
+            LoggerFacade.error(f"Error invoking agent: {e}.")
             raise ValueError(f"Error invoking agent: {e}.")
         try:
             # loop until stop receiving messages for this agent.

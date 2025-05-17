@@ -39,11 +39,7 @@ from cdc_agents.common.graphql_models import (
     CdcGitRepoBranch,
     GitAction
 )
-class LoggerFacade:
-    @staticmethod
-    def error(message):
-        print(f"ERROR: {message}")
-
+from python_util.logger.logger import LoggerFacade
 
 T = TypeVar('T')
 
@@ -79,6 +75,7 @@ def execute_graphql_request(
         "query": query,
         "variables": variables
     }
+
 
     try:
         response = requests.post(endpoint, headers=headers, json=data)
