@@ -167,10 +167,13 @@ class AgentTaskManager(InMemoryTaskManager):
         request_id = request.id
 
         with self.task_locks[task_send_params.id]:
-            prev_task = self.upsert_task(task_send_params)
-            if prev_task.status == TaskState.WORKING:
+            prev_task = self.task(task_send_params.id)
+            if prev_task is not None and prev_task.status == TaskState.WORKING:
+                prev_task = self.upsert_task(task_send_params, True)
                 # Task already working - will catch the messages below
                 return SendTaskResponse(id=request_id, result=prev_task)
+
+            self.upsert_task(task_send_params, False)
 
             # must update the store in the same lock here - otherwise it fails.
             task = self.update_store(task_send_params.id, TaskStatus(state=TaskState.WORKING), None)
@@ -218,14 +221,16 @@ class AgentTaskManager(InMemoryTaskManager):
             self.insert_lock(request.params.id)
 
             with self.task_locks[request.params.id]:
-                prev_task = self.upsert_task(request.params)
+                prev_task = self.task(request.params.id)
                 if prev_task is not None and prev_task.status.state == TaskState.WORKING:
+                    prev_task = self.upsert_task(request.params, True)
                     return JSONRPCResponse(
                         id=request.id,
                         error=InvalidRequestError(
                             message="Cannot stream task that has already started. "
                                     "Must send a task message or wait until task is completed."))
                 # must update the store in the same lock here - otherwise it fails.
+                prev_task = self.upsert_task(request.params, False)
                 prev_task = self.update_store(
                     request.params.id, TaskStatus(state=TaskState.WORKING),None)
 

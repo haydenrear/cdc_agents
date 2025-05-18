@@ -1,0 +1,13 @@
+###
+
+# curl -X POST http://localhost:50000/code_search --data '{ "method": "tasks/send", "params": {"id": "test", "sessionId": "test", "message": {"role": "user", "parts": [ {"text": "Please add the following git repository to the embedding database: https://github.com/haydenrear/tracing-ml.git", "type": "text"} ] }  }}'
+POST http://localhost:50000/code_search
+Content-Type: application/json
+
+{ "method": "tasks/send", "params": {"id": "test", "sessionId": "test", "message": {"role": "user", "parts": [ {"text": "Please add the following git repository to the embedding database: https://github.com/haydenrear/tracing-ml.git", "type": "text"} ] }  }}
+
+###
+
+
+
+###

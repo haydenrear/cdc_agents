@@ -274,7 +274,7 @@ agent_config:
           to search for, all by asking in natural language.
       agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodeSearchAgent
       agent_descriptor:
-        model: ollama_chat://hermes3:8b
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodeSearchAgent
         system_instruction: >
           You are a specialized assistant for searching for code context information.

@@ -57,6 +57,11 @@ class LanguageModelOutputParser(abc.ABC):
         if isinstance(converted, list):
             for converted_item in converted:
                 if cls.is_tool_response(converted_item):
+                    if isinstance(converted_item, str) and '<tool_call>' in converted_item:
+                        converted_item = json.loads(converted_item.replace('<tool_call>', '').replace('</tool_call>', ''))
+                        if 'arguments' in converted_item.keys():
+                            converted_item['args'] = converted_item['arguments']
+                            del converted_item['arguments']
                     try:
                         if isinstance(converted_item['args'], str):
                             args = json.loads(converted_item['args'])
@@ -71,6 +76,8 @@ class LanguageModelOutputParser(abc.ABC):
 
     @classmethod
     def is_tool_response(cls, converted):
+        if isinstance(converted, str) and '<tool_call>' in converted:
+            return True
         return isinstance(converted, dict) and 'name' in converted.keys() and 'args' in converted.keys()
 
     @classmethod

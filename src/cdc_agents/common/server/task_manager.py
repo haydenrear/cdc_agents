@@ -97,8 +97,14 @@ class TaskManager(ABC):
         return cls.get_user_query_message(task_send_params.message)
 
     @classmethod
+    def translate_role(cls, role: str):
+        if role == 'agent':
+            return 'ai'
+        return role
+
+    @classmethod
     def get_user_query_message(cls, task_send_params: Message) -> str:
-        return {"messages": [(task_send_params.role, m.text) for m in task_send_params.parts]}
+        return {"messages": [(cls.translate_role(task_send_params.role), m.text) for m in task_send_params.parts]}
 
     @classmethod
     def get_user_query_part(cls, part: Part) -> str:
@@ -245,13 +251,13 @@ class InMemoryTaskManager(TaskManager):
         
         return GetTaskPushNotificationResponse(id=request.id, result=TaskPushNotificationConfig(id=task_params.id, pushNotificationConfig=notification_info))
 
-    def upsert_task(self, task_send_params: TaskSendParams) -> Task:
+    def upsert_task(self, task_send_params: TaskSendParams, do_insert_proces: bool = True) -> Task:
         logger.info(f"Upserting task {task_send_params.id}")
         self.insert_lock(task_send_params.id)
         with self.task_locks[task_send_params.id]:
-            return self.do_upsert_task(task_send_params)
+            return self.do_upsert_task(task_send_params, do_insert_proces)
 
-    def do_upsert_task(self, task_send_params: TaskSendParams):
+    def do_upsert_task(self, task_send_params: TaskSendParams, do_insert_proces: bool = True):
         task = self.tasks.get(task_send_params.id)
         if task is None:
             task = Task(
@@ -265,7 +271,8 @@ class InMemoryTaskManager(TaskManager):
             self.tasks[task_send_params.id] = task
         else:
             task.history.append(task_send_params.message)
-            task.to_process.append(task_send_params.message)
+            if do_insert_proces:
+                task.to_process.append(task_send_params.message)
 
         return task
 
@@ -299,7 +306,7 @@ class InMemoryTaskManager(TaskManager):
 
         if status.message is not None:
             task.history.append(status.message)
-            if append_process:
+            if append_process and status.state != TaskState.COMPLETED:
                 task.to_process.append(status.message)
 
         if artifacts is not None:

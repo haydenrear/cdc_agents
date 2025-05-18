@@ -99,7 +99,7 @@ def execute_graphql_request(
             # If all else fails, try direct instantiation
             return cast(T, model_class(**result_data))
     except Exception as e:
-        LoggerFacade.error(f"GraphQL request failed: {str(e)}")
+        LoggerFacade.error(f"GraphQL request:\n{query}\n{data}\n{headers} failed: {str(e)}")
         raise e
 
 
