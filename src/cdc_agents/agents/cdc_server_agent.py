@@ -355,7 +355,9 @@ def produce_apply_code_commit(cdc_server: CdcServerConfigProps):
     @tool
     def apply_code_commit(git_repo_url: str,
                           session_id: str,
-                          branch_name: str, diffs: List[dict], commit_message: str) -> NextCommit:
+                          branch_name: str,
+                          diffs: List[dict],
+                          commit_message: str) -> NextCommit:
         """Apply a code commit to the repository.
 
         Args:
@@ -533,8 +535,7 @@ def produce_retrieve_current_repository_staged(cdc_server: CdcServerConfigProps)
         request = GitRepoQueryRequest(
             gitRepo=GitRepoModel(path=git_repo_url),
             gitBranch=GitBranch(branch=branch_name),
-            sessionKey=SessionKey(key=session_id)
-        )
+            sessionKey=SessionKey(key=session_id))
 
         try:
             return execute_graphql_request(

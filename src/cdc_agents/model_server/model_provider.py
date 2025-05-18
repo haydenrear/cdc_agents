@@ -31,9 +31,9 @@ class ModelServerModelProvider(ModelProvider):
 
         if isinstance(model, str):
             if model.startswith('ollama_text://'):
-                return OllamaLLM(model = model.replace("ollama_text://", ""))
+                return OllamaLLM(model = model.replace("ollama_text://ollama_text/", ""))
             if model.startswith('ollama_chat://'):
-                return ChatOllama(model = "hermes3:8b")
+                return ChatOllama(model = model.replace("ollama_chat://ollama_chat/", ""))
 
         return self.build_model(agent_card=agent_card)
 
