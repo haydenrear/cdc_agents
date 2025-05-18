@@ -7,7 +7,3 @@ Content-Type: application/json
 { "method": "tasks/send", "params": {"id": "test", "sessionId": "test", "message": {"role": "user", "parts": [ {"text": "Please add the following git repository to the embedding database: https://github.com/haydenrear/tracing-ml.git", "type": "text"} ] }  }}
 
 ###
-
-
-
-###
