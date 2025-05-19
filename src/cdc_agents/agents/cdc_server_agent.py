@@ -37,7 +37,7 @@ from cdc_agents.common.graphql_models import (
     CommitDiffFileResult,
     RepoStatus,
     CdcGitRepoBranch,
-    GitAction
+    GitAction, GitRepoRequestOptions, PromptingOptions, GitRepo
 )
 from python_util.logger.logger import LoggerFacade
 
@@ -52,12 +52,14 @@ def execute_graphql_request(
     query: str,
     variables: Dict[str, Any],
     result_key: str,
-    model_class: Type[T]
+    model_class: Type[T],
+    err_producer: typing.Callable[[str], T] = None
 ) -> T:
     """
     Execute a GraphQL request and parse the response into the specified model.
     
     Args:
+        err_producer:
         endpoint: GraphQL endpoint URL
         query: GraphQL query or mutation
         variables: Variables for the GraphQL query
@@ -207,18 +209,16 @@ def _git_repo_result_err(repo_):
     return GitRepoResult(error=[GraphQLError(message=repo_)])
 
 
-# GitRepo is now defined as CDCGitRepo in graphql_models.py
-
 def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
     @tool
-    def retrieve_commit_diff_code_context(git_repos: typing.List[CdcGitRepoBranch],
+    def retrieve_commit_diff_code_context(git_repos: typing.Union[typing.List[CdcGitRepoBranch], CdcGitRepoBranch],
                                           session_id: str,
                                           query: str) -> CommitDiffFileResult:
         """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts. Use this to search for code and files that have been embedded.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
-            git_repos: a list of git repositories to sample from. These should have been previously embedded using perform_git_actions function.
+            git_repos: a list of git repo and branch to sample from or a single git repo and branch. These should have been previously embedded using perform_git_actions function.
             query: a code snippet or embedding to use to condition the response. Will be used to search the database for related commit diffs.
 
         Returns:
@@ -251,16 +251,31 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
                 sessionKey=ServerSessionKey(key=session_id)
             )
 
-        # Use the first repo for the request
-        repo = git_repos[0]
+        if isinstance(git_repos, CdcGitRepoBranch):
+            repo = git_repos
+        elif isinstance(git_repos, typing.List):
+            repo = git_repos[0]
+        else:
+            return CommitDiffFileResult(
+                errs=[_get_err(f"Did not receive valid git repository as git_repos argument: {git_repos}")],
+                files=[],
+                sessionKey=ServerSessionKey(key=session_id)
+            )
+
 
         # Create request with Pydantic models
         request = GitRepoPromptingRequest(
             gitRepo=GitRepoModel(path=repo.git_repo_url),
             branchName=repo.git_branch,
             sessionKey=SessionKey(key=session_id),
-            codeQuery=CodeQuery(codeString=query)
-        )
+            codeQuery=CodeQuery(codeString=query),
+            gitRepoRequestOptions=GitRepoRequestOptions(
+                promptingOptions=PromptingOptions(includeRepoClosestCommits=[
+                    GitRepoQueryRequest(gitRepo=GitRepo(path=git_repo.git_repo_url), gitBranch=GitBranch(branch=git_repo.git_branch))
+                                                                             for git_repo in git_repos[1:]]
+            if isinstance(git_repos, typing.List) and len(git_repos) > 1
+            else None
+        )))
 
         try:
             return execute_graphql_request(
@@ -274,8 +289,7 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
             return CommitDiffFileResult(
                 errs=[_get_err(e)],
                 files=[],
-                sessionKey=ServerSessionKey(key=session_id)
-            )
+                sessionKey=ServerSessionKey(key=session_id))
 
     return retrieve_commit_diff_code_context
 
@@ -331,8 +345,7 @@ def produce_retrieve_next_code_commit(cdc_server: CdcServerConfigProps):
             gitRepo=GitRepoModel(path=git_repo_url),
             branchName=branch_name,
             sessionKey=SessionKey(key=session_id),
-            codeQuery=CodeQuery(codeString=query) if query is not None else None
-        )
+            codeQuery=CodeQuery(codeString=query) if query is not None else None)
 
         try:
             return execute_graphql_request(

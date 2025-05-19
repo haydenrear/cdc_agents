@@ -406,9 +406,15 @@ class RagOptions(BaseModel):
     parseGitOptions: Optional[ParseGitOptions] = None
 
 
+class GitRepoQueryRequest(BaseModel):
+    gitRepo: Optional[GitRepo] = None
+    gitBranch: Optional[GitBranch] = None
+    sessionKey: Optional[SessionKey] = None
+
+
 class PromptingOptions(BaseModel):
     numKClosestCommits: Optional[int] = None
-    includeRepoClosestCommits: Optional[List[Any]] = None
+    includeRepoClosestCommits: Optional[List[GitRepoQueryRequest]] = None
     numLinesAround: Optional[int] = None
     numTriesWithTools: Optional[int] = None
     numFilesPerChatItem: Optional[int] = None
@@ -416,17 +422,9 @@ class PromptingOptions(BaseModel):
     maxDiffsPerFile: Optional[int] = None
     doPerformBlameTree: Optional[bool] = None
 
-
 class GitRepoRequestOptions(BaseModel):
     skipValidation: Optional[bool] = None
     promptingOptions: Optional[PromptingOptions] = None
-
-
-class GitRepoQueryRequest(BaseModel):
-    gitRepo: Optional[GitRepo] = None
-    gitBranch: Optional[GitBranch] = None
-    sessionKey: Optional[SessionKey] = None
-
 
 class CodeQuery(BaseModel):
     codeString: Optional[str] = None
