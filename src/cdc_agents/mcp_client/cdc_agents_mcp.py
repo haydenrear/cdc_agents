@@ -82,10 +82,6 @@ class CdcMcpAgents:
         # Initialize agent tools
         self.agents = agents or []
 
-        for a in agents:
-            if isinstance(a, A2AReactAgent):
-                a.add_mcp_tools(a.agent_config.mcp_tools)
-
         self._initialize_agent_tools()
 
         self.tasks: dict[str, AgentTaskManager] = {agent.agent_name: typing.cast(AgentTaskManager, agent.task_manager) for agent in self.agents}

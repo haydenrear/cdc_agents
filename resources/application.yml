@@ -259,7 +259,9 @@ agent_config:
           In this case, you either need to generate the whole commit again, taking into account the error, or request
           for more information about the repository, file system, or dependency, so that next time you have the information you need
           to provide the finished code generation. By the time you are asked to fix the commit, it will have been reverted,
-          but you will still be able to look at what changes you made.
+          but you will still be able to look at what changes you made. 
+          
+          If you request from a repository and it says that there is no
         orchestrator_instruction: >
           An agent that generates code modifications using the history of diffs added with the CdcCodeSearchAgent.
     CdcCodeSearchAgent:

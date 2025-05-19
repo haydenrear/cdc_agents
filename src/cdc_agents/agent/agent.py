@@ -48,6 +48,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
         A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
+        self.add_mcp_tools(self.agent_config.mcp_tools)
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)

@@ -110,7 +110,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
                                                 session_id: str,
                                                 git_repo_url: str, git_branch: str = "main",
                                                 perform_ops_async: bool = True) -> GitRepoResult:
-        """Use this to embed a git repository for code context. If you would like to add a branch and set the embeddings, pass a list in actions_to_perform [ADD_BRANCH, SET_EMBEDDING, PARSE_BLAME_TREE]. If you do not pass perform_ops_async, this operation will take hours, but the server can respond while it's processing if you pass perform_ops_async.
+        """Use this to embed a git repository for code context. If you would like to add a branch and set the embeddings, pass a list in actions_to_perform [ADD_BRANCH, SET_EMBEDDINGS, PARSE_BLAME_TREE]. If you do not pass perform_ops_async, this operation will take hours, but the server can respond while it's processing if you pass perform_ops_async.
 
         Args:
             git_repo_url: the git repo URL for the repository to embed.
@@ -141,7 +141,7 @@ def produce_perform_commit_diff_context_git_actions(cdc_server: CdcServerConfigP
                 operations = [action.value if isinstance(action, GitAction) else str(action) for action in actions_to_perform]
         else:
             return _git_repo_result_err("""No valid operation provided. Could not call server with nothing to do. 
-                                           Options are ADD_BRANCH, REMOVE_BRANCH, REMOVE_REPO, PARSE_BLAME_TREE, SET_EMBEDDING, ADD_REPO.""")
+                                           Options are ADD_BRANCH, REMOVE_BRANCH, REMOVE_REPO, PARSE_BLAME_TREE, SET_EMBEDDINGS, ADD_REPO.""")
 
         # Construct GraphQL query
         query = """
@@ -214,7 +214,7 @@ def produce_retrieve_commit_diff_code_context(cdc_server: CdcServerConfigProps):
     def retrieve_commit_diff_code_context(git_repos: typing.List[CdcGitRepoBranch],
                                           session_id: str,
                                           query: str) -> CommitDiffFileResult:
-        """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts.
+        """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts. Use this to search for code and files that have been embedded.
 
         Args:
             session_id: the session ID of the graph, notated as the thread_id in langgraph.
