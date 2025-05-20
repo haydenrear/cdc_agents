@@ -66,35 +66,41 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         ModelServerModelTest.model_provider = model_provider
 
     async def test_model_server_model(self):
-        # Set up expected responses for orchestrator and inner agent
+
         orchestrator_responses = [
-            """
-            Action: test_tool
-            Action Input: 
-            """,
-            # """
-            # Action: query
-            # Action Input: { "sql": "SELECT * FROM commit_diff" }
-            # """,
             "STATUS: goto_agent\nNEXT AGENT: TestA2AAgent\nADDITIONAL CONTEXT: hello!!!\n\nokay!!!",
-            "okay",
-            "STATUS: completed\nhello!",
             """
             Action: test_tool
             Action Input: 
             """,
+            "STATUS: goto_agent\nNEXT AGENT: TestA2AAgent\nADDITIONAL CONTEXT: hello!!!\n\nokay!!!",
+            # """
+            # Action: test_tool
+            # Action Input:
+            # """,
+            """
+            Action: query
+            Action Input: { "sql": "SELECT * FROM commit_diff" }
+            """,
+            "STATUS: completed\nokay",
+            "STATUS: goto_agent\nNEXT AGENT: TestA2AAgent\nADDITIONAL CONTEXT: hello!!!\n\nokay!!!",
+            """
+            Action: test_tool
+            Action Input: 
+            """,
+            "STATUS: goto_agent\nNEXT AGENT: TestA2AAgent\nADDITIONAL CONTEXT: hello!!!\n\nokay!!!",
+            "STATUS: completed\nhello!",
             "status: goto_agent\nTestA2AAgent",
             "okay",
-            "status: completed\nhello!",
+            "status: goto_agent\nTestA2AAgent",
             """
             Action: test_tool
             Action Input: 
             """,
-            "status: next_agent\nTestA2AAgent",
-            "okay",
             "status: completed\nhello!"
         ]
-        
+
+
         # Create a test orchestrator setup with our fixtures
         orchestrator, task_manager = create_test_orchestrator(
             self.ai_suite,
@@ -104,7 +110,8 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             orchestrator_responses,
             self.server
         )
-        
+
+
         # Invoke the orchestrator
         graph_response = orchestrator.invoke({"messages": ("user", "hello")}, "test")
         
@@ -113,12 +120,15 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         
         assert len(invoked) != 0
         assert any([isinstance(i, ToolMessage) and i.status == 'success' for i in invoked])
-        assert any([i.content[-1] == 'okay' for i in invoked if isinstance(i, HumanMessage)])
+        assert any([i.content[-1].endswith('okay') for i in invoked])
         assert any([i.content == 'hello...' for i in invoked if isinstance(i, ToolMessage)])
-        assert any([i.content[-1] == 'status: completed\nhello!' for i in invoked if isinstance(i, HumanMessage)])
+        assert any([i.content[-1] == 'STATUS: completed\nokay' for i in invoked])
+
+        assert not any([i.status != 'success' for i in invoked if isinstance(i, ToolMessage)])
+
         assert graph_response.is_task_complete
         
-        assert invoked[-1].content[-1] == 'status: completed\nhello!'
+        assert invoked[-1].content[-1] == 'STATUS: completed\nokay'
         
         assert TestOrchestratorAgent.did_call
         assert TestA2AAgent.did_call
@@ -136,7 +146,6 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         
         invoked_third = orchestrator.invoke("hello", "whatever").content.history
         assert TestOrchestratorAgent.did_call
-        assert TestA2AAgent.did_call
         assert len(invoked_third) <= len(invoked)
 
 

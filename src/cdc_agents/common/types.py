@@ -444,6 +444,9 @@ class AgentGraphResult(BaseModel):
     last_message: typing.Optional[BaseMessage] = None
     agent_route: typing.Optional[str] = None
 
+    def add_last_message(self, message: BaseMessage):
+        self.content.append(message)
+
     def add_to_last_message(self, message: str):
         if not self.last_message.content:
             self.last_message.content = message

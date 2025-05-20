@@ -1,5 +1,15 @@
 import abc
 import asyncio
+import functools
+import inspect
+from uuid import UUID
+
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.agents import AgentAction
+
+from python_di.inject.profile_composite_injector.inject_context_di import autowire_fn, InjectionDescriptor, \
+    InjectionType
+from cdc_agents.tools.tool_call_decorator import  ToolCallDecorator
 import atexit
 
 import nest_asyncio
@@ -12,15 +22,16 @@ import json
 import subprocess
 import typing
 import uuid
-from typing import Any, Dict, AsyncIterable
+from typing import Any, Dict, AsyncIterable, Optional
 
 from langchain_core.callbacks import Callbacks
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, BaseMessage
 from langchain_core.runnables.config import RunnableConfig
-from langchain_core.tools import StructuredTool
+from langchain_core.tools import StructuredTool, BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
+from cdc_agents.tools.tool_call_decorator import LoggingToolCallback
 
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
@@ -35,33 +46,57 @@ class A2ASmolAgent(A2AAgent, abc.ABC):
             if this_agent_name in agent_config.agents.keys() else None \
             if model is None else model
         A2AAgent.__init__(self, model, tools, system_instruction, memory)
-#       TODO: create different types of SmolAgent, and then stream result as in above - can be streamed to langgraph
-#           graph the same, but can have python code calling instead of tool calling, and can have multi-agent.
-
 
 class A2AReactAgent(A2AAgent, abc.ABC):
 
     def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
-                 memory: MemorySaver, model_server_provider: ModelProvider, model = None):
+                 memory: MemorySaver,
+                 model_server_provider: ModelProvider, model = None):
         self.model_server_provider = model_server_provider
         this_agent_name = self.__class__.__name__
         self.agent_config: AgentCardItem = agent_config.agents.get(this_agent_name)
         inputs = self.agent_config.agent_card.defaultInputModes
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
+
         A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
+
         self.add_mcp_tools(self.agent_config.mcp_tools)
+
         for t in self.tools:
-            from langchain_core.tools.base import ArgsSchema, BaseTool
             t: BaseTool = t
+            if not t.callbacks:
+                t.callbacks = []
             t.return_direct = True
 
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
 
+        # if self.graph.config is None:
+        #     self.graph.config = {}
+        #
+        # cb = self.graph.config.get('callbacks')
+        #
+        # if cb is None:
+        #     self.graph.config['callbacks'] = [LoggingToolCallback(self)]
+        # else:
+        #     cb.append(LoggingToolCallback(self))
+
+    def _create_graph(self, mcp_tools):
+        self.add_mcp_tools(mcp_tools)
+        for t in self.tools:
+            t: BaseTool = t
+            if not t.callbacks:
+                t.callbacks = []
+            t.return_direct = True
+        self.graph = create_react_agent(
+            self.model, tools=self.tools, checkpointer=self.memory,
+            prompt = self.system_instruction)
+
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         done = do_run_on_event_loop(self.add_mcp_tools_async(additional_tools, loop), lambda s: None, loop)
+
 
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
@@ -82,10 +117,6 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                         stop_tool = v.stop_tool
                         self.do_run_stop(stop_tool)
                         atexit.register(lambda stop_tool_=stop_tool: self.do_run_stop(stop_tool_))
-
-            self.graph = create_react_agent(
-                self.model, tools=self.tools, checkpointer=self.memory,
-                prompt = self.system_instruction)
 
     def do_run_stop(self, stop_tool_):
         try:
@@ -124,18 +155,19 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                                                        tool_call_id=tool_call_id, **kwargs)
                                 return out
                             except Exception as e:
-                                return ToolMessage(
+                                failure = ToolMessage(
                                     content=f"Failed to run tool with err {e}. Could not find matching tools for {self.name} - are all the services running?",
                                     name=self.name,
                                     tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
                                     status="error")
+                                return failure
 
-
-                    return ToolMessage(
+                    failure = ToolMessage(
                         content=f"Failed to run tool. Could not find matching tools for {self.name}",
                         name=self.name,
                         tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
                         status="error")
+                    return failure
 
             def run(
                     self,

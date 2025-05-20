@@ -35,10 +35,11 @@ dependencies=[
     "aisuite",
     "drools_py",
     "mcp>=1.0.0",
-    "nest-asyncio==1.6.0"
+    "nest-asyncio==1.6.0",
+    "langmem==0.0.25"
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.uv.sources]
 drools_py = { workspace = true }

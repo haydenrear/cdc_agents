@@ -1,3 +1,7 @@
+tool_call:
+  register_tool_calls: true
+
+
 runner:
   runner_option: SKIP
 
@@ -31,6 +35,9 @@ agent_config:
               - --rm
               - mcp/memory-summarizer
             env:
+      options:
+        max_tokens: 128000
+        max_tokens_before_summary: 120000
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: SummarizerAgent
@@ -133,8 +140,6 @@ agent_config:
           For example if a request is made to retrieve context data from the git repository, use the git tool. Alternatively,
           if a request is made to create or start a docker container, please use the docker tool. If you need to retrieve
           information from the file system, please use the file system tool.
-          
-          Please translate the requests you receive into the tool call you would like to make.
       agent_card:
         name: CodeRunnerAgent
         path: /code-runner

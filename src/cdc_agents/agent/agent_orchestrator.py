@@ -11,6 +11,7 @@ from langgraph.constants import END
 from langgraph.graph import StateGraph, MessagesState
 from langgraph.types import Command, Runnable
 
+from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.agent.a2a import A2AAgent, BaseAgent
 from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.common.server import TaskManager
@@ -72,8 +73,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     Facilitate multi-agent through lang-graph state graph. This means multiple models, each with smaller prompt from lower number of tools.
     """
 
-    def __init__(self, agents: typing.Dict[str, OrchestratedAgent], orchestrator_agent: OrchestratorAgent,
-                 props: AgentConfigProps, memory: MemorySaver):
+    def __init__(self, agents: typing.Dict[str, OrchestratedAgent], orchestrator_agent: typing.Union[OrchestratorAgent, A2AAgent],
+                 props: AgentConfigProps, memory: MemorySaver, model_provider: ModelProvider):
         """
         :param agents: agents being orchestrated
         :param orchestrator_agent: agent doing orchestration
@@ -85,16 +86,33 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.agents = agents
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
         from cdc_agents.agents.summarizer_agent import SummarizerAgent
-        self.summarizer_agent = agents.get(SummarizerAgent.__name__)
+        self.summarizer_name = SummarizerAgent.__name__
+        from langmem.short_term import SummarizationNode
+        summarizer_card = typing.cast(AgentCardItem, self.props.agents[self.summarizer_name])
+        self.summarizer_node = SummarizationNode(
+            model=model_provider.retrieve_model(summarizer_card),
+            **summarizer_card.options)
         self.graph = self._build_graph()
 
     def get_next_node(self, last_executed_agent: BaseAgent, graph_result: AgentGraphResult,
                       state: MessagesState, config):
+
         last_executed_agent_name = last_executed_agent.agent_name
         is_this_agent_orchestrator = self._is_orchestrator(last_executed_agent_name)
+
+        if not is_this_agent_orchestrator:
+            return self.summarizer_name
+        elif last_executed_agent_name == self.summarizer_name:
+            return self.orchestrator_agent.agent_name
+
         if graph_result.agent_route is not None and is_this_agent_orchestrator:
             if graph_result.agent_route not in self.agents.keys():
                 LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
+                graph_result.add_last_message(HumanMessage(content=f"""
+                    Agent of name {graph_result.agent_route} was not found from previous message. Can you please to delegate to one of the valid agents:
+                    {','.join([a for a in self.agents.keys()])} 
+                """))
+                return self.orchestrator_agent.agent_name
             else:
                 return graph_result.agent_route
         elif graph_result.agent_route is not None and not is_this_agent_orchestrator:
@@ -112,29 +130,10 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         if last_executed_agent.is_terminate_node(graph_result, state) and is_this_agent_orchestrator:
             return END
 
-        if self.do_perform_summary(graph_result, config):
-            from cdc_agents.agents.summarizer_agent import SummarizerAgent
-            return SummarizerAgent.__name__
-
         return self.orchestrator_agent.agent_name
 
     def _is_orchestrator(self, name):
         return self.orchestrator_agent.agent_name == name
-
-    #  TODO: for example, if too many messages
-    def do_perform_summary(self, state: AgentGraphResult, config) -> bool:
-        if self.summarizer_agent is None:
-            return False
-
-        return False
-
-    #  TODO: for example, if too many messages
-    def do_collapse_summary_state(self, state: list[BaseMessage], agent: BaseAgent, config) -> list[BaseMessage]:
-        from cdc_agents.agents.summarizer_agent import SummarizerAgent
-        if isinstance(agent, SummarizerAgent):
-            return agent.do_collapse(state, config)
-
-        return state
 
     def invoke(self, query, sessionId) -> AgentGraphResponse:
         config, graph = self._create_invoke_graph(query, sessionId)
@@ -146,8 +145,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         return self.get_status_message(message)
 
     def next_node(self, agent: BaseAgent, state: MessagesState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
-        prev_messages = state.get('messages')
-
+        # prev_messages = state.get('messages')
         # If received a message to route to another agent, route to that other agent.
         # if prev_messages is not None and len(prev_messages) > 1:
         #     second_to_last = prev_messages[-2]
@@ -162,15 +160,19 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         result: AgentGraphResponse = agent.invoke(state, session_id)
 
+        if result.content.route_to == 'orchestrator':
+            result.content.route_to = self.orchestrator_agent.agent_name
+
         messages = self._retrieve_messages(result.content, agent.agent_name)
 
-        messages = self.do_collapse_summary_state(messages, agent, config)
+        self._remove_prev_considers(messages)
 
         last_message: BaseMessage = messages.pop()
 
         if last_message.type == 'tool':
             messages.append(last_message)
             if agent.agent_name != self.orchestrator_agent.agent_name:
+                # TODO: any of these should then be removed before adding this one
                 messages.append(HumanMessage(content='Can you please consider whether the task is completed, considering the previous tool message response? '
                                                      'If so can you return the context of the result. If not, can you continue with the task by considering '
                                                      'what is still necessary and delegating to the agent that can help continue/complete the task?'))
@@ -182,6 +184,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                 message = last_message.content
                 if agent.agent_name != self.orchestrator_agent.agent_name:
                     messages.append(AIMessage(content=message, name=agent.agent_name))
+                    # TODO: any of these should then be removed before adding this one
                     messages.append(HumanMessage(content=f'Can you please consider whether the task is completed, considering the previous message from agent {agent.agent_name}? '
                                                          'If so can you return the context of the result. If not, can you continue with the task by considering '
                                                          'what is still necessary and delegating to the agent that can help continue/complete the task?'))
@@ -197,7 +200,17 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         agent_graph_parsed = self.parse_orchestration_response(agent_graph_parsed)
 
-        return self.parse_messages(agent, agent_graph_parsed, session_id, state, config)
+        found = self.parse_messages(agent, agent_graph_parsed, session_id, state, config)
+        return found
+
+    def _remove_prev_considers(self, messages):
+        to_remove = []
+        for m in messages:
+            if m and m.content and isinstance(m.content, str) and m.content.startswith(
+                    'Can you please consider whether the task is completed'):
+                to_remove.append(m)
+        for to_remove_item in to_remove:
+            messages.remove(to_remove_item)
 
     def _is_valid_wait_status(self, wait_status_message):
         return ((wait_status_message is not None) and
@@ -215,9 +228,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         return [HumanMessage(content=f"Empty message found from {agent_name}. Please retry or redirect.", name=agent_name)]
 
     def parse_messages(self, agent, result: AgentGraphResult, session_id, state, config) -> Command[typing.Union[str, END]]:
-        if self.do_perform_summary(result, config):
-            goto = self.get_next_node(agent, result, state, session_id)
-        elif self.task_manager:
+        if self.task_manager:
             recent = self.pop_to_process_task(session_id)
             if recent is not None:
                 # only route to a single agent at a time, but can add as many other messages to the context
@@ -227,17 +238,9 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                     result.content.append(
                         HumanMessage(content=self._parse_content(self.peek_to_process_task(session_id)),
                                      name="pushed task"))
-                    # if the next message appended, no matter what it is, pushes number of tokens too big, then
-                    # ignore that message for now, keep it in TaskManager, and don't replace recent for the get_next_node
-                    # call for below
-                    if self.do_perform_summary(result, config):
-                        # pop the message we just added to check if it pushes over token limit for summary
-                        result.content.pop()
-                        break
-                    else:
-                        # pop already appended to result, but still in task manager queue, remove from task manager
-                        # queue here and set to recent to check if go out of loop now.
-                        recent = self.pop_to_process_task(session_id)
+                    # pop already appended to result, but still in task manager queue, remove from task manager
+                    # queue here and set to recent to check if go out of loop now.
+                    recent = self.pop_to_process_task(session_id)
 
             goto = self.get_next_node(agent, result, state, session_id)
         else:
@@ -268,10 +271,14 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         state_graph.add_node(self.orchestrator_agent.agent_name,
                              lambda state, config: self.next_node_inner(self.orchestrator_agent))
 
-        for agent_name, agent in self.agents.items():
-            state_graph.add_node(agent_name,
-                                 lambda state, config, next_agent=agent.agent: self.next_node_inner(next_agent))
+        state_graph.add_node(self.summarizer_name, self.summarizer_node)
 
+        for agent_name, agent in self.agents.items():
+            if agent_name != self.summarizer_name:
+                state_graph.add_node(agent_name,
+                                     lambda state, config, next_agent=agent.agent: self.next_node_inner(next_agent))
+
+        state_graph.add_edge(self.summarizer_name, self.orchestrator_agent.agent_name)
         state_graph.set_entry_point(self.orchestrator_agent.agent_name)
         return state_graph
 

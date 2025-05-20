@@ -35,7 +35,12 @@ def test_tool() -> str:
 class MockExecutor:
     """Mock executor for model server"""
     def __init__(self, responses: List[str]):
-        self.call = unittest.mock.MagicMock(side_effect=responses)
+        self.iter_res = iter(responses)
+
+    def call(self, *args, **kwargs):
+        next_res = next(self.iter_res)
+        return next_res
+
         
     def get_config_props(self) -> ModelServerConfigProps:
         return ModelServerConfigProps()
@@ -229,7 +234,7 @@ def create_test_orchestrator(
         ai_suite, tools, "Test agent instruction", 
         memory, model_provider, mock_agent_model
     )
-    
+
     # Create notification auth
     notification_auth = PushNotificationSenderAuth()
     notification_auth.generate_jwk()
@@ -250,8 +255,8 @@ def create_test_orchestrator(
     orchestrator.agents = agents
     orchestrator.graph = orchestrator._build_graph()
 
-    orchestrator.orchestrator_agent.add_mcp_tools(ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
-    orchestrator.agents['TestA2AAgent'].agent.add_mcp_tools(ai_suite.agents['CdcCodegenAgent'].mcp_tools, asyncio.get_event_loop())
+    orchestrator.orchestrator_agent._create_graph(ai_suite.agents['CdcCodegenAgent'].mcp_tools)
+    orchestrator.agents['TestA2AAgent'].agent._create_graph(ai_suite.agents['CdcCodegenAgent'].mcp_tools)
 
     # Create task manager for the orchestrator
     orchestrator_task_manager = AgentTaskManager(orchestrator, notification_auth)

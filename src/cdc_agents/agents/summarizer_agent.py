@@ -19,6 +19,7 @@ class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
         DeepResearchOrchestrated.__init__(self, self_card)
+
         A2AReactAgent.__init__(self,agent_config, [], self_card.agent_descriptor.system_instruction,
                                memory_saver, model_provider)
 

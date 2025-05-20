@@ -148,11 +148,12 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
                  agents: typing.List[DeepResearchOrchestrated],
                  orchestrator_agent: DeepCodeAgent,
                  props: AgentConfigProps,
-                 memory_saver: MemorySaver):
+                 memory_saver: MemorySaver,
+                 model_provider: ModelProvider):
         StateGraphOrchestrator.__init__(self,
                                         {a.agent_name: OrchestratedAgent(a) for a in agents if
                                             isinstance(a, A2AAgent)},
-                                        orchestrator_agent, props, memory_saver)
+                                        orchestrator_agent, props, memory_saver, model_provider)
 
     @property
     def agent_name(self) -> str:

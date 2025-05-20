@@ -16,8 +16,10 @@ from cdc_agents.config.checkpoint_config_props import CheckpointConfigProps
 from cdc_agents.config.human_delegate_config_props import HumanDelegateConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
 from cdc_agents.config.runner_props import RunnerConfigProps
+from cdc_agents.config.tool_call_properties import ToolCallProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.model_server.model_server_model import ModelServerModel
+from cdc_agents.tools.tool_call_decorator import ToolCallDecorator
 from python_di.configs.bean import bean
 from python_di.configs.component_scan import component_scan
 from python_di.configs.di_configuration import configuration
@@ -28,10 +30,10 @@ from python_util.logger.logger import LoggerFacade
 
 @configuration()
 @enable_configuration_properties(config_props=[AgentConfigProps, ModelServerConfigProps, CheckpointConfigProps, CdcServerConfigProps,
-                                               HumanDelegateConfigProps, RunnerConfigProps])
+                                               HumanDelegateConfigProps, RunnerConfigProps, ToolCallProps])
 @component_scan(base_classes=[ModelServerModel, CdcCodeSearchAgent, DeepCodeAgent,
                               DeepCodeOrchestrator, ModelProvider, AgentServerRunner, HumanDelegateAgent,
-                              SummarizerAgent, LibraryEnumerationAgent])
+                              SummarizerAgent, LibraryEnumerationAgent, ToolCallDecorator])
 class AgentConfig:
 
     @bean(profile='test', scope=profile_scope, bindings=[Starlette])

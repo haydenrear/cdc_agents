@@ -26,7 +26,7 @@ from pydantic import BaseModel
 class BaseAgent(abc.ABC):
 
     @abc.abstractmethod
-    def invoke(self, query, sessionId) -> typing.Union[AddableDict, ResponseFormat]:
+    def invoke(self, query, sessionId) -> typing.Union[AddableDict, ResponseFormat, AgentGraphResponse]:
         pass
 
     @property
@@ -173,54 +173,59 @@ class A2AAgent(BaseAgent, abc.ABC):
         last_message: BaseMessage = messages[-1]
         content = ''.join([c for c in last_message.content])
 
-        content = content.replace('**', '')
-
-        match = self.STATUS_RX.search(content)
-
-        if match:
-            status_token = self._do_get_match_group(match)
-            if status_token == 'skip':
-                status_token = self.completed
-            if status_token == 'input_needed':
-                status_token = self.needs_input_string
-            header_end = content.find("\n", match.end())  # first newline after the header we matched
-            content = content[header_end + 1:] if header_end != -1 else ""
-            agent = None
-            additional_ctx = None
-            match_agent = None
-            match_ctx = None
-            for c in content.splitlines():
-                if match_agent is None:
-                    match_agent = self.NEXT_AGENT_RX.search(c)
-                    if match_agent is not None:
-                        agent = self._do_get_match_group(match_agent)
-                        if agent == 'skip':
-                            agent = None
-                if match_ctx is None:
-                    match_ctx = self.ADDITIONAL_CTX_RX.search(c)
-                    if match_ctx is not None:
-                        additional_ctx = self._do_get_match_group(match_ctx)
-                else:
-                    additional_ctx += '\n'
-                    additional_ctx += c
-
-            content = additional_ctx
-            structured_response = ResponseFormat(status=status_token, message=content, history=messages,
-                                                 route_to=agent)
+        if last_message.type == 'tool':
+            structured_response = ResponseFormat(status=self.next_agent, history=messages, content=content,
+                                                 route_to='orchestrator')
+            is_task_completed = True
         else:
-            try:
-                if isinstance(content, dict):
-                    content = json.dumps(content)
-                    structured_response = ResponseFormat(message=content, history=messages, status=self.completed)
-                else:
+            content = content.replace('**', '')
+
+            match = self.STATUS_RX.search(content)
+
+            if match:
+                status_token = self._do_get_match_group(match)
+                if status_token == 'skip':
+                    status_token = self.completed
+                if status_token == 'input_needed':
+                    status_token = self.needs_input_string
+                header_end = content.find("\n", match.end())  # first newline after the header we matched
+                content = content[header_end + 1:] if header_end != -1 else ""
+                agent = None
+                additional_ctx = None
+                match_agent = None
+                match_ctx = None
+                for c in content.splitlines():
+                    if match_agent is None:
+                        match_agent = self.NEXT_AGENT_RX.search(c)
+                        if match_agent is not None:
+                            agent = self._do_get_match_group(match_agent)
+                            if agent == 'skip':
+                                agent = None
+                    if match_ctx is None:
+                        match_ctx = self.ADDITIONAL_CTX_RX.search(c)
+                        if match_ctx is not None:
+                            additional_ctx = self._do_get_match_group(match_ctx)
+                    else:
+                        additional_ctx += '\n'
+                        additional_ctx += c
+
+                content = additional_ctx
+                structured_response = ResponseFormat(status=status_token, message=content, history=messages,
+                                                     route_to=agent)
+            else:
+                try:
+                    if isinstance(content, dict):
+                        content = json.dumps(content)
+                        structured_response = ResponseFormat(message=content, history=messages, status=self.completed)
+                    else:
+                        structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
+                except Exception as e:
                     structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
-            except Exception as e:
-                structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
 
-        is_task_completed = structured_response.status == self.completed
+            is_task_completed = structured_response.status == self.completed
 
-        if is_completed is not None:
-            is_task_completed = is_completed
+            if is_completed is not None:
+                is_task_completed = is_completed
 
         if structured_response and isinstance(structured_response, ResponseFormat):
             if structured_response.status == self.needs_input_string:

@@ -1,0 +1,1 @@
+The summarizer controller can be asked which messages can be removed, and then those can be parsed to remove those messages. Also additional messages can be removed. 

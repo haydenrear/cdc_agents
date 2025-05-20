@@ -1,4 +1,5 @@
 import abc
+import copy
 import json
 import typing
 
@@ -7,6 +8,7 @@ from langchain.agents.output_parsers import ReActSingleInputOutputParser, JSONAg
 from langchain_core.agents import AgentAction
 from langchain_core.language_models import LanguageModelOutput
 from langchain_core.messages import ToolCall, AIMessage
+from langchain_core.runnables.config import var_child_runnable_config
 
 from aisuite.framework import ChatCompletionResponse
 from cdc_agents.common.types import ToolCallJson, ToolCallAdapter
@@ -82,10 +84,15 @@ class LanguageModelOutputParser(abc.ABC):
 
     @classmethod
     def parse_agent_action(cls, value: AgentAction) -> ToolCall:
-        return ToolCall(name=value.tool,
+        tc = ToolCall(name=value.tool,
                         args={} if not value.tool_input or len(value.tool_input) == 0 else value.tool_input,
                         id=''.join(value.lc_id()))
+        return tc
 
+    def _silent_config(self):
+        # copied = var_child_runnable_config.get().copy()
+        # del copied['callbacks']
+        return None
 
 @component(bind_to=[LanguageModelOutputParser])
 @injectable()
@@ -98,9 +105,12 @@ class JsonToolModelOutputParser(LanguageModelOutputParser):
     def do_convert(self, llm_output_to_parse: typing.Union[str]) -> LlmOutput:
         if isinstance(llm_output_to_parse, str):
             try:
-                return [self.parse_agent_action(self.json_parser.invoke(llm_output_to_parse))]
-            except:
-                pass
+                parsed = [self.parse_agent_action(self.json_parser.invoke(llm_output_to_parse,
+                                                                          config=self._silent_config()))]
+                return parsed
+            except Exception as exc:
+                return None
+
 
 
 @component(bind_to=[LanguageModelOutputParser])
@@ -114,9 +124,11 @@ class ActionActionInputLanguageModelParser(LanguageModelOutputParser):
     def do_convert(self, llm_output_to_parse: typing.Union[str]) -> LlmOutput:
         if isinstance(llm_output_to_parse, str):
             try:
-                return [self.parse_agent_action(self.input_output_parser.invoke(llm_output_to_parse))]
-            except:
-                pass
+                parsed = [self.parse_agent_action(self.input_output_parser.invoke(llm_output_to_parse,
+                                                                                  config=self._silent_config()))]
+                return parsed
+            except Exception as exc:
+                return None
 
 
 @component(bind_to=[LanguageModelOutputParser])
