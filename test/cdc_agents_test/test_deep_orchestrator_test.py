@@ -72,18 +72,18 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
             Action: test_tool
             Action Input: 
             """,
-            """
-            Action: query
-            Action Input: { "sql": "SELECT * FROM commit_diff" }
-            """,
-            "status: next_agent\nTestA2AAgent",
+            # """
+            # Action: query
+            # Action Input: { "sql": "SELECT * FROM commit_diff" }
+            # """,
+            "STATUS: goto_agent\nNEXT AGENT: TestA2AAgent\nADDITIONAL CONTEXT: hello!!!\n\nokay!!!",
             "okay",
-            "status: completed\nhello!",
+            "STATUS: completed\nhello!",
             """
             Action: test_tool
             Action Input: 
             """,
-            "status: next_agent\nTestA2AAgent",
+            "status: goto_agent\nTestA2AAgent",
             "okay",
             "status: completed\nhello!",
             """
@@ -106,7 +106,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         )
         
         # Invoke the orchestrator
-        graph_response = orchestrator.invoke("hello", "test")
+        graph_response = orchestrator.invoke({"messages": ("user", "hello")}, "test")
         
         # Check the results
         invoked = graph_response.content.history

@@ -49,6 +49,11 @@ class A2AReactAgent(A2AAgent, abc.ABC):
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
         A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
         self.add_mcp_tools(self.agent_config.mcp_tools)
+        for t in self.tools:
+            from langchain_core.tools.base import ArgsSchema, BaseTool
+            t: BaseTool = t
+            t.return_direct = True
+
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
             prompt = self.system_instruction)
@@ -189,7 +194,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
     def invoke(self, query, sessionId):
         config = {"configurable": {"thread_id": sessionId}}
-        query['messages'].append(f"The session ID is {sessionId}.")
+        # query['messages'].insert(0, ('user', f"The user session ID is {sessionId}."))
         invoked = self.graph.invoke(query, config)
         next_message = self.pop_to_process_task(sessionId)
         while next_message is not None:

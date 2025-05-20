@@ -427,8 +427,8 @@ def aggregate_errs(res, results):
 
 class ResponseFormat(BaseModel):
     """Respond to the user in this format."""
-    status: Literal["input_required", "completed", "error", "next_agent"] = "input_required"
-    message: typing.Union[str, typing.List[BaseMessage], dict[str, typing.Any]]
+    status: Literal["input_required", "completed", "error", "goto_agent"] = "input_required"
+    message: typing.Union[str, typing.List[BaseMessage], dict[str, typing.Any], typing.List[str]]
     route_to: typing.Optional[str] = None
     history: typing.List[BaseMessage] = None
 

@@ -1,5 +1,8 @@
 import abc
 import dataclasses
+import enum
+
+import pydantic
 from langgraph.graph.state import CompiledStateGraph
 import json
 import re
@@ -41,11 +44,11 @@ class BaseAgent(abc.ABC):
 
     @property
     def next_agent(self) -> str:
-        return "next_agent"
+        return "goto_agent"
 
     @property
     def needs_input_string(self) -> str:
-        return "input_needed"
+        return "input_required"
 
     @property
     def has_error_string(self) -> str:
@@ -56,6 +59,17 @@ class BaseAgent(abc.ABC):
 
     def message_contains(self, last_message, answer) -> bool:
         return answer in last_message.content or any([answer in c for c in last_message.content])
+
+class Status(enum.Enum):
+    completed = "completed"
+    goto = "goto"
+    input_needed = "input_needed"
+
+class OrchestratorResponse(pydantic.BaseModel):
+    status: Status
+    next_agent: typing.Optional[str] = None
+    additional_context: typing.Optional[str] = None
+
 
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_instruction=None,
@@ -76,6 +90,18 @@ class A2AAgent(BaseAgent, abc.ABC):
         """,
             re.IGNORECASE | re.VERBOSE | re.MULTILINE,
             )
+
+        self.STATUS_RX = re.compile(
+            r"""^.*?
+            STATUS\s*:\s*
+            (?P<state>[A-Za-z_]+)
+            \s*$
+            """,
+            re.IGNORECASE | re.VERBOSE | re.MULTILINE)
+
+        self.NEXT_AGENT_RX = re.compile(r"NEXT AGENT\s*:\s*(?P<state>[A-Za-z0-9_]+)", re.IGNORECASE)
+
+        self.ADDITIONAL_CTX_RX = re.compile(r"ADDITIONAL CONTEXT\s*:\s*(?P<state>.*)", re.IGNORECASE)
 
     def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
@@ -157,23 +183,39 @@ class A2AAgent(BaseAgent, abc.ABC):
         messages = values.get('messages')
         last_message: BaseMessage = messages[-1]
         content = ''.join([c for c in last_message.content])
-        STATUS_RX = re.compile(
-            r"""^[\ufeff\s]*          # optional BOM + leading whitespace
-             status\s*:\s*                   # literal header key (allow extra spaces)
-            (?P<state>[A-Za-z_]+)            # capture the value
-            \s*$                             # ignore anything after the value on this line
-            """,
-            re.IGNORECASE | re.VERBOSE | re.MULTILINE,
-        )
 
-        match = STATUS_RX.search(content)
+        match = self.STATUS_RX.search(content)
 
         if match:
-            status_token = match.group("state")
+            status_token = self._do_get_match_group(match)
+            if status_token == 'skip':
+                status_token = self.completed
+            if status_token == 'input_needed':
+                status_token = self.needs_input_string
             header_end = content.find("\n", match.end())  # first newline after the header we matched
             content = content[header_end + 1:] if header_end != -1 else ""
+            agent = None
+            additional_ctx = None
+            match_agent = None
+            match_ctx = None
+            for c in content.splitlines():
+                if match_agent is None:
+                    match_agent = self.NEXT_AGENT_RX.search(c)
+                    if match_agent is not None:
+                        agent = self._do_get_match_group(match_agent)
+                        if agent == 'skip':
+                            agent = None
+                if match_ctx is None:
+                    match_ctx = self.ADDITIONAL_CTX_RX.search(c)
+                    if match_ctx is not None:
+                        additional_ctx = self._do_get_match_group(match_ctx)
+                else:
+                    additional_ctx += '\n'
+                    additional_ctx += c
+
+            content = additional_ctx
             structured_response = ResponseFormat(status=status_token, message=content, history=messages,
-                                                 route_to=content if status_token == self.next_agent else None)
+                                                 route_to=agent)
         else:
             try:
                 if isinstance(content, dict):
@@ -221,8 +263,16 @@ class A2AAgent(BaseAgent, abc.ABC):
             "content": "We are unable to process your request at the moment. Please try again.",
         })
 
+    def _do_get_match_group(self, match):
+        status_token = match.group("state")
+        if status_token is not None:
+            status_token = status_token.strip()
+        return status_token
+
     def stream_agent_response_graph(self, query, sessionId, graph: CompiledStateGraph):
-        inputs = {"messages": [("user", query)]}
+        if isinstance(str, query):
+            inputs = {"messages": [("user", query)]}
+
         config = {"configurable": {"thread_id": sessionId}}
 
         for item in graph.stream(inputs, config, stream_mode="values"):

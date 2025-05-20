@@ -35,6 +35,7 @@ class ModelServerModelProvider(ModelProvider):
             if model.startswith('ollama_chat://'):
                 return ChatOllama(model = model.replace("ollama_chat://ollama_chat/", ""))
 
+
         return self.build_model(agent_card=agent_card)
 
     @autowire_fn(descr={

@@ -270,14 +270,28 @@ class AgentTaskManager(InMemoryTaskManager):
         if agent_response.require_user_input:
             task_status = TaskStatus(
                 state=TaskState.INPUT_REQUIRED,
-                message=Message(role="agent", parts=parts),
-            )
+                message=Message(role="agent", parts=parts))
         else:
             task_status = TaskStatus(state=TaskState.COMPLETED, message=Message(role="agent", parts=parts))
-            artifact = Artifact(parts=parts)
         task = self.update_store(
-            task_id, task_status, None if artifact is None else [artifact]
-        )
+            task_id, task_status, None if artifact is None else [artifact])
+
+        task.history.clear()
+
+        for a in agent_response.content.history:
+            parts = []
+            if isinstance(a.content, str):
+                if a.content and len(a.content) != 0:
+                    parts.append({"type": "text", "text": a.content})
+            elif isinstance(a.content, list):
+                for t in a.content:
+                    if a.content and len(a.content) != 0:
+                        parts.append({"type": "text", "text": t})
+            elif isinstance(a.content, dict):
+                parts.append({"type": "text", "text": a.content})
+
+            task.history.append(Message(role="agent" if a.type == "ai" or a.type == 'tool' else "user", parts=parts))
+
         task_result = self.append_task_history(task, history_length)
         self.send_task_notification(task)
         return SendTaskResponse(id=request_id, result=task_result)

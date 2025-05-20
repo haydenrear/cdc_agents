@@ -321,7 +321,7 @@ class InMemoryTaskManager(TaskManager):
         if historyLength is not None and historyLength > 0:
             new_task.history = new_task.history[-historyLength:]
         else:
-            new_task.history = []
+            new_task.history = task.history
 
         return new_task        
 

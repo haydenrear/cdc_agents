@@ -7,3 +7,13 @@ Content-Type: application/json
 { "method": "tasks/send", "params": {"id": "test", "sessionId": "test", "message": {"role": "user", "parts": [ {"text": "Please add the following git repository to the embedding database: https://github.com/haydenrear/tracing-ml.git", "type": "text"} ] }  }}
 
 ###
+
+# curl -X POST http://localhost:50000/code_search --data '{ "method": "tasks/send", "params": {"id": "test", "sessionId": "test", "message": {"role": "user", "parts": [ {"text": "Please add the following git repository to the embedding database: https://github.com/haydenrear/tracing-ml.git", "type": "text"} ] }  }}'
+# @timeout 600000
+# @connection-timeout 600000
+POST http://localhost:50000/deep_code_orchestrator
+Content-Type: application/json
+
+{ "method": "tasks/send", "params": {"id": "1234", "sessionId": "1234", "message": {"role": "user", "parts": [ {"text": "Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools", "type": "text"} ] }  }}
+
+###

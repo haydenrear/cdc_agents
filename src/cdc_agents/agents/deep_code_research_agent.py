@@ -156,7 +156,7 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
 
     @property
     def agent_name(self) -> str:
-        return f'Graph orchestrator agent; {typing.cast(DeepCodeAgent, self.orchestrator_agent).agent_name}'
+        return self.__class__.__name__
 
     def parse_orchestration_response(self, last_message: AgentGraphResponse) -> AgentGraphResponse:
         return last_message

@@ -3,7 +3,7 @@ import dataclasses
 from langchain_core.runnables import AddableDict
 import typing
 from typing import AsyncIterable, Dict, Any, Optional
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import BaseMessage, HumanMessage,AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.runnables.utils import Input, Output
 from langgraph.checkpoint.memory import MemorySaver
@@ -170,7 +170,11 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         last_message: BaseMessage = messages.pop()
 
-        messages.append(HumanMessage(content=last_message.content, name=agent.agent_name))
+        if last_message.type == 'tool':
+            messages.append(last_message)
+        elif isinstance(result.content, ResponseFormat):
+            message = last_message.content
+            messages.append(HumanMessage(content=message, name=agent.agent_name))
 
         agent_graph_parsed = AgentGraphResult(
             content=messages, is_task_complete=result.is_task_complete,
@@ -184,8 +188,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
     def _is_valid_wait_status(self, wait_status_message):
         return ((wait_status_message is not None) and
-                (
-                            wait_status_message.agent_route in self.agents.keys() or self.orchestrator_agent.agent_name == wait_status_message.agent_route))
+                (wait_status_message.agent_route in self.agents.keys() or self.orchestrator_agent.agent_name == wait_status_message.agent_route))
 
     def _retrieve_messages(self, content:  typing.Union[ResponseFormat, str, list[BaseMessage]], agent_name) -> typing.List[BaseMessage]:
         if isinstance(content, ResponseFormat):
@@ -271,7 +274,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     def _create_invoke_graph(self, query, sessionId):
         self.graph = self._create_compile_graph()
         config = self._create_orchestration_config(sessionId)
-        self.graph.invoke({"messages": [("user", query)]}, config)
+        self.graph.invoke(query, config)
         return config, self.graph
 
     def _create_compile_graph(self):

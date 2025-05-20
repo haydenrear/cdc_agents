@@ -57,9 +57,7 @@ agent_config:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: LibraryEnumerationAgent
         orchestrator_instruction: >
-          An agent that identifies important dependencies in the repository to be included in the code search when including
-          code and code history in the context, and returns a mechanism for how those dependencies can be downloaded to be
-          used in the downstream tasks.
+          An agent that provides git url for other tasks from github or gitlab.
         system_instruction: >
       agent_card:
         name: LibraryEnumerationAgent
@@ -125,38 +123,18 @@ agent_config:
           for particular tickets, bug changes, or any other unit of work.
         system_instruction: >
           You are a specialized assistant for running source code to test changes. You have access to various tools to
-          run the code, such as Docker, Git, and the file system. If you do not have enough information to run the code,
+          run the code, such as Docker, Git, and the file system. 
+          
+          If you do not have enough information to run the code,
           then you can ask for more information, such as context information from other repos, for example, for creating
-          and building new Docker containers that path libraries with custom code.
-          Otherwise, using the information provided to you, run the code and provide feedback about the changes, such as by loading the log.
+          and building new Docker containers that path libraries with custom code. Please focus on using your tools
+          to answer the questions.
           
-          Make sure to build the Docker container, run it, and then return the results. The test Docker container is located
-          in /Users/hayde/IdeaProjects/drools/cdc_agents/build/Dockerfile_testmcp and the deploy Docker container is located in
-          /Users/hayde/IdeaProjects/drools/cdc_agents/build/Dockerfile_mcp, and the base Dockerfile /Users/hayde/IdeaProjects/drools/cdc_agents/docker/Dockerfile_base.  
+          For example if a request is made to retrieve context data from the git repository, use the git tool. Alternatively,
+          if a request is made to create or start a docker container, please use the docker tool. If you need to retrieve
+          information from the file system, please use the file system tool.
           
-          If you would like to run the tests you can run the following docker command:
-          
-          ```shell
-          docker run -v '/Users/hayde/IdeaProjects/drools/python_di:/home/cdc_agents/python_di'  -v '/Users/hayde/IdeaProjects/drools/python_util:/home/cdc_agents/python_util' -v '/Users/hayde/IdeaProjects/drools/drools_py:/home/cdc_agents/drools_py' -v '/Users/hayde/IdeaProjects/ml/integrations/aisuite:/home/ml/integrations/aisuite' -v 'environment:/home/cdc_agents/sources/.venv' -v '/var/run/docker.sock:/var/run/docker.sock' -v './application-test.yml:/home/cdc_agents/sources/resources/application.yml'  --name cdc_agents_test mcp/cdc_agents_test
-          ```
-          
-          Then you can check the logs with 
-          
-          ```shell
-          docker logs cdc_agents_test
-          ``` 
-          
-          Then, to make sure we can run again, make sure and delete the container
-          
-          ```shell
-          docker rm cdc_agents_test 
-          ```
-          
-          Feel free, if you need to patch existing library code,
-          to create a new Dockerfile and build and run that. Please note the build tool is uv and see existing dependencies
-          in /Users/hayde/IdeaProjects/drools/cdc_agents/pyproject.toml.
-          
-          If necessary, you can check with the filesystem in /Users/hayde/IdeaProjects/drools/cdc_agents/docker/build.sh to see the full build process and optional run commands.
+          Please translate the requests you receive into the tool call you would like to make.
       agent_card:
         name: CodeRunnerAgent
         path: /code-runner
@@ -192,7 +170,7 @@ agent_config:
               - -i
               - --rm
               - -v
-              - /Users/hayde/IdeaProjects:/Users/hayde/IdeaProjects
+              - /Users/hayde/IdeaProjects/drools:/Users/hayde/IdeaProjects/drools
               - mcp/git-code-runner
             env:
         filesystem:
@@ -212,7 +190,7 @@ agent_config:
             env:
         docker:
           tool_prompt: >
-            Use docker to build the container. Please note the directory provided by the user.
+            Use docker to build and run the container. Additional instructions are provided as to which you can run, such as cdc-agents-test.
           name: docker
           tool_options:
             command: docker
@@ -317,6 +295,13 @@ agent_config:
           
           ['ADD_REPO']
           
+          After you have completed each tool call, evaluate the answer with respect to your inputs to see if the issue
+          is resolved. 
+          
+          If the previous tool call completes the task, then simply output 
+          
+          STOP
+
         orchestrator_instruction: >
           An agent that can add git repositories to an embedding database with history. This agent has a mechanism to
           provide contextual information from the git repositories. This agent has access to an embedding database, so
@@ -325,6 +310,50 @@ agent_config:
           codegen processes. It can also parse repositories with respect to particular queries, adding commit diffs to the
           repository with respect to particular code, so it can be used to produce more relevant contextual information,
           using the git blame tree mechanism.
+          
+          Additionally, this agent can also be used to perform basic git operations on a repository through the use
+          of it's git tool.
+      mcp_tools:
+        filesystem:
+          name: filesystem
+          tool_prompt: >
+            Use file system tool to search the file system for repositories, paths, or other data.
+          tool_options:
+            command: docker
+            args:
+              - run
+              - -i
+              - --rm
+              - -v
+              - /Users/hayde/IdeaProjects:/Users/hayde/IdeaProjects
+              - mcp/filesystem-code-search
+              - /Users/hayde/IdeaProjects
+            env:
+        git:
+          stop_tool: container_id=$(docker ps | grep mcp/git-code-runner | awk '{print $1}') [ -n "$container_id" ] && docker stop "$container_id" >/dev/null 2>&1
+          name: git
+          tool_prompt: "Use git tool"
+          tool_options:
+            command: docker
+            args:
+              - run
+              - -i
+              - --rm
+              - -v
+              - /Users/hayde/IdeaProjects/drools:/Users/hayde/IdeaProjects/drools
+              - mcp/git-code-search
+            env:
+    DeepCodeOrchestrator:
+      agent_card:
+        name: DeepCodeOrchestrator
+        path: /deep_code_orchestrator
+        version: 0.0.1
+      agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeOrchestrator
+      agent_descriptor:
+        agent_name: DeepCodeOrchestrator
+        model: ollama_chat://ollama_chat/phi4:14b
+        orchestration_instruction: >
+        orchestration_message: >
     DeepCodeAgent:
       agent_card:
         name: DeepCodeAgent
@@ -332,7 +361,7 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeAgent
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:70b
+        model: ollama_chat://ollama_chat/phi4:14b
         agent_name: DeepCodeAgent
         orchestration_instruction: >
           You are the orchestrator agent for code generation. Your job is to orchestrate a group of agents to implement tickets for software projects.
@@ -341,15 +370,23 @@ agent_config:
           Here are a list of the agents that you are in charge of orchestrating:
         orchestration_message: >
           Your primary goal is to interpret the responses from the agents into requests for other agents, including adding any additional
-          context to them to help them along with the overall goal of implementing software using contextual information. Make sure that
-          when you interpret the previous agent's response, if you decide to delegate to another agent and add context make sure that
-          the context you add relates to their domain. In order to delegate to the agent, please follow the format
+          context to them to help them along with the overall goal of implementing software using contextual information, and interpret 
+          user queries to delegate to the best agent for the job. 
           
-          NEXT AGENT: [name of the agent, as per the agents provided previously with agent_name]
+          Make sure that
+          when you interpret the previous agent's response, if you decide to delegate to another agent and add context make sure that
+          the context you add relates to their domain. 
+         
+          Please note that the next agent should be the name of the agent to delegate to, as per the agents provided previously with agent_name. In order to delegate to this agent, you need to set status to goto. 
+          
+          The format you should follow is
+         
+          STATUS: [status token, one of completed (if done), goto_agent (to go to an agent), or input_required (if need input from user)]
+          NEXT AGENT: [name of the agent, as per the agents provided previously with agent_name, or skip providing this]
           ADDITIONAL CONTEXT: [additional relevant contextual information, for example summarizing previous information and what you'd like that agent to do]
           
           If the agent provides a message with
-          
+           
           FINAL ANSWER:
           [final answer provided]
           
@@ -365,7 +402,10 @@ agent_config:
           HumanDelegateAgent to validate the changes, or business requirements.
           
           In any case, please ensure that the software implementation is thorough and complete, and validated, and if you
-          have any questions, please reach out using the HumanDelegateAgent.
+          have any questions, please reach out using the HumanDelegateAgent. 
+          
+          Always make sure that you consider the responses in the terms of the original query, and when the task has been completed,
+          provide the information to the user.
 profiles:
   active_profiles:
     main_profile:
