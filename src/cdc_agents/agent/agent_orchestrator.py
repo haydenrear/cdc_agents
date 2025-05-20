@@ -105,20 +105,15 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             else:
                 LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
 
-        if graph_result.require_user_input:
-            graph_result.add_to_last_message(f'\nstatus_message: awaiting input for {last_executed_agent_name}')
+        if graph_result.require_user_input and is_this_agent_orchestrator:
+            return END
+
+        if last_executed_agent.is_terminate_node(graph_result, state) and is_this_agent_orchestrator:
             return END
 
         if self.do_perform_summary(graph_result, config):
             from cdc_agents.agents.summarizer_agent import SummarizerAgent
             return SummarizerAgent.__name__
-
-        last_message = graph_result.last_message
-
-        is_last_message = last_executed_agent.is_terminate_node(graph_result, state)
-
-        if is_last_message and is_this_agent_orchestrator:
-            return END
 
         return self.orchestrator_agent.agent_name
 
@@ -152,13 +147,15 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     def next_node(self, agent: BaseAgent, state: MessagesState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
         prev_messages = state.get('messages')
 
-        if prev_messages is not None and len(prev_messages) > 1:
-            second_to_last = prev_messages[-2]
-            status_messages = self.retrieve_status_messages(second_to_last)
-            wait_status_message = self.retrieve_status_messages(status_messages)
-            if self._is_valid_wait_status(wait_status_message):
-                return Command(update={"messages": prev_messages},
-                               goto=wait_status_message.agent_route)
+        # If received a message to route to another agent, route to that other agent.
+        # if prev_messages is not None and len(prev_messages) > 1:
+        #     second_to_last = prev_messages[-2]
+        #     status_messages = self.retrieve_status_messages(second_to_last)
+        #     wait_status_message = self.retrieve_status_messages(status_messages)
+        #     if self._is_valid_wait_status(wait_status_message):
+        #         # an agent is waiting, so call directly that agent  TODO: awaiting status update.
+        #         return Command(update={"messages": prev_messages},
+        #                        goto=wait_status_message.agent_route)
 
         session_id = config['configurable']['thread_id']
 
@@ -172,9 +169,24 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         if last_message.type == 'tool':
             messages.append(last_message)
+            if agent.agent_name != self.orchestrator_agent.agent_name:
+                messages.append(HumanMessage(content='Can you please consider whether the task is completed, considering the previous tool message response? '
+                                                     'If so can you return the context of the result. If not, can you continue with the task by considering '
+                                                     'what is still necessary and delegating to the agent that can help continue/complete the task?'))
         elif isinstance(result.content, ResponseFormat):
-            message = last_message.content
-            messages.append(HumanMessage(content=message, name=agent.agent_name))
+            if result.is_task_complete:
+                message = last_message.content
+                messages.append(AIMessage(content=message, name=agent.agent_name))
+            else:
+                message = last_message.content
+                if agent.agent_name != self.orchestrator_agent.agent_name:
+                    messages.append(AIMessage(content=message, name=agent.agent_name))
+                    messages.append(HumanMessage(content=f'Can you please consider whether the task is completed, considering the previous message from agent {agent.agent_name}? '
+                                                         'If so can you return the context of the result. If not, can you continue with the task by considering '
+                                                         'what is still necessary and delegating to the agent that can help continue/complete the task?'))
+                else:
+                    messages.append(HumanMessage(content=message, name=agent.agent_name))
+
 
         agent_graph_parsed = AgentGraphResult(
             content=messages, is_task_complete=result.is_task_complete,
@@ -274,6 +286,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     def _create_invoke_graph(self, query, sessionId):
         self.graph = self._create_compile_graph()
         config = self._create_orchestration_config(sessionId)
+        query['messages'].insert(0, ('user', f"The user session ID is {sessionId}."))
         self.graph.invoke(query, config)
         return config, self.graph
 

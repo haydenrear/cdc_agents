@@ -60,17 +60,6 @@ class BaseAgent(abc.ABC):
     def message_contains(self, last_message, answer) -> bool:
         return answer in last_message.content or any([answer in c for c in last_message.content])
 
-class Status(enum.Enum):
-    completed = "completed"
-    goto = "goto"
-    input_needed = "input_needed"
-
-class OrchestratorResponse(pydantic.BaseModel):
-    status: Status
-    next_agent: typing.Optional[str] = None
-    additional_context: typing.Optional[str] = None
-
-
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_instruction=None,
                  memory: MemorySaver = MemorySaver(), content_types = None):
@@ -219,12 +208,12 @@ class A2AAgent(BaseAgent, abc.ABC):
         else:
             try:
                 if isinstance(content, dict):
-                    loaded = content
+                    content = json.dumps(content)
+                    structured_response = ResponseFormat(message=content, history=messages, status=self.completed)
                 else:
-                    loaded = json.loads(content)
-                structured_response = ResponseFormat(**loaded)
+                    structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
             except Exception as e:
-                structured_response = ResponseFormat(status=self.completed, message=content, history=messages)
+                structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
 
         is_task_completed = structured_response.status == self.completed
 

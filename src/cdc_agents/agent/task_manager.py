@@ -273,6 +273,7 @@ class AgentTaskManager(InMemoryTaskManager):
                 message=Message(role="agent", parts=parts))
         else:
             task_status = TaskStatus(state=TaskState.COMPLETED, message=Message(role="agent", parts=parts))
+
         task = self.update_store(
             task_id, task_status, None if artifact is None else [artifact])
 
@@ -289,8 +290,8 @@ class AgentTaskManager(InMemoryTaskManager):
                         parts.append({"type": "text", "text": t})
             elif isinstance(a.content, dict):
                 parts.append({"type": "text", "text": a.content})
-
-            task.history.append(Message(role="agent" if a.type == "ai" or a.type == 'tool' else "user", parts=parts))
+            if len(parts) != 0:
+                task.history.append(Message(role="agent" if a.type == "ai" or a.type == 'tool' else "user", parts=parts))
 
         task_result = self.append_task_history(task, history_length)
         self.send_task_notification(task)

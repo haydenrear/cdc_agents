@@ -194,14 +194,12 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
     def invoke(self, query, sessionId):
         config = {"configurable": {"thread_id": sessionId}}
-        # query['messages'].insert(0, ('user', f"The user session ID is {sessionId}."))
         invoked = self.graph.invoke(query, config)
         next_message = self.pop_to_process_task(sessionId)
         while next_message is not None:
             query = self.task_manager.get_user_query_message(next_message)
             invoked = self.graph.invoke(query, config)
             next_message = self.pop_to_process_task(sessionId)
-        #         TODO: self.get_agent_response_graph(invoked)
         return self.get_agent_response(config)
 
     def stream(self, query, session_id, graph=None):
