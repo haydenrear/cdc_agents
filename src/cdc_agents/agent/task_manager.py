@@ -93,7 +93,7 @@ class AgentTaskManager(InMemoryTaskManager):
                         self._apply_task_enqueue(artifact, do_end_stream, message, session_id, task_state)
                     else:
                         # If message was added after stream finished, then run stream until finished processing.
-                        query = self.get_user_query_message(next(iter(task.to_process)))
+                        query = self.get_user_query_message(next(iter(task.to_process)), session_id)
                         do_restart_stream = True
 
                 if do_restart_stream:
@@ -194,7 +194,8 @@ class AgentTaskManager(InMemoryTaskManager):
             with self.task_locks[request_id]:
                 task = self.task(request_id)
                 if task and len(task.to_process)  != 0:
-                    query = self.get_user_query_message(next(iter(task.to_process)))
+                    query = self.get_user_query_message(next(iter(task.to_process)),
+                                                        task_send_params.sessionId)
                     has_more_work = True
 
             #  Perform this out of lock.

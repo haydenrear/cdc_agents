@@ -3,6 +3,8 @@ import asyncio
 import atexit
 
 import nest_asyncio
+
+from cdc_agents.common.server import TaskManager
 from python_util.logger.logger import LoggerFacade
 
 from cdc_agents.agent.a2a import A2AAgent
@@ -194,10 +196,10 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
     def invoke(self, query, sessionId):
         config = {"configurable": {"thread_id": sessionId}}
-        invoked = self.graph.invoke(query, config)
+        invoked = self.graph.invoke(TaskManager.get_user_query_message(query, sessionId), config)
         next_message = self.pop_to_process_task(sessionId)
         while next_message is not None:
-            query = self.task_manager.get_user_query_message(next_message)
+            query = self.task_manager.get_user_query_message(next_message, sessionId)
             invoked = self.graph.invoke(query, config)
             next_message = self.pop_to_process_task(sessionId)
         return self.get_agent_response(config)

@@ -13,6 +13,7 @@ from langgraph.types import Command, Runnable
 
 from cdc_agents.agent.a2a import A2AAgent, BaseAgent
 from cdc_agents.agent.agent import A2AReactAgent
+from cdc_agents.common.server import TaskManager
 from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from python_util.logger.logger import LoggerFacade
@@ -286,8 +287,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     def _create_invoke_graph(self, query, sessionId):
         self.graph = self._create_compile_graph()
         config = self._create_orchestration_config(sessionId)
-        query['messages'].insert(0, ('user', f"The user session ID is {sessionId}."))
-        self.graph.invoke(query, config)
+        self.graph.invoke(TaskManager.get_user_query_message(query, sessionId), config)
         return config, self.graph
 
     def _create_compile_graph(self):

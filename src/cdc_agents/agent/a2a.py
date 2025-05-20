@@ -173,6 +173,8 @@ class A2AAgent(BaseAgent, abc.ABC):
         last_message: BaseMessage = messages[-1]
         content = ''.join([c for c in last_message.content])
 
+        content = content.replace('**', '')
+
         match = self.STATUS_RX.search(content)
 
         if match:
@@ -259,9 +261,7 @@ class A2AAgent(BaseAgent, abc.ABC):
         return status_token
 
     def stream_agent_response_graph(self, query, sessionId, graph: CompiledStateGraph):
-        if isinstance(str, query):
-            inputs = {"messages": [("user", query)]}
-
+        inputs = TaskManager.get_user_query_message(query, sessionId)
         config = {"configurable": {"thread_id": sessionId}}
 
         for item in graph.stream(inputs, config, stream_mode="values"):

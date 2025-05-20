@@ -94,7 +94,7 @@ class TaskManager(ABC):
 
     @classmethod
     def get_user_query(cls, task_send_params: TaskSendParams) -> str:
-        return cls.get_user_query_message(task_send_params.message)
+        return cls.get_user_query_message(task_send_params.message, task_send_params.sessionId)
 
     @classmethod
     def translate_role(cls, role: str):
@@ -103,8 +103,33 @@ class TaskManager(ABC):
         return role
 
     @classmethod
-    def get_user_query_message(cls, task_send_params: Message) -> str:
-        return {"messages": [(cls.translate_role(task_send_params.role), m.text) for m in task_send_params.parts]}
+    def get_user_query_message(cls, task_send_params, session_id = None):
+        if isinstance(task_send_params, TaskSendParams):
+            r = cls.get_user_query_message(task_send_params.message, task_send_params.sessionId)
+        elif isinstance(task_send_params, Message):
+            r = {"messages": [(cls.translate_role(task_send_params.role), m.text) for m in task_send_params.parts]}
+        elif isinstance(task_send_params, str):
+            r = {"messages": [("user", task_send_params)]}
+        elif isinstance(task_send_params, dict) and 'messages' in task_send_params.keys():
+            r = task_send_params
+        else:
+            r = {"messages": [("user", str(task_send_params))]}
+
+        messages = r['messages']
+        try:
+            if len(messages) > 0:
+                m = messages[0]
+                if len(m) == 2 and m[0] == 'user':
+                    messages[0] = (m[0], m[1] + f"\nsession id:{session_id}.")
+            return r
+        except:
+            return r
+
+
+
+
+
+
 
     @classmethod
     def get_user_query_part(cls, part: Part) -> str:
