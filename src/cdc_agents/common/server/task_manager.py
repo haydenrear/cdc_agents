@@ -125,12 +125,6 @@ class TaskManager(ABC):
         except:
             return r
 
-
-
-
-
-
-
     @classmethod
     def get_user_query_part(cls, part: Part) -> str:
         if not isinstance(part, TextPart):
