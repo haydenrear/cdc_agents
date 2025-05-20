@@ -165,7 +165,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         messages = self._retrieve_messages(result.content, agent.agent_name)
 
-        self._remove_prev_considers(messages)
+        messages = self._remove_prev_considers(messages)
 
         last_message: BaseMessage = messages.pop()
 
@@ -201,9 +201,10 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         agent_graph_parsed = self.parse_orchestration_response(agent_graph_parsed)
 
         found = self.parse_messages(agent, agent_graph_parsed, session_id, state, config)
+
         return found
 
-    def _remove_prev_considers(self, messages):
+    def _remove_prev_considers(self, messages: typing.List[BaseMessage]):
         to_remove = []
         for m in messages:
             if m and m.content and isinstance(m.content, str) and m.content.startswith(
@@ -211,6 +212,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                 to_remove.append(m)
         for to_remove_item in to_remove:
             messages.remove(to_remove_item)
+
+        return messages
 
     def _is_valid_wait_status(self, wait_status_message):
         return ((wait_status_message is not None) and
@@ -249,6 +252,9 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             result.add_to_last_message(
                 f"Did not receive a {self.terminal_string} delimited with {self.terminal_string} or which agent to forward to. "
                 f"Please either summarize into a {self.terminal_string} or delegate to one of you're agents who will.")
+
+        if goto == END:
+            result.content = self._remove_prev_considers(result.content)
 
         return Command(update={"messages": result.content},
                        goto=goto)

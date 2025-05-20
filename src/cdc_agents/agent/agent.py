@@ -63,15 +63,9 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
         self.add_mcp_tools(self.agent_config.mcp_tools)
 
-        for t in self.tools:
-            t: BaseTool = t
-            if not t.callbacks:
-                t.callbacks = []
-            t.return_direct = True
+        self._set_tools_return_direct()
 
-        self.graph = create_react_agent(
-            self.model, tools=self.tools, checkpointer=self.memory,
-            prompt = self.system_instruction)
+        self._create_react_agent()
 
         # if self.graph.config is None:
         #     self.graph.config = {}
@@ -85,18 +79,23 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
     def _create_graph(self, mcp_tools):
         self.add_mcp_tools(mcp_tools)
+        self._set_tools_return_direct()
+        self._create_react_agent()
+
+    def _create_react_agent(self):
+        self.graph = create_react_agent(
+            self.model, tools=self.tools, checkpointer=self.memory,
+            prompt=self.system_instruction)
+
+    def _set_tools_return_direct(self):
         for t in self.tools:
             t: BaseTool = t
             if not t.callbacks:
                 t.callbacks = []
             t.return_direct = True
-        self.graph = create_react_agent(
-            self.model, tools=self.tools, checkpointer=self.memory,
-            prompt = self.system_instruction)
 
     def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         done = do_run_on_event_loop(self.add_mcp_tools_async(additional_tools, loop), lambda s: None, loop)
-
 
     async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
