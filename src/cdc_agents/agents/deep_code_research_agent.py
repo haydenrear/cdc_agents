@@ -139,7 +139,7 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
 
 
 
-@component(bind_to=[A2AAgent, A2AReactAgent])
+@component(bind_to=[A2AAgent, A2AReactAgent, StateGraphOrchestrator])
 @injectable()
 class DeepCodeOrchestrator(StateGraphOrchestrator):
 
