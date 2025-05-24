@@ -1,0 +1,41 @@
+{
+  "context_servers": {
+    "cdc agents": {
+      "command": {
+        "path": "/Users/hayde/.cargo/bin/docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "-v",
+          "/Users/hayde/IdeaProjects/python_parent:/home/python_parent/sources",
+          "-v",
+          "environment:/home/python_parent/sources/.venv",
+          "-v",
+          "/var/run/docker.sock:/var/run/docker.sock",
+          "-v",
+          "/Users/hayde/IdeaProjects/python_parent/packages/cdc_agents/docker.env:/home/python_parent/sources/packages/cdc_agents/.env",
+          "mcp/cdc_agents"
+        ],
+        "env": null
+      },
+      "settings": {}
+    }
+  },
+  "agent": {
+    "model_parameters": [],
+    "default_model": {
+      "provider": "ollama",
+      "model": "llama3.2:latest"
+    },
+    "version": "2"
+  },
+  "vim_mode": true,
+  "ui_font_size": 16,
+  "buffer_font_size": 13.0,
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "One Dark"
+  }
+}
