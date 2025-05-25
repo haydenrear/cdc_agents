@@ -209,7 +209,8 @@ class A2AAgent(BaseAgent, abc.ABC):
                         additional_ctx += '\n'
                         additional_ctx += c
 
-                content = additional_ctx
+                content = additional_ctx if additional_ctx is not None \
+                    else content
                 structured_response = ResponseFormat(status=status_token, message=content, history=messages,
                                                      route_to=agent)
             else:
