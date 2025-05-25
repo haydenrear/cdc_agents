@@ -1,8 +1,7 @@
 import typing
-from typing import Dict, Any, TypeVar, Type, Union, List, cast, Optional
+from typing import Any, TypeVar, Union, List, Optional
 
 import injector
-import requests
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import InjectedStore, InjectedState
@@ -31,12 +30,12 @@ from cdc_agents.common.graphql_models import (
     GitAction,
     GitRepoRequestOptions,
     PromptingOptions,
-    GitRepo
+    GitRepo, execute_graphql_request
 )
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
-from cdc_agents.tools.tool_call_decorator import  ToolCallDecorator
+from cdc_agents.tools.tool_call_decorator import ToolCallDecorator
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 from python_util.logger.logger import LoggerFacade
@@ -66,60 +65,6 @@ def _build_git_repo_prompting_req(git_branch, git_repo_url, query, session_id, g
     return request
 
 
-def execute_graphql_request(
-        endpoint: str,
-        query: str,
-        variables: Dict[str, Any],
-        result_key: str,
-        model_class: Type[T],
-        err_producer: typing.Callable[[str], T] = None
-) -> T:
-    """Execute a GraphQL request and parse the response into the specified model.
-    
-    Args:
-        err_producer:
-        endpoint: GraphQL endpoint URL
-        query: GraphQL query or mutation
-        variables: Variables for the GraphQL query
-        result_key: Key in the response data to extract
-        model_class: Pydantic model class to parse the response into
-        
-    Returns:
-        Parsed response data as a Pydantic model
-    """
-    headers = {
-        "Content-Type": "application/json",
-    }
-
-    data = {
-        "query": query,
-        "variables": variables
-    }
-
-    try:
-        response = requests.post(endpoint, headers=headers, json=data)
-        response.raise_for_status()
-
-        response_json = response.json()
-        result_data = response_json.get("data", {}).get(result_key, {})
-
-        # Safely handle model instantiation regardless of Pydantic version
-        try:
-            # Try Pydantic v2 style
-            if hasattr(model_class, 'model_validate'):
-                return model_class.model_validate(result_data)
-            # Try Pydantic v1 style
-            elif hasattr(model_class, 'parse_obj'):
-                return model_class.parse_obj(result_data)
-            # Fallback to direct instantiation
-            else:
-                return cast(T, model_class(**result_data))
-        except TypeError:
-            # If all else fails, try direct instantiation
-            return cast(T, model_class(**result_data))
-    except Exception as e:
-        LoggerFacade.error(f"GraphQL request:\n{query}\n{data}\n{headers} failed: {str(e)}")
-        raise e
 
 
 

@@ -11,7 +11,9 @@ from typing_extensions import Annotated
 
 from cdc_agents.agent.a2a import A2AAgent
 from cdc_agents.agent.agent import A2AReactAgent
+from cdc_agents.agents.cdc_server_agent import execute_graphql_request
 from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
+from cdc_agents.common.graphql_models import Error
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.model_server.model_provider import ModelProvider
@@ -22,66 +24,12 @@ from python_util.logger.logger import LoggerFacade
 
 T = TypeVar('T')
 
-def execute_graphql_request(
-        endpoint: str,
-        query: str,
-        variables: Dict[str, Any],
-        result_key: str,
-        model_class: Type[T],
-        err_producer: typing.Callable[[str], T] = None
-) -> T:
-    """Execute a GraphQL request and parse the response into the specified model.
-    
-    Args:
-        err_producer: Error producer function
-        endpoint: GraphQL endpoint URL
-        query: GraphQL query or mutation
-        variables: Variables for the GraphQL query
-        result_key: Key in the response data to extract
-        model_class: Pydantic model class to parse the response into
-        
-    Returns:
-        Parsed response data as a Pydantic model
-    """
-    headers = {
-        "Content-Type": "application/json",
-    }
-
-    data = {
-        "query": query,
-        "variables": variables
-    }
-
-    try:
-        response = requests.post(endpoint, headers=headers, json=data)
-        response.raise_for_status()
-
-        response_json = response.json()
-        result_data = response_json.get("data", {}).get(result_key, {})
-
-        # Safely handle model instantiation regardless of Pydantic version
-        try:
-            # Try Pydantic v2 style
-            if hasattr(model_class, 'model_validate'):
-                return model_class.model_validate(result_data)
-            # Try Pydantic v1 style
-            elif hasattr(model_class, 'parse_obj'):
-                return model_class.parse_obj(result_data)
-            # Fallback to direct instantiation
-            else:
-                return cast(T, model_class(**result_data))
-        except TypeError:
-            # If all else fails, try direct instantiation
-            return cast(T, model_class(**result_data))
-    except Exception as e:
-        LoggerFacade.error(f"GraphQL request:\n{query}\n{data}\n{headers} failed: {str(e)}")
-        raise e
-
 # Pydantic models for code execution
 class CodeExecutionResult(pydantic.BaseModel):
     success: bool
+    registrationId: Optional[str] = None
     output: Optional[str] = None
-    error: Optional[str] = None
+    error: typing.List[Error] = None
     executionId: Optional[str] = None
     exitCode: Optional[int] = None
     executionTime: Optional[int] = None
@@ -95,7 +43,7 @@ class CodeExecution(pydantic.BaseModel):
     endTime: Optional[Any] = None
     exitCode: Optional[int] = None
     output: Optional[str] = None
-    error: Optional[str] = None
+    error: typing.List[Error] = None
     outputFile: Optional[str] = None
 
 class CodeExecutionRegistration(pydantic.BaseModel):
@@ -106,6 +54,7 @@ class CodeExecutionRegistration(pydantic.BaseModel):
     arguments: Optional[str] = None
     timeoutSeconds: Optional[int] = None
     enabled: bool
+    error: typing.List[Error] = None
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
@@ -120,15 +69,15 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         A2AReactAgent.__init__(self, agent_config, 
                                [
                                    self.produce_execute_code(),
-                                   self.produce_execute_code_with_output_file(),
-                                   self.produce_register_code_execution(),
-                                   self.produce_update_code_execution_registration(),
-                                   self.produce_delete_code_execution_registration(),
                                    self.produce_retrieve_executions(),
                                    self.produce_retrieve_registrations(),
-                                   self.produce_get_code_execution_registration(),
-                                   self.produce_get_execution_output()
-                               ], 
+                                   self.produce_get_execution_output(),
+                                   # self.produce_execute_code_with_output_file(),
+                                   # self.produce_register_code_execution(),
+                                   # self.produce_update_code_execution_registration(),
+                                   # self.produce_delete_code_execution_registration(),
+                                   # self.produce_get_code_execution_registration(),
+                               ],
                                self_card.agent_descriptor.system_instruction,
                                memory_saver, model_provider)
         self.tool_call_decorator = tool_call_decorator
@@ -136,14 +85,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_execute_code(self):
         @tool
-        def execute_code(registration_id: str, arguments: str = None, timeout_seconds: int = None) -> CodeExecutionResult:
+        def execute_code(registration_id: str) -> CodeExecutionResult:
             """Execute code using a registered code execution configuration.
             
             Args:
                 registration_id: ID of the registered code execution to run
-                arguments: Optional arguments to pass to the command
-                timeout_seconds: Optional timeout in seconds
-                
+
             Returns:
                 Result of the code execution including success status, output, and error
             """
@@ -154,6 +101,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     output
                     error
                     executionId
+                    registrationId
                     exitCode
                     executionTime
                     outputFile
@@ -163,9 +111,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             
             variables = {
                 "options": {
-                    "registrationId": registration_id,
-                    "arguments": arguments,
-                    "timeoutSeconds": timeout_seconds
+                    "registrationId": registration_id
                 }
             }
             
@@ -180,8 +126,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             except Exception as e:
                 return CodeExecutionResult(
                     success=False,
-                    error=f"Failed to execute code: {str(e)}"
+                    error=[Error(message=f"Failed to execute code: {str(e)}")]
                 )
+
+        return execute_code
     
     def produce_execute_code_with_output_file(self):
         @tool
@@ -205,6 +153,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     output
                     error
                     executionId
+                    registrationId
                     exitCode
                     executionTime
                     outputFile
@@ -233,9 +182,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             except Exception as e:
                 return CodeExecutionResult(
                     success=False,
-                    error=f"Failed to execute code with output file: {str(e)}"
+                    error=[Error(message=f"Failed to execute code with output file: {str(e)}")]
                 )
-    
+        return execute_code_with_output_file
+
     def produce_register_code_execution(self):
         @tool
         def register_code_execution(registration_id: str, command: str, working_directory: str = None,
@@ -294,18 +244,19 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     registrationId="",
                     command="",
                     enabled=False,
-                    error=f"Failed to register code execution: {str(e)}"
+                    error=[Error(message=f"Failed to register code execution: {str(e)}")]
                 )
-    
+        return register_code_execution
+
     def produce_update_code_execution_registration(self):
         @tool
-        def update_code_execution_registration(id: str, enabled: bool = None, command: str = None,
-                                              working_directory: str = None, arguments: str = None,
-                                              timeout_seconds: int = None) -> CodeExecutionRegistration:
+        def update_code_execution_registration(registration_id: str, enabled: bool = None, command: str = None,
+                                               working_directory: str = None, arguments: str = None,
+                                               timeout_seconds: int = None) -> CodeExecutionRegistration:
             """Update an existing code execution registration.
             
             Args:
-                id: ID of the registration to update
+                registration_id: ID of the registration to update
                 enabled: Optional new enabled status
                 command: Optional new command
                 working_directory: Optional new working directory
@@ -316,10 +267,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 The updated code execution registration
             """
             query = """
-            mutation UpdateCodeExecutionRegistration($id: String!, $enabled: Boolean, $command: String,
+            mutation UpdateCodeExecutionRegistration($registrationId: String!, $enabled: Boolean, $command: String,
                                                     $workingDirectory: String, $arguments: String,
                                                     $timeoutSeconds: Int) {
-                updateCodeExecutionRegistration(id: $id, enabled: $enabled, command: $command,
+                updateCodeExecutionRegistration(registrationId: $registrationId, enabled: $enabled, command: $command,
                                                workingDirectory: $workingDirectory, arguments: $arguments,
                                                timeoutSeconds: $timeoutSeconds) {
                     registrationId
@@ -334,11 +285,11 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             """
             
             variables = {
-                "id": id
+                "registrationId": registration_id
             }
             
             if enabled is not None:
-                variables["enabled"] = enabled
+                variables["enabled"] = str(enabled)
             if command is not None:
                 variables["command"] = command
             if working_directory is not None:
@@ -346,7 +297,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             if arguments is not None:
                 variables["arguments"] = arguments
             if timeout_seconds is not None:
-                variables["timeoutSeconds"] = timeout_seconds
+                variables["timeoutSeconds"] = str(timeout_seconds)
             
             try:
                 return execute_graphql_request(
@@ -358,31 +309,32 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 )
             except Exception as e:
                 return CodeExecutionRegistration(
-                    registrationId=id,
+                    registrationId=registration_id,
                     command="",
                     enabled=False,
-                    error=f"Failed to update code execution registration: {str(e)}"
+                    error=[Error(message=f"Failed to update code execution registration: {str(e)}")]
                 )
-    
+        return update_code_execution_registration
+
     def produce_delete_code_execution_registration(self):
         @tool
-        def delete_code_execution_registration(id: str) -> bool:
+        def delete_code_execution_registration(registration_id: str) -> bool:
             """Delete a code execution registration.
             
             Args:
-                id: ID of the registration to delete
+                registration_id: ID of the registration to delete
                 
             Returns:
                 True if the deletion was successful, False otherwise
             """
             query = """
-            mutation DeleteCodeExecutionRegistration($id: String!) {
-                deleteCodeExecutionRegistration(id: $id)
+            mutation DeleteCodeExecutionRegistration($registrationId: String!) {
+                deleteCodeExecutionRegistration(registrationId: $registrationId)
             }
             """
             
             variables = {
-                "id": id
+                "registrationId": registration_id
             }
             
             try:
@@ -397,11 +349,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             except Exception as e:
                 LoggerFacade.error(f"Failed to delete code execution registration: {str(e)}")
                 return False
-    
+        return delete_code_execution_registration
+
     def produce_retrieve_executions(self):
         @tool
         def retrieve_executions() -> List[CodeExecution]:
-            """Retrieve all code executions.
+            """Retrieve all code execution
             
             Returns:
                 List of code executions
@@ -409,7 +362,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             query = """
             query RetrieveExecutions {
                 retrieveExecutions {
-                    id
+                    registrationId
                     command
                     status
                     startTime
@@ -433,14 +386,15 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             except Exception as e:
                 LoggerFacade.error(f"Failed to retrieve executions: {str(e)}")
                 return []
-    
+        return retrieve_executions
+
     def produce_retrieve_registrations(self):
         @tool
         def retrieve_registrations() -> List[CodeExecutionRegistration]:
-            """Retrieve all code execution registrations.
+            """Retrieve all code execution registrations. You could use this method to retrieve the registrations to retrieve a particular registration id to call the execute_code function, to run the code.
             
             Returns:
-                List of code execution registrations
+                List of code execution registrations for commands that can be run, so you can run the code by retrieving their registration id.
             """
             query = """
             query RetrieveRegistrations {
@@ -467,21 +421,22 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             except Exception as e:
                 LoggerFacade.error(f"Failed to retrieve registrations: {str(e)}")
                 return []
-    
+        return retrieve_registrations
+
     def produce_get_code_execution_registration(self):
         @tool
-        def get_code_execution_registration(id: str) -> CodeExecutionRegistration:
-            """Get a specific code execution registration.
+        def get_code_execution_registration(registration_id: str) -> CodeExecutionRegistration:
+            """Get a specific code execution registration by the registration_id.
             
             Args:
-                id: ID of the registration to get
+                registration_id: ID of the registration to get
                 
             Returns:
                 The code execution registration with the specified ID
             """
             query = """
-            query GetCodeExecutionRegistration($id: String!) {
-                getCodeExecutionRegistration(id: $id) {
+            query GetCodeExecutionRegistration($registrationId: String!) {
+                getCodeExecutionRegistration(registrationId: $registrationId) {
                     registrationId
                     command
                     workingDirectory
@@ -494,7 +449,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             """
             
             variables = {
-                "id": id
+                "registrationId": registration_id
             }
             
             try:
@@ -510,9 +465,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     registrationId="",
                     command="",
                     enabled=False,
-                    error=f"Failed to get code execution registration: {str(e)}"
+                    error=[Error(message=f"Failed to get code execution registration: {str(e)}")]
                 )
-    
+        return get_code_execution_registration
+
     def produce_get_execution_output(self):
         @tool
         def get_execution_output(execution_id: str) -> CodeExecutionResult:
@@ -534,6 +490,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     exitCode
                     executionTime
                     outputFile
+                    registrationId
                 }
             }
             """
@@ -553,6 +510,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             except Exception as e:
                 return CodeExecutionResult(
                     success=False,
-                    error=f"Failed to get execution output: {str(e)}"
+                    error=[Error(message=f"Failed to get execution output: {str(e)}")]
                 )
+        return get_execution_output
 
