@@ -1,9 +1,13 @@
+import os
+
 from dotenv import load_dotenv
 
 from python_util.logger.log_level import LogLevel, LogLevelFacade
 from python_util.logger.logger import LoggerFacade
 
 LogLevel.set_log_level(LogLevelFacade.Ctx)
+
+os.environ['SPRING_PROFILES_ACTIVE'] = 'mcp,secret'
 
 def main():
     import sys, os, unittest

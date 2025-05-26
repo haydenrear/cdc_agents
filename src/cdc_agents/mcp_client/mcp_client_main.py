@@ -11,7 +11,7 @@ warnings.warn = lambda *args, **kwargs: None
 
 LogLevel.set_log_level(LogLevelFacade.Ctx)
 
-os.environ['SPRING_PROFILES_ACTIVE'] = 'mcp'
+os.environ['SPRING_PROFILES_ACTIVE'] = 'mcp,secret'
 
 
 @boot_application(root_dir_cls=CdcMcpAgents)

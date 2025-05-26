@@ -16,6 +16,7 @@ from cdc_agents.config.checkpoint_config_props import CheckpointConfigProps
 from cdc_agents.config.human_delegate_config_props import HumanDelegateConfigProps
 from cdc_agents.config.model_server_config_props import ModelServerConfigProps
 from cdc_agents.config.runner_props import RunnerConfigProps
+from cdc_agents.config.secret_config_props import SecretConfigProps
 from cdc_agents.config.tool_call_properties import ToolCallProps
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.model_server.model_server_model import ModelServerModel
@@ -30,7 +31,7 @@ from python_util.logger.logger import LoggerFacade
 
 @configuration()
 @enable_configuration_properties(config_props=[AgentConfigProps, ModelServerConfigProps, CheckpointConfigProps, CdcServerConfigProps,
-                                               HumanDelegateConfigProps, RunnerConfigProps, ToolCallProps])
+                                               HumanDelegateConfigProps, RunnerConfigProps, ToolCallProps, SecretConfigProps])
 @component_scan(base_classes=[ModelServerModel, CdcCodeSearchAgent, DeepCodeAgent,
                               DeepCodeOrchestrator, ModelProvider, AgentServerRunner, HumanDelegateAgent,
                               SummarizerAgent, LibraryEnumerationAgent, ToolCallDecorator])

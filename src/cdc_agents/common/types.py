@@ -337,9 +337,9 @@ class AgentCode(BaseModel):
 
 class ModelDescriptor(BaseModel):
     model_name: str
-    api_key: str
-    headers: dict[str, str] = None
     model_endpoint: str
+    api_key: typing.Optional[str] = None
+    headers: dict[str, str] = None
 
 def read_from_file_if(name: str):
     if name.startswith('file://'):

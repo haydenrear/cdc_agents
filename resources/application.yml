@@ -1,6 +1,9 @@
 tool_call:
   register_tool_calls: true
 
+secrets:
+  model_secrets:
+    fake: fake
 
 runner:
   runner_option: SKIP
@@ -259,7 +262,7 @@ agent_config:
           to search for, all by asking in natural language.
       agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodeSearchAgent
       agent_descriptor:
-        model: ollama_chat://ollama_chat/hermes3:8b
+        model: anthropic_chat://anthropic_chat/claude-3-5-sonnet-20241022
         agent_name: CdcCodeSearchAgent
         system_instruction: >
           You are a specialized assistant for searching for code context information.

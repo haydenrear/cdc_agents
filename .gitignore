@@ -1,3 +1,5 @@
 .cdc_agents
 **__pycache__**
 build/
+
+*/application-secret.yml

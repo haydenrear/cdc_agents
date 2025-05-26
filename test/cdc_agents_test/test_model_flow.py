@@ -1,3 +1,4 @@
+import os
 import unittest.mock
 
 from langchain_core.messages import ToolMessage
@@ -14,6 +15,7 @@ from python_di.configs.bean import test_inject
 from python_di.configs.test import test_booter, boot_test
 from python_di.inject.profile_composite_injector.inject_context_di import autowire_fn
 
+os.environ['SPRING_PROFILES_ACTIVE'] = 'test,secret'
 
 @test_booter(scan_root_module=AgentConfig)
 class ServerRunnerBoot:
@@ -43,10 +45,18 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         ModelServerModelTest.model_provider = model_provider
 
 
-    # def test_git_status(self):
-        # invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
-        #                                                       'test'),
-        #                              self.server._create_orchestration_config('test'))
-        # assert invoked
-        # assert isinstance(invoked.content, ResponseFormat)
-        # assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status' for t in invoked.content.history])
+    def test_git_status(self):
+        invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
+                                                              'test'),
+                                     self.server._create_orchestration_config('test'))
+        assert invoked
+        assert isinstance(invoked.content, ResponseFormat)
+        assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status' for t in invoked.content.history])
+    #
+    # def test_generate_code(self):
+    #     invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
+    #                                                                     'test'),
+    #                                  self.server._create_orchestration_config('test'))
+    #     assert invoked
+    #     assert isinstance(invoked.content, ResponseFormat)
+    #     assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status' for t in invoked.content.history])
