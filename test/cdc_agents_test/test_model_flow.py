@@ -14,6 +14,7 @@ from cdc_agents.model_server.model_server_model import ModelServerModel
 from python_di.configs.bean import test_inject
 from python_di.configs.test import test_booter, boot_test
 from python_di.inject.profile_composite_injector.inject_context_di import autowire_fn
+from python_util.logger.logger import LoggerFacade
 
 os.environ['SPRING_PROFILES_ACTIVE'] = 'test,secret'
 
@@ -52,7 +53,12 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         assert invoked
         assert isinstance(invoked.content, ResponseFormat)
         assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status' for t in invoked.content.history])
-    #
+
+        LoggerFacade.info(f"Message: {invoked.content.message}")
+        LoggerFacade.info('History:')
+        LoggerFacade.info('\n'.join([h.content for h in invoked.content.history]))
+
+
     # def test_generate_code(self):
     #     invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
     #                                                                     'test'),

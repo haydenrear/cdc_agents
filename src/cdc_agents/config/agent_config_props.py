@@ -19,6 +19,7 @@ class AgentCardItem(BaseModel):
     agent_clazz: typing.Optional[str] = None
     mcp_tools: typing.Dict[str, AgentMcpTool] = None
     options: dict[str, typing.Union[str, int]] = None
+    enabled: bool = True
     agent_type: AgentType = AgentType.LangChainReact
 
 @configuration_properties(prefix_name='agent_config')

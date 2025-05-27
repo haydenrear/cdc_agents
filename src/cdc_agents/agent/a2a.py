@@ -121,7 +121,7 @@ class A2AAgent(BaseAgent, abc.ABC):
     def get_agent_response(self, config, graph):
         pass
 
-    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
+    def add_mcp_tools(self, props, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
         """
         MCP tools are descriptors of external tools for a particular agent to use.
         Append these tools to the list of tools available for this particular agent.
@@ -131,7 +131,7 @@ class A2AAgent(BaseAgent, abc.ABC):
         """
         pass
 
-    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
+    async def add_mcp_tools_async(self, props, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
         """
         MCP tools are descriptors of external tools for a particular agent to use.
         Append these tools to the list of tools available for this particular agent.
@@ -211,6 +211,10 @@ class A2AAgent(BaseAgent, abc.ABC):
 
                 content = additional_ctx if additional_ctx is not None \
                     else content
+
+                if status_token not in [self.completed, self.next_agent, self.needs_input_string]:
+                    LoggerFacade.info(f"Found unknown status token {status_token}.")
+                    status_token = self.completed
                 structured_response = ResponseFormat(status=status_token, message=content, history=messages,
                                                      route_to=agent)
             else:

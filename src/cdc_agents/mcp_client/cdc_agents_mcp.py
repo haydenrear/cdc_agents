@@ -107,6 +107,8 @@ class CdcMcpAgents:
 
             if agent_name in self.agent_config_props.agents:
                 agent_config = self.agent_config_props.agents.get(agent_name)
+                if not agent_config.enabled:
+                    continue
                 if agent_config and agent_config.agent_card:
                     agent_card = agent_config.agent_card
                     description = agent_card.description or f"Agent tool for {agent_name}"

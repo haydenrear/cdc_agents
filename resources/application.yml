@@ -4,6 +4,13 @@ tool_call:
 secrets:
   model_secrets:
     fake: fake
+  mcp_tool_secrets:
+    - tool_name: gitlab
+      secret_name: X_GITLAB_TOKEN
+      secret_value: ""
+    - tool_name: github
+      secret_name: X_GITHUB_TOKEN
+      secret_value: ""
 
 runner:
   runner_option: SKIP
@@ -23,6 +30,7 @@ agent_config:
   orchestrator_max_recurs: 100
   agents:
     SummarizerAgent:
+      enabled: false
       mcp_tools:
         memory:
           name: memory
@@ -49,7 +57,7 @@ agent_config:
           provide to the agent, and then this information can be summarized or compactified so as to reduce the burden
           on the next agents.
         system_instruction: >
-          You are a specialized agent that summarized information in the context, to be used when there is too much information
+          You are SummarizerAgent, a specialized agent that summarized information in the context, to be used when there is too much information
           and it needs to be summarized. You have the option of using a memory tool so that you can better organize and remember
           your thoughts to support your summarization. In particular, when applied to our codegen workflow, there may be
           a lot of error logs or git diffs that need to be summarized and stored for later. Perhaps identifying the cause
@@ -67,29 +75,35 @@ agent_config:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: LibraryEnumerationAgent
         orchestrator_instruction: >
-          An agent that provides git url for other tasks from github or gitlab.
+          LibraryEnumerationAgent is an agent that provides locations for repositories. Do not use this tool for running git commands. This tool
+          should only be used for providing URLs to the CdcCodeSearchAgent so that the CdcCodeSearchAgent can then clone
+          and embed these repositories. The CdcCodeSearchAgent should be used for any execution of git commands such as
+          cloning and embedding repositories, not this agent, which, again, will only be used for retrieving the URL for
+          repositories.
         system_instruction: >
+          You are LibraryEnumerationAgent, an agent that searches the internet for URLs for git repositories. You use your tools to search for 
+          the repositories, and then you return the URLs for those repositories for downstream tasks.
       agent_card:
         name: LibraryEnumerationAgent
         path: /library_enumeration
         description:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.library_enumeration_agent.LibraryEnumerationAgent
-#      mcp_tools:
-#        github:
-#          name: github
-#          tool_prompt: >
-#            Use Github to look up repository URLs and browse issues and repositories for context.
-#          tool_options:
-#            command: docker
-#            args:
-#              - run
-#              - -i
-#              - --rm
-#              - -e
-#              - GITHUB_PERSONAL_ACCESS_TOKEN=${{X_GITHUB_TOKEN}}
-#              - mcp/github-library-enumeration
-#            env:
+      mcp_tools:
+        github:
+          name: github
+          tool_prompt: >
+            Use Github to look up repository URLs for downstream tasks, as requested.
+          tool_options:
+            command: docker
+            args:
+              - run
+              - -i
+              - --rm
+              - -e
+              - GITHUB_PERSONAL_ACCESS_TOKEN={{X_GITHUB_TOKEN}}
+              - mcp/github-library-enumeration
+            env:
 #        gitlab:
 #          name: gitlab
 #          tool_prompt: >
@@ -101,7 +115,7 @@ agent_config:
 #              - -i
 #              - --rm
 #              - -e
-#              - GITHUB_PERSONAL_ACCESS_TOKEN=${{X_GITLAB_TOKEN}}
+#              - GITHUB_PERSONAL_ACCESS_TOKEN={{X_GITLAB_TOKEN}}
 #              - -e
 #              - GITLAB_API_URL=https://gitlab.com
 #              - mcp/gitlab-library-enumeration
@@ -111,9 +125,9 @@ agent_config:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: HumanDelegateAgent
         orchestrator_instruction: >
-          An agent that facilitates communication with human representatives, such as refining ticket or business requirements.
+          HumanDelegate agent is an agent that facilitates communication with human representatives, such as refining ticket or business requirements.
         system_instruction: >
-          You have the ability to message the humans to get feedback on requirements and business needs. You will be called
+          You are HumanDelegateAgent, an agent with the ability to message the humans to get feedback on requirements and business needs. You will be called
           with a message from someone, at which time you will need to initialize the session. Then, you will respond to the
           message received, at which time you will then either finalize the session or wait for a response, if you have requested
           a response. You can continue in the loop of sending another message, and receiving another response for as long 
@@ -129,10 +143,10 @@ agent_config:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CodeRunnerAgent
         orchestrator_instruction: >
-          An agent that facilitates the running of the code after making code changes, to validate code changes with respect
+          CodeRunnerAgent is an agent that facilitates the running of the code after making code changes, to validate code changes with respect
           for particular tickets, bug changes, or any other unit of work.
         system_instruction: >
-          You are a specialized assistant for running source code to test changes. You have access to various tools to
+          You are CodeRunnerAgent, a specialized assistant for running source code to test changes. You have access to various tools to
           run the code, such as Docker, Git, and the file system. 
           
           If you do not have enough information to run the code,
@@ -238,7 +252,7 @@ agent_config:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodegenAgent
         system_instruction: >
-          You are a specialized assistant for generating commits for implementation of software projects.
+          You are CdcCodegenAgent, a specialized assistant for generating commits for implementation of software projects.
           You request the generation of a full git commit, with respect to a commit message and other contextual information
           provided to you. Then, after applying the commit, you ask for the code to be tested. Sometimes, you will ask
           it to be tested and then you will be asked again later to generate another commit from the feedback on why it failed.
@@ -246,10 +260,8 @@ agent_config:
           for more information about the repository, file system, or dependency, so that next time you have the information you need
           to provide the finished code generation. By the time you are asked to fix the commit, it will have been reverted,
           but you will still be able to look at what changes you made. 
-          
-          If you request from a repository and it says that there is no
         orchestrator_instruction: >
-          An agent that generates code modifications using the history of diffs added with the CdcCodeSearchAgent.
+          CdcCodegenAgent is an agent that generates code modifications using the history of diffs added with the CdcCodeSearchAgent.
     CdcCodeSearchAgent:
       agent_card:
         name: CdcCodeSearchAgent
@@ -262,10 +274,11 @@ agent_config:
           to search for, all by asking in natural language.
       agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodeSearchAgent
       agent_descriptor:
-        model: anthropic_chat://anthropic_chat/claude-3-5-sonnet-20241022
+#        model: anthropic_chat://anthropic_chat/claude-3-5-sonnet-20241022
+        model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodeSearchAgent
         system_instruction: >
-          You are a specialized assistant for searching for code context information.
+          You are CdcCodeSearchAgent, specialized assistant for searching for code context information.
           Your overall goal is to provide context for code generation across multiple repositories, within the context of
           the history of the development of that software. In order to achieve your purpose, you have access to some tools.
           The tools you have facilitate performing operations on git repositories, including adding git diffs for repositories
@@ -311,7 +324,7 @@ agent_config:
           STOP
 
         orchestrator_instruction: >
-          An agent that can add git repositories to an embedding database with history. This agent has a mechanism to
+          CdcCodeSearchAgent is an agent that can add git repositories to an embedding database with history. This agent has a mechanism to
           provide contextual information from the git repositories. This agent has access to an embedding database, so
           he embeds the commit history as git commit diffs, and then interfaces with these repositories, returning
           relevant files to the queries in the context with their history in an XML format that can be parsed by downstream

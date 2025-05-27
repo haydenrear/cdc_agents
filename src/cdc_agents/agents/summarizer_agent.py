@@ -11,8 +11,8 @@ from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 
 
-@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
-@injectable()
+# @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
+# @injectable()
 class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     @injector.inject

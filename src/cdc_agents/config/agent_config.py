@@ -52,48 +52,24 @@ class AgentConfig:
         :return:
         """
         assert checkpoint_config_props
-        try:
-            assert checkpoint_config_props.uri
-            from langgraph.checkpoint.postgres import PostgresSaver
-            from psycopg import Capabilities, Connection, Cursor, Pipeline
-            from psycopg.rows import DictRow, dict_row
-            try:
-                LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
-                conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
-                # Create publications for CDC
-                self._create_publications(conn)
-                
-                p = PostgresSaver(conn)
-                p.setup()
-                return p
-            except Exception as e:
-                LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
-                return MemorySaver()
-        except Exception as f:
-            LoggerFacade.to_ctx(f"No URI configured or error: {f}. Loading from memory.")
-            return MemorySaver()
+        # try:
+        #     assert checkpoint_config_props.uri
+        #     from langgraph.checkpoint.postgres import PostgresSaver
+        #     from psycopg import Capabilities, Connection, Cursor, Pipeline
+        #     from psycopg.rows import DictRow, dict_row
+        #     try:
+        #         LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
+        #         conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
+        #         p = PostgresSaver(conn)
+        #         p.setup()
+        #         return p
+        #     except Exception as e:
+        #         LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
+        #         return MemorySaver()
+        # except Exception as f:
+        #     LoggerFacade.to_ctx(f"No URI configured or error: {f}. Loading from memory.")
+        return MemorySaver()
 
-    def _create_publications(self, conn: 'Connection') -> None:
-        """
-        Create PostgreSQL publications for Change Data Capture.
-        """
-        try:
-            with conn.cursor() as cur:
-                # Check if logical replication is enabled
-                cur.execute("SHOW wal_level;")
-                wal_level = cur.fetchone()['wal_level']
-                if wal_level != 'logical':
-                    LoggerFacade.to_ctx("WARNING: PostgreSQL wal_level is not set to 'logical'. CDC will not work!")
-                    return
-                
-                # Create publication if it doesn't exist
-                cur.execute("SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'langgraph_publication');")
-                if not cur.fetchone()['exists']:
-                    LoggerFacade.to_ctx("Creating publication for LangGraph CDC...")
-                    cur.execute("CREATE PUBLICATION langgraph_publication FOR TABLE checkpoints, checkpoint_blobs, checkpoint_writes;")
-                    LoggerFacade.to_ctx("Publication created successfully!")
-        except Exception as e:
-            LoggerFacade.to_ctx(f"Failed to create publications: {e}")
 
     @bean()
     def json_parser(self) -> JSONAgentOutputParser:

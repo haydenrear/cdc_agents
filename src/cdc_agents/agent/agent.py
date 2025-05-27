@@ -33,6 +33,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from cdc_agents.tools.tool_call_decorator import LoggingToolCallback
 
+
+from cdc_agents.config.secret_config_props import SecretConfigProps
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentMcpTool, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.util.nest_async_util import do_run_on_event_loop
@@ -61,7 +63,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
         A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
 
-        self.add_mcp_tools(self.agent_config.mcp_tools)
+        self.add_mcp_tools(additional_tools=self.agent_config.mcp_tools)
 
         self._set_tools_return_direct()
 
@@ -78,7 +80,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         #     cb.append(LoggingToolCallback(self))
 
     def _create_graph(self, mcp_tools):
-        self.add_mcp_tools(mcp_tools)
+        self.add_mcp_tools(additional_tools=mcp_tools)
         self._set_tools_return_direct()
         self._create_react_agent()
 
@@ -94,12 +96,19 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 t.callbacks = []
             t.return_direct = True
 
-    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
-        done = do_run_on_event_loop(self.add_mcp_tools_async(additional_tools, loop), lambda s: None, loop)
+    @autowire_fn({
+        'additional_tools': InjectionDescriptor(injection_ty=InjectionType.Provided),
+        'loop': InjectionDescriptor(injection_ty=InjectionType.Provided),
+        'secrets': InjectionDescriptor(injection_ty=InjectionType.Dependency)
+    })
+    def add_mcp_tools(self, additional_tools: typing.Dict[str, AgentMcpTool], secrets: SecretConfigProps, loop=None):
+        done = do_run_on_event_loop(self.add_mcp_tools_async(secrets, additional_tools, loop), lambda s: None, loop)
 
-    async def add_mcp_tools_async(self, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
+    async def add_mcp_tools_async(self, secrets: SecretConfigProps, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop=None):
         if additional_tools is not None:
             for k,v in additional_tools.items():
+                if v and v.tool_options:
+                    self._replace_tool_secrets(k, secrets, v.tool_options)
                 async with MultiServerMCPClient({k: v.tool_options}) as client:
                     tools = client.get_tools()
                     for t in tools:
@@ -116,6 +125,18 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                         stop_tool = v.stop_tool
                         self.do_run_stop(stop_tool)
                         atexit.register(lambda stop_tool_=stop_tool: self.do_run_stop(stop_tool_))
+
+    def _replace_tool_secrets(self, k, secrets, v):
+        for m in secrets.mcp_tool_secrets:
+            if m.tool_name == k:
+                if isinstance(v, dict):
+                    a = v.get('args')
+                    if a and isinstance(a, list):
+                        a = [
+                            t_o.replace('{{' + m.secret_name + '}}', m.secret_value)
+                            for t_o in a if isinstance(t_o, str)
+                        ]
+                        v['args'] = a
 
     def do_run_stop(self, stop_tool_):
         try:

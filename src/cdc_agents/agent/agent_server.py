@@ -72,6 +72,9 @@ class AgentServerRunner:
         for name, a in self.agent_config_props.agents.items():
             agent_card = a.agent_card
 
+            if not a.enabled:
+                continue
+
             if name not in self.agents.keys():
                 raise ValueError(f"Could not find agent: {name}.")
 
