@@ -104,22 +104,6 @@ agent_config:
               - GITHUB_PERSONAL_ACCESS_TOKEN={{X_GITHUB_TOKEN}}
               - mcp/github-library-enumeration
             env:
-#        gitlab:
-#          name: gitlab
-#          tool_prompt: >
-#            Use Gitlab to look up repository URLs and browse issues and repositories for context.
-#          tool_options:
-#            command: docker
-#            args:
-#              - run
-#              - -i
-#              - --rm
-#              - -e
-#              - GITHUB_PERSONAL_ACCESS_TOKEN={{X_GITLAB_TOKEN}}
-#              - -e
-#              - GITLAB_API_URL=https://gitlab.com
-#              - mcp/gitlab-library-enumeration
-#            env:
     HumanDelegateAgent:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b

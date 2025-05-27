@@ -57,7 +57,8 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
 
         assert invoked
         assert isinstance(invoked.content, ResponseFormat)
-        assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status' for t in invoked.content.history])
+        assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status'
+                    for t in invoked.content.history])
 
 
 

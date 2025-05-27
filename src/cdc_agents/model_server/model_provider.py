@@ -5,6 +5,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
 from langchain_ollama import OllamaLLM, ChatOllama
+from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 
 from cdc_agents.config.agent_config_props import AgentCardItem
 from cdc_agents.config.secret_config_props import SecretConfigProps
@@ -49,6 +50,13 @@ class ModelServerModelProvider(ModelProvider):
                     return ChatAnthropic(model_name=model.replace("anthropic_chat://anthropic_chat/", ""),
                                          api_key=pydantic.types.SecretStr(secrets), temperature=0,
                                          timeout=None, max_tokens_to_sample=1024, max_retries=2, stop=None)
+            if model.startswith('google_genai_chat://'):
+                secrets = self.secret_config_props.model_secrets.get('google_genai')
+                if secrets is None:
+                    raise ValueError("Cannot run anthropic without API key.")
+                else:
+                    return ChatGoogleGenerativeAI(model=model.replace("google_genai_chat://google_genai_chat/", ""),
+                                                  api_key=pydantic.types.SecretStr(secrets))
 
         return self.build_model(agent_card=agent_card)
 
