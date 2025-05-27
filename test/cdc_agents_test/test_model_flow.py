@@ -1,5 +1,6 @@
 import os
 import unittest.mock
+import uuid
 
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -47,9 +48,10 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
 
 
     def test_git_status(self):
+        test = str(uuid.uuid4())
         invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
-                                                              'test'),
-                                     self.server._create_orchestration_config('test'))
+                                                              test),
+                                     self.server._create_orchestration_config(test))
 
         LoggerFacade.info(f"Message: {invoked.content.message}")
         LoggerFacade.info('History:')

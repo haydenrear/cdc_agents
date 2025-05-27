@@ -1,5 +1,8 @@
+import json
+import typing
 import unittest.mock
 
+import pydantic
 from langchain.agents.output_parsers import JSONAgentOutputParser, ReActSingleInputOutputParser
 from langgraph.checkpoint.memory import MemorySaver
 from starlette.applications import Starlette
@@ -27,6 +30,56 @@ from python_di.configs.di_configuration import configuration
 from python_di.configs.enable_configuration_properties import enable_configuration_properties
 from python_di.inject.profile_composite_injector.composite_injector import profile_scope
 from python_util.logger.logger import LoggerFacade
+from langgraph.checkpoint.serde.base import UntypedSerializerProtocol, SerializerCompat
+from pydantic import BaseModel
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, FunctionMessage, ToolMessage
+
+# TODO: ???
+def discover_registry() -> typing.Dict[str, typing.Type[BaseModel]]:
+    registry = {}
+    for cls in pydantic.BaseModel.__subclasses__():
+        try:
+            key = cls.model_fields['type'].default  # or cls.__fields__['type'].default in v1
+            if key:
+                registry[key] = cls
+        except Exception:
+            continue
+    return registry
+
+TYPE_REGISTRY = {
+    'ai': AIMessage,
+    'human': HumanMessage,
+    'system': SystemMessage,
+    'function': FunctionMessage,
+    'tool': ToolMessage,
+}
+
+class JsonSerializationProtocol(UntypedSerializerProtocol):
+    def dumps(self, obj: typing.Any) -> bytes:
+        if isinstance(obj, BaseModel):
+            obj = obj.model_dump()
+
+        elif isinstance(obj, typing.Collection) and not isinstance(obj, str):
+            obj = [
+                o.model_dump() if isinstance(o, BaseModel) else o
+                for o in obj
+            ]
+
+        return json.dumps(obj).encode('utf-8')
+
+    def loads(self, data: bytes) -> typing.Any:
+        obj = json.loads(data)
+
+        if isinstance(obj, dict) and 'type' in obj and obj['type'] in TYPE_REGISTRY:
+            return TYPE_REGISTRY[obj['type']](**obj)
+
+        if isinstance(obj, list):
+            return [
+                TYPE_REGISTRY[o['type']](**o) if isinstance(o, dict) and 'type' in o and o['type'] in TYPE_REGISTRY else o
+                for o in obj
+            ]
+
+        return obj
 
 
 @configuration()
@@ -52,22 +105,22 @@ class AgentConfig:
         :return:
         """
         assert checkpoint_config_props
-        # try:
-        #     assert checkpoint_config_props.uri
-        #     from langgraph.checkpoint.postgres import PostgresSaver
-        #     from psycopg import Capabilities, Connection, Cursor, Pipeline
-        #     from psycopg.rows import DictRow, dict_row
-        #     try:
-        #         LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
-        #         conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
-        #         p = PostgresSaver(conn)
-        #         p.setup()
-        #         return p
-        #     except Exception as e:
-        #         LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
-        #         return MemorySaver()
-        # except Exception as f:
-        #     LoggerFacade.to_ctx(f"No URI configured or error: {f}. Loading from memory.")
+        try:
+            assert checkpoint_config_props.uri
+            from langgraph.checkpoint.postgres import PostgresSaver
+            from psycopg import Capabilities, Connection, Cursor, Pipeline
+            from psycopg.rows import DictRow, dict_row
+            try:
+                LoggerFacade.to_ctx(f"Loading Postgres save from URI {checkpoint_config_props.uri}")
+                conn = Connection.connect(checkpoint_config_props.uri, autocommit=True, prepare_threshold=0, row_factory=dict_row)
+                p = PostgresSaver(conn, serde=SerializerCompat(JsonSerializationProtocol()))
+                p.setup()
+                return p
+            except Exception as e:
+                LoggerFacade.to_ctx(f"Failed to load postgres: {e}. Loading from memory.")
+                return MemorySaver()
+        except Exception as f:
+            LoggerFacade.to_ctx(f"No URI configured or error: {f}. Loading from memory.")
         return MemorySaver()
 
 

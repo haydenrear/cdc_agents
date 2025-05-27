@@ -1,4 +1,5 @@
 import unittest.mock
+import uuid
 
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -90,8 +91,9 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
+        test = str(uuid.uuid4())
         # Invoke the orchestrator
-        graph_response = orchestrator.invoke({"messages": ("user", "hello")}, "test")
+        graph_response = orchestrator.invoke({"messages": ("user", "hello")}, test)
         
         # Check the results
         invoked = graph_response.content.history
@@ -114,7 +116,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         TestOrchestratorAgent.reset_tracking()
         TestA2AAgent.reset_tracking()
         
-        invoked_second = orchestrator.invoke("hello", "test").content.history
+        invoked_second = orchestrator.invoke("hello", test).content.history
         assert TestOrchestratorAgent.did_call
         assert TestA2AAgent.did_call
         assert len(invoked_second) > len(invoked)
@@ -122,7 +124,7 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         TestOrchestratorAgent.reset_tracking()
         TestA2AAgent.reset_tracking()
         
-        invoked_third = orchestrator.invoke("hello", "whatever").content.history
+        invoked_third = orchestrator.invoke("hello", str(uuid.uuid4())).content.history
         assert TestOrchestratorAgent.did_call
         assert len(invoked_third) <= len(invoked)
 
