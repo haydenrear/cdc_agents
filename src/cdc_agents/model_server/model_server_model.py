@@ -183,10 +183,10 @@ class ModelServerModel(BaseChatModel, Runnable[LanguageModelInput, LanguageModel
         self.config_props = model_server_config_props
         self.bound_tools = tools
         self.tool_choice = tool_choice
-        self.agent_card = None
+        self.__agent_card__ = None
 
     def initialize(self, agent_card: AgentCardItem):
-        self.agent_card = agent_card
+        self.__agent_card__ = agent_card
 
     @injector.synchronized(bind_tools_lock)
     def invoke(self, model_input: LanguageModelInput,

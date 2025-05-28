@@ -124,7 +124,7 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
         ''' for k, v in orchestrator_prompts.items()]
 
     def invoke(self, query, sessionId) -> AgentGraphResponse:
-        config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
+        config = self._parse_query_config(sessionId)
         if isinstance(query, dict) and "messages" in query.keys():
             self.graph.invoke(query, config)
         else:

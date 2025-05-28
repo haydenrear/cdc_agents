@@ -249,7 +249,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         return ""
 
     def invoke(self, query, sessionId):
-        config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
+        config = self._parse_query_config(sessionId)
         invoked = self.graph.invoke(TaskManager.get_user_query_message(query, sessionId), config)
         next_message = self.pop_to_process_task(sessionId)
         while next_message is not None:
@@ -265,4 +265,12 @@ class A2AReactAgent(A2AAgent, abc.ABC):
     def get_agent_response(self, config, graph=None):
         return self.get_agent_response_graph(config, self.graph)
 
+
+    def _parse_query_config(self, sessionId):
+        if not isinstance(sessionId, dict):
+            return sessionId
+        else:
+            config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
+
+        return config
 
