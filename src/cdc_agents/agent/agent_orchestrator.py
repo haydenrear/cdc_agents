@@ -168,7 +168,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         messages = self._retrieve_messages(result.content, agent.agent_name)
 
         for m in messages[before_len:]:
-            m.name = agent.agent_name
+            if not m.name:
+                m.name = agent.agent_name
 
         messages = self._remove_prev_considers(messages)
 
