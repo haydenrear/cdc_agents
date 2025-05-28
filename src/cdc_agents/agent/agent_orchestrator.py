@@ -1,5 +1,7 @@
 import abc
 import dataclasses
+import time
+
 from langchain_core.runnables import AddableDict
 import typing
 from typing import AsyncIterable, Dict, Any, Optional
@@ -156,11 +158,15 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         #         return Command(update={"messages": prev_messages},
         #                        goto=wait_status_message.agent_route)
 
+        config['configurable']['checkpoint_time'] = time.time_ns()
         session_id = config['configurable']['thread_id']
+
 
         before_len = len(state['messages']) if 'messages' in state.keys() and state['messages'] else 0
 
         result: AgentGraphResponse = agent.invoke(state, session_id)
+
+        config['configurable']['checkpoint_time'] = time.time_ns()
 
         if result.content.route_to == 'orchestrator':
             result.content.route_to = self.orchestrator_agent.agent_name
@@ -302,7 +308,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
     def _create_orchestration_config(self, sessionId) -> RunnableConfig:
         return {
-            "configurable": {"thread_id": sessionId},
+            "configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()},
             "recursion_limit": self.max_recurs}
 
     def _create_invoke_graph(self, query, sessionId):

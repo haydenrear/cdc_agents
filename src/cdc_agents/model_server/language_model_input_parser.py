@@ -1,6 +1,7 @@
 import abc
 import copy
 import json
+import time
 import typing
 
 import injector
@@ -38,6 +39,8 @@ class LanguageModelOutputParser(abc.ABC):
     def convert_to_ai_response(cls, content, tools=None, config = None) -> typing.Optional[LanguageModelOutput]:
         m = AIMessage(content=content)
         m.tool_calls = tools
+        if config is not None:
+            config['checkpoint_ns'] = time.time_ns()
         if config is not None and 'configurable' in config.keys():
             m.response_metadata['session_id'] = config['configurable']['thread_id']
         return m

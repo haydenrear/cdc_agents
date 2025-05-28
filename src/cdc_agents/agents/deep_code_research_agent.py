@@ -1,4 +1,5 @@
 import abc
+import time
 
 from langchain.agents import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
@@ -123,7 +124,7 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
         ''' for k, v in orchestrator_prompts.items()]
 
     def invoke(self, query, sessionId) -> AgentGraphResponse:
-        config = {"configurable": {"thread_id": sessionId}}
+        config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
         if isinstance(query, dict) and "messages" in query.keys():
             self.graph.invoke(query, config)
         else:

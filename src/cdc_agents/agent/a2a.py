@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import enum
+import time
 
 import pydantic
 from langgraph.graph.state import CompiledStateGraph
@@ -272,9 +273,10 @@ class A2AAgent(BaseAgent, abc.ABC):
 
     def stream_agent_response_graph(self, query, sessionId, graph: CompiledStateGraph):
         inputs = TaskManager.get_user_query_message(query, sessionId)
-        config = {"configurable": {"thread_id": sessionId}}
+        config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
 
         for item in graph.stream(inputs, config, stream_mode="values"):
+            config['configurable']['checkpoint_time'] = time.time_ns()
             if 'messages' in item.keys() and len(item['messages']) == 1 and item['messages'][0].content == query:
                 found =  self._do_get_res(item, False)
                 yield found

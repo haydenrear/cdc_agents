@@ -1,4 +1,6 @@
 import abc
+import time
+
 import asyncio
 import functools
 import inspect
@@ -247,11 +249,12 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         return ""
 
     def invoke(self, query, sessionId):
-        config = {"configurable": {"thread_id": sessionId}}
+        config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
         invoked = self.graph.invoke(TaskManager.get_user_query_message(query, sessionId), config)
         next_message = self.pop_to_process_task(sessionId)
         while next_message is not None:
             query = self.task_manager.get_user_query_message(next_message, sessionId)
+            config['configurable']['checkpoint_time'] = time.time_ns()
             invoked = self.graph.invoke(query, config)
             next_message = self.pop_to_process_task(sessionId)
         return self.get_agent_response(config)
