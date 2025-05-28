@@ -158,12 +158,17 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         session_id = config['configurable']['thread_id']
 
+        before_len = len(state['messages']) if 'messages' in state.keys() and state['messages'] else 0
+
         result: AgentGraphResponse = agent.invoke(state, session_id)
 
         if result.content.route_to == 'orchestrator':
             result.content.route_to = self.orchestrator_agent.agent_name
 
         messages = self._retrieve_messages(result.content, agent.agent_name)
+
+        for m in messages[before_len:]:
+            m.name = agent.agent_name
 
         messages = self._remove_prev_considers(messages)
 
@@ -175,7 +180,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                 # TODO: any of these should then be removed before adding this one
                 messages.append(HumanMessage(content='Can you please consider whether the task is completed, considering the previous tool message response? '
                                                      'If so can you return the context of the result. If not, can you continue with the task by considering '
-                                                     'what is still necessary and delegating to the agent that can help continue/complete the task?'))
+                                                     'what is still necessary and delegating to the agent that can help continue/complete the task?',
+                                             name='human'))
         elif isinstance(result.content, ResponseFormat):
             if result.is_task_complete:
                 message = last_message.content
@@ -187,7 +193,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                     # TODO: any of these should then be removed before adding this one
                     messages.append(HumanMessage(content=f'Can you please consider whether the task is completed, considering the previous message from agent {agent.agent_name}? '
                                                          'If so can you return the context of the result. If not, can you continue with the task by considering '
-                                                         'what is still necessary and delegating to the agent that can help continue/complete the task?'))
+                                                         'what is still necessary and delegating to the agent that can help continue/complete the task?',
+                                                 name='human'))
                 else:
                     messages.append(HumanMessage(content=message, name=agent.agent_name))
 

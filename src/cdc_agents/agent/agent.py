@@ -178,14 +178,14 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                                 failure = ToolMessage(
                                     content=f"Failed to run tool with err {e}. Could not find matching tools for {self.name} - are all the services running?",
                                     name=self.name,
-                                    tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
+                                    tool_call_id=tool_call_id if tool_call_id is not None else tool_input.get("id") if isinstance(tool_input, dict) else str(uuid.uuid4()),
                                     status="error")
                                 return failure
 
                     failure = ToolMessage(
                         content=f"Failed to run tool. Could not find matching tools for {self.name}",
                         name=self.name,
-                        tool_call_id=tool_input.get("id") if isinstance(tool_input, dict) else None,
+                        tool_call_id=tool_call_id if tool_call_id is not None else tool_input.get("id") if isinstance(tool_input, dict) else str(uuid.uuid4()),
                         status="error")
                     return failure
 

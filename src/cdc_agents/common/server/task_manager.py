@@ -2,6 +2,7 @@ import abc
 import queue
 import threading
 import typing
+from langchain.schema import HumanMessage, AIMessage, SystemMessage, FunctionMessage
 from abc import ABC, abstractmethod
 from typing import Union,  List
 from cdc_agents.common.types import Task, Message, Part, TextPart
@@ -106,24 +107,32 @@ class TaskManager(ABC):
     def get_user_query_message(cls, task_send_params, session_id = None):
         if isinstance(task_send_params, TaskSendParams):
             r = cls.get_user_query_message(task_send_params.message, task_send_params.sessionId)
+            return r
         elif isinstance(task_send_params, Message):
-            r = {"messages": [(cls.translate_role(task_send_params.role), m.text) for m in task_send_params.parts]}
+            r = {"messages": [{'type': cls.translate_role(task_send_params.role), 'content': m.text, 'name': 'user'} for m in task_send_params.parts]}
+            return r
         elif isinstance(task_send_params, str):
-            r = {"messages": [("user", task_send_params)]}
+            r = {"messages": [HumanMessage(content=task_send_params, name='user')]}
+            return r
         elif isinstance(task_send_params, dict) and 'messages' in task_send_params.keys():
             r = task_send_params
+            if isinstance(r['messages'], typing.Tuple):
+                r['messages'] = [r['messages']]
+            try:
+                messages = r['messages']
+                if len(messages) > 0:
+                    first_messages = messages[0]
+                    if isinstance(first_messages, dict)  and 'type' in first_messages.keys():
+                        messages[0] = HumanMessage(content=first_messages.get('content') + f"\nsession id:{session_id}.", name='user')
+                    elif len(first_messages) == 2 and first_messages[0] == 'user':
+                        messages[0] = HumanMessage(content=first_messages[1] + f"\nsession id:{session_id}.", name='user')
+                return r
+            except:
+                return r
         else:
-            r = {"messages": [("user", str(task_send_params))]}
+            r = {"messages": [HumanMessage(content=str(task_send_params), name='user')]}
+            return r
 
-        messages = r['messages']
-        try:
-            if len(messages) > 0:
-                m = messages[0]
-                if len(m) == 2 and m[0] == 'user':
-                    messages[0] = (m[0], m[1] + f"\nsession id:{session_id}.")
-            return r
-        except:
-            return r
 
     @classmethod
     def get_user_query_part(cls, part: Part) -> str:
