@@ -3,7 +3,7 @@ import dataclasses
 from langchain_core.runnables import AddableDict
 import typing
 from typing import AsyncIterable, Dict, Any, Optional
-from langchain_core.messages import BaseMessage, HumanMessage,AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.runnables.utils import Input, Output
 from langgraph.checkpoint.memory import MemorySaver
@@ -108,10 +108,10 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         if graph_result.agent_route is not None and is_this_agent_orchestrator:
             if graph_result.agent_route not in self.agents.keys():
                 LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
-                graph_result.add_last_message(HumanMessage(content=f"""
+                graph_result.add_last_message(SystemMessage(content=f"""
                     Agent of name {graph_result.agent_route} was not found from previous message. Can you please to delegate to one of the valid agents:
                     {','.join([a for a in self.agents.keys()])} 
-                """))
+                """, name=self.orchestrator_agent.agent_name))
                 return self.orchestrator_agent.agent_name
             else:
                 return graph_result.agent_route
