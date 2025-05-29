@@ -85,7 +85,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_execute_code(self):
         @tool
-        def execute_code(registration_id: str) -> CodeExecutionResult:
+        def execute_code(registration_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> CodeExecutionResult:
             """Execute code using a registered code execution configuration.
             
             Args:
@@ -111,7 +111,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             
             variables = {
                 "options": {
-                    "registrationId": registration_id
+                    "registrationId": registration_id,
+                    "sessionId": session_id
                 }
             }
             
@@ -133,7 +134,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
     
     def produce_execute_code_with_output_file(self):
         @tool
-        def execute_code_with_output_file(registration_id: str, output_file_path: str, 
+        def execute_code_with_output_file(registration_id: str, output_file_path: str, session_id: Annotated[str, InjectedState("session_id")],
                                          arguments: str = None, timeout_seconds: int = None) -> CodeExecutionResult:
             """Execute code and write the output to a file.
             
@@ -142,7 +143,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 output_file_path: Path where the output should be written
                 arguments: Optional arguments to pass to the command
                 timeout_seconds: Optional timeout in seconds
-                
+
             Returns:
                 Result of the code execution including success status, output, and error
             """
@@ -166,7 +167,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     "registrationId": registration_id,
                     "arguments": arguments,
                     "timeoutSeconds": timeout_seconds,
-                    "writeToFile": True
+                    "writeToFile": True,
+                    "sessionId": session_id
                 },
                 "outputFilePath": output_file_path
             }
@@ -188,7 +190,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_register_code_execution(self):
         @tool
-        def register_code_execution(registration_id: str, command: str, working_directory: str = None,
+        def register_code_execution(registration_id: str, command: str, session_id: Annotated[str, InjectedState("session_id")], working_directory: str = None,
                                    description: str = None, arguments: str = None, 
                                    timeout_seconds: int = None, enabled: bool = True) -> CodeExecutionRegistration:
             """Register a new code execution configuration.
@@ -201,7 +203,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 arguments: Optional default arguments for the command
                 timeout_seconds: Optional default timeout in seconds
                 enabled: Whether this registration is enabled
-                
+
             Returns:
                 The registered code execution configuration
             """
@@ -227,7 +229,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     "description": description,
                     "arguments": arguments,
                     "timeoutSeconds": timeout_seconds,
-                    "enabled": enabled
+                    "enabled": enabled,
+                    "sessionId": session_id
                 }
             }
             
@@ -250,7 +253,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_update_code_execution_registration(self):
         @tool
-        def update_code_execution_registration(registration_id: str, enabled: bool = None, command: str = None,
+        def update_code_execution_registration(registration_id: str,session_id: Annotated[str, InjectedState("session_id")],  enabled: bool = None, command: str = None,
                                                working_directory: str = None, arguments: str = None,
                                                timeout_seconds: int = None) -> CodeExecutionRegistration:
             """Update an existing code execution registration.
@@ -262,7 +265,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 working_directory: Optional new working directory
                 arguments: Optional new arguments
                 timeout_seconds: Optional new timeout in seconds
-                
+
             Returns:
                 The updated code execution registration
             """
@@ -285,7 +288,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             """
             
             variables = {
-                "registrationId": registration_id
+                "registrationId": registration_id,
+                "sessionId": session_id
             }
             
             if enabled is not None:
@@ -318,12 +322,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_delete_code_execution_registration(self):
         @tool
-        def delete_code_execution_registration(registration_id: str) -> bool:
+        def delete_code_execution_registration(registration_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> bool:
             """Delete a code execution registration.
             
             Args:
                 registration_id: ID of the registration to delete
-                
+
             Returns:
                 True if the deletion was successful, False otherwise
             """
@@ -334,7 +338,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             """
             
             variables = {
-                "registrationId": registration_id
+                "registrationId": registration_id,
+                "sessionId": session_id
             }
             
             try:
@@ -425,12 +430,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_get_code_execution_registration(self):
         @tool
-        def get_code_execution_registration(registration_id: str) -> CodeExecutionRegistration:
+        def get_code_execution_registration(registration_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> CodeExecutionRegistration:
             """Get a specific code execution registration by the registration_id.
             
             Args:
                 registration_id: ID of the registration to get
-                
+
             Returns:
                 The code execution registration with the specified ID
             """
@@ -449,7 +454,8 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
             """
             
             variables = {
-                "registrationId": registration_id
+                "registrationId": registration_id,
+                "sessionId": session_id
             }
             
             try:
@@ -471,12 +477,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
 
     def produce_get_execution_output(self):
         @tool
-        def get_execution_output(execution_id: str) -> CodeExecutionResult:
+        def get_execution_output(execution_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> CodeExecutionResult:
             """Get the output of a specific code execution.
             
             Args:
                 execution_id: ID of the execution to get output for
-                
+
             Returns:
                 The code execution result with output and error information
             """

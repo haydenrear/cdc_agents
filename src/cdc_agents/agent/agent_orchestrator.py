@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import time
-
+from cdc_agents.agent.agent_state import AgentState
 from langchain_core.runnables import AddableDict
 import typing
 from typing import AsyncIterable, Dict, Any, Optional
@@ -146,7 +146,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             return None
         return self.get_status_message(message)
 
-    def next_node(self, agent: BaseAgent, state: MessagesState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
+    def next_node(self, agent: BaseAgent, state: AgentState, config, *args, **kwargs) -> Command[typing.Union[str, END]]:
         # prev_messages = state.get('messages')
         # If received a message to route to another agent, route to that other agent.
         # if prev_messages is not None and len(prev_messages) > 1:
@@ -160,6 +160,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
 
         config['configurable']['checkpoint_time'] = time.time_ns()
         session_id = config['configurable']['thread_id']
+        state['session_id'] = session_id
 
 
         before_len = len(state['messages']) if 'messages' in state.keys() and state['messages'] else 0
@@ -287,7 +288,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         return OrchestratorAgentGraph(self._create_state_graph())
 
     def _create_state_graph(self) -> StateGraph:
-        state_graph = StateGraph(MessagesState)
+        state_graph = StateGraph(AgentState)
         state_graph.add_node(self.orchestrator_agent.agent_name,
                              lambda state, config: self.next_node_inner(self.orchestrator_agent))
 

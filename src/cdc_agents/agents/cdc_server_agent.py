@@ -81,9 +81,7 @@ class CdcServerAgentToolCallProvider:
         @tool
         def perform_commit_diff_context_git_actions(actions_to_perform: Union[List[str], str, List[GitAction]],
                                                     git_repo_url: str,
-                                                    session_id: str,
-                                                    my_store: Annotated[Any, InjectedStore()],
-                                                    my_state: Annotated[Any, InjectedState()],
+                                                    session_id: Annotated[str, InjectedState("session_id")],
                                                     git_branch: str = "main",
                                                     perform_ops_async: bool = True) -> GitRepoResult:
             """Use this to embed a git repository for code context. If you would like to add a branch and set the embeddings, pass a list in actions_to_perform [ADD_BRANCH, SET_EMBEDDINGS, PARSE_BLAME_TREE]. If you do not pass perform_ops_async, this operation will take hours, but the server can respond while it's processing if you pass perform_ops_async.
@@ -91,7 +89,6 @@ class CdcServerAgentToolCallProvider:
             Args:
                 git_repo_url: the git repo URL for the repository to embed.
                 git_branch: the branch of the repository to embed.
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 actions_to_perform: a list of actions to perform.
                     Options are:
                      - 'ADD_BRANCH': add commit diffs for a single branch to the repository - does not embed changes
@@ -182,13 +179,13 @@ class CdcServerAgentToolCallProvider:
 
     def produce_retrieve_commit_diff_code_context(self):
         @tool
-        def retrieve_commit_diff_code_context(session_id: str, query: str, git_repo_url: str,
+        def retrieve_commit_diff_code_context(session_id: Annotated[str, InjectedState("session_id")],
+                                              query: str, git_repo_url: str,
                                               context_repos: typing.List[CdcGitRepoBranch] = None,
                                               git_branch: str = "main") -> CommitDiffFileResult:
             """Use this to retrieve information from repositories, with a diff history in XML form, related to a query code or embedding. This information can then be used for downstream code generation tasks as a source of context the model can use, or to otherwise inform development efforts. Use this to search for code and files that have been embedded.
 
             Args:
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 git_repo_url: the git repo for which to retrieve code context
                 git_branch: the branch in the git repo for which to retrieve code context
                 context_repos: a list of additional git repositories to consider when retrieving code context
@@ -243,13 +240,12 @@ class CdcServerAgentToolCallProvider:
     def produce_retrieve_next_code_commit(self):
         @tool
         def retrieve_next_code_commit(git_repo_url: str,
-                                      session_id: str,
+                                      session_id: Annotated[str, InjectedState("session_id")],
                                       branch_name: Optional[str] = None,
                                       query: Optional[str] = None) -> NextCommit:
             """Retrieve the next code commit recommendation.
 
             Args:
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 git_repo_url: Git repository information.
                 branch_name: The branch name to work with.
                 query: Optional code query to condition the commit recommendation.
@@ -312,13 +308,12 @@ class CdcServerAgentToolCallProvider:
     def produce_retrieve_and_apply_code_commit(self):
         @tool
         def retrieve_and_apply_code_commit(git_repo_url: str,
-                                           session_id: str,
+                                           session_id: Annotated[str, InjectedState("session_id")],
                                            branch_name: Optional[str] = None,
                                            query: Optional[str] = None) -> NextCommit:
             """Retrieve and apply a code commit in a single operation.
 
             Args:
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 git_repo_url: Git repository information.
                 branch_name: The branch name to work with.
                 query: Optional code query to condition the commit recommendation.
@@ -385,12 +380,11 @@ class CdcServerAgentToolCallProvider:
     def produce_retrieve_current_repository_staged(self):
         @tool
         def retrieve_current_repository_staged(git_repo_url: str,
-                                               session_id: str,
+                                               session_id: Annotated[str, InjectedState("session_id")],
                                                branch_name: Optional[str] = None) -> GitStagedResult:
             """Retrieve current staged changes in the repository.
 
             Args:
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 git_repo_url: Git repository information.
                 branch_name: The branch name to get staged changes from.
 
@@ -508,12 +502,11 @@ class CdcServerAgentToolCallProvider:
     def produce_apply_last_staged(self):
         @tool
         def apply_last_staged(git_repo_url: str,
-                              session_id: str,
+                              session_id: Annotated[str, InjectedState("session_id")],
                               branch_name: Optional[str] = None) -> GitStagedResult:
             """Apply changes created last in the commit diff context session
 
             Args:
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 git_repo_url: Git repository information.
                 branch_name: The branch name to get staged changes from.
 
@@ -529,12 +522,11 @@ class CdcServerAgentToolCallProvider:
     def produce_reset_any_staged(self):
         @tool
         def reset_any_staged(git_repo_url: str,
-                             session_id: str,
+                             session_id: Annotated[str, InjectedState("session_id")],
                              branch_name: Optional[str] = None) -> GitStagedResult:
             """Reset the repository from any application of staged.
 
             Args:
-                session_id: the session ID of the graph, notated as the thread_id in langgraph.
                 git_repo_url: Git repository information.
                 branch_name: The branch name to get staged changes from.
 
