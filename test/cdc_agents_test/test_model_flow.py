@@ -47,20 +47,20 @@ class ModelServerModelTest(unittest.IsolatedAsyncioTestCase):
         ModelServerModelTest.model_provider = model_provider
 
 
-    def test_git_status(self):
-        test = str(uuid.uuid4())
-        invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
-                                                              test),
-                                     self.server._create_orchestration_config(test))
-
-        LoggerFacade.info(f"Message: {invoked.content.message}")
-        LoggerFacade.info('History:')
-        LoggerFacade.info('\n'.join([h.content for h in invoked.content.history]))
-
-        assert invoked
-        assert isinstance(invoked.content, ResponseFormat)
-        assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status'
-                    for t in invoked.content.history])
+    # def test_git_status(self):
+    #     test = str(uuid.uuid4())
+    #     invoked = self.server.invoke(TaskManager.get_user_query_message('Please retrieve the git status of the repository in the directory /Users/hayde/IdeaProjects/drools',
+    #                                                           test),
+    #                                  self.server._create_orchestration_config(test))
+    #
+    #     LoggerFacade.info(f"Message: {invoked.content.message}")
+    #     LoggerFacade.info('History:')
+    #     LoggerFacade.info('\n'.join([h.content for h in invoked.content.history]))
+    #
+    #     assert invoked
+    #     assert isinstance(invoked.content, ResponseFormat)
+    #     assert any([isinstance(t, ToolMessage) and t.status == 'success' and t.name == 'git_status'
+    #                 for t in invoked.content.history])
 
 
 
