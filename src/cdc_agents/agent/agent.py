@@ -56,6 +56,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
     def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
                  memory: MemorySaver,
                  model_server_provider: ModelProvider, model = None):
+        self.max_recurs = agent_config.orchestrator_max_recurs if agent_config.orchestrator_max_recurs else 5000
         self.model_server_provider = model_server_provider
         this_agent_name = self.__class__.__name__
         self.agent_config: AgentCardItem = agent_config.agents.get(this_agent_name)
@@ -267,10 +268,16 @@ class A2AReactAgent(A2AAgent, abc.ABC):
 
 
     def _parse_query_config(self, sessionId):
-        if not isinstance(sessionId, dict):
-            return sessionId
-        else:
-            config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
+        return self._parse_query_config_max(sessionId, self.max_recurs)
 
-        return config
+    @classmethod
+    def _parse_query_config_max(cls, sessionId, max_recurs):
+        if isinstance(sessionId, dict):
+            return sessionId
+        elif isinstance(sessionId, str):
+            return {
+                "configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()},
+                "recursion_limit": max_recurs}
+        else:
+            raise ValueError("Found unsupported!")
 

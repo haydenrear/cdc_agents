@@ -307,9 +307,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         return RunnableLambda(lambda s, config, *args, **kwargs: self.next_node(agent, s, config=config, *args, **kwargs))
 
     def _create_orchestration_config(self, sessionId) -> RunnableConfig:
-        return {
-            "configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()},
-            "recursion_limit": self.max_recurs}
+        return A2AReactAgent._parse_query_config_max(sessionId, self.max_recurs)
 
     def _create_invoke_graph(self, query, sessionId):
         self.graph = self._create_compile_graph()
