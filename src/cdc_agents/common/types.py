@@ -344,7 +344,19 @@ class ModelDescriptor(BaseModel):
 def read_from_file_if(name: str):
     if name.startswith('file://'):
         with open(name.replace('file://', ''), 'r') as f:
-            return f.readlines()
+            lines = f.readlines()
+            out_lines = []
+            found_start_pre = False
+            found_end_pre = False
+            for line in lines:
+                if found_start_pre and found_end_pre:
+                    out_lines.append(line)
+                elif line == '```properties':
+                    found_start_pre = True
+                elif found_start_pre and line == '```':
+                    found_end_pre = True
+
+            return '\n'.join(out_lines)
 
     return name
 

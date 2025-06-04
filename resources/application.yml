@@ -24,7 +24,7 @@ model_server:
 human_delegate:
   base_dir: ./human_delegate_data
 checkpoint:
-  uri: postgresql://postgres:postgres@localhost:5450/postgres?sslmode=disable
+  uri: postgresql://postgres:postgres@localhost:5488/postgres?sslmode=disable
 
 agent_config:
   orchestrator_max_recurs: 100
@@ -151,20 +151,6 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.code_runner_agent.CodeRunnerAgent
       mcp_tools:
-        #        rip-grep:
-        #          stop_tool: docker stop $(docker ps | grep mcp/code-runner-grep | cut -d' ' -f1)
-        #          name: git
-        #          tool_prompt: >
-        #            Use grep
-        #          tool_options:
-        #            command: docker
-        #            args:
-        #              - run
-        #              - -i
-        #              - --rm
-        #              - --mount type=bind,src=/Users/
-        #              - mcp/code-runner-grep
-        #            env:
         git:
           stop_tool: container_id=$(docker ps | grep mcp/git-code-runner | awk '{print $1}') [ -n "$container_id" ] && docker stop "$container_id" >/dev/null 2>&1
           name: git
@@ -194,20 +180,6 @@ agent_config:
               - mcp/filesystem-code-runner
               - /Users/hayde/IdeaProjects
             env:
-        docker:
-          tool_prompt: >
-            Use docker to build and run the container. Additional instructions are provided as to which you can run, such as cdc-agents-test.
-          name: docker
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /var/run/docker.sock:/var/run/docker.sock
-              - mcp/docker-code-runner
-            env:
     CdcCodegenAgent:
       agent_card:
         name: CdcCodegenAgent
@@ -222,7 +194,7 @@ agent_config:
         postgres:
           name: postgres
           tool_prompt: >
-            Postgres can be used ...
+            Postgres can be used to search the database that contains the repository information.
           tool_options:
             command: docker
             args:
