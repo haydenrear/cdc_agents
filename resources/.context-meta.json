@@ -1,0 +1,4 @@
+{
+  "application.yml": "Main configuration file defining all agents, their capabilities, tools, and orchestration settings for the CDC agent system",
+  "always": ["application.yml"]
+}

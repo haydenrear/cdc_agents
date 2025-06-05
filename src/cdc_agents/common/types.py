@@ -114,7 +114,7 @@ class TaskStatusUpdateEvent(BaseModel):
 
 class TaskArtifactUpdateEvent(BaseModel):
     id: str
-    artifact: Artifact    
+    artifact: Artifact
     metadata: dict[str, Any] | None = None
 
 
@@ -346,19 +346,19 @@ def read_from_file_if(name: str):
         with open(name.replace('file://', ''), 'r') as f:
             lines = f.readlines()
             out_lines = []
-            found_start_pre = False
-            found_end_pre = False
+            found_start_prompt = False
             for line in lines:
-                if found_start_pre and found_end_pre:
+                if line.strip() == '```prompt_markdown':
+                    found_start_prompt = True
+                elif found_start_prompt and line.strip() == '```':
+                    break
+                elif found_start_prompt:
                     out_lines.append(line)
-                elif line == '```properties':
-                    found_start_pre = True
-                elif found_start_pre and line == '```':
-                    found_end_pre = True
 
-            return '\n'.join(out_lines)
+            return '\n'.join(out_lines).strip()
 
     return name
+
 
 class AgentDescriptor(BaseModel):
     model: typing.Union[str, ModelDescriptor]

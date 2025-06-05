@@ -1,3 +1,10 @@
 {
-  "HumanDelegateAgent.md": ""
+  "HumanDelegateAgent.md": "Agent description for the HumanDelegateAgent - facilitates communication with human representatives for requirements and business needs",
+  "SummarizerAgent.md": "Agent description for the SummarizerAgent - specializes in condensing and summarizing large volumes of contextual information",
+  "LibraryEnumerationAgent.md": "Agent description for the LibraryEnumerationAgent - discovers, catalogs, and analyzes software libraries and dependencies",
+  "CodeRunnerAgent.md": "Agent description for the CodeRunnerAgent - executes code, manages version control operations, and handles filesystem interactions",
+  "CdcCodegenAgent.md": "Agent description for the CdcCodegenAgent - specialized code generation for Change Data Capture implementations",
+  "CdcCodeSearchAgent.md": "Agent description for the CdcCodeSearchAgent - searches and analyzes codebases with focus on CDC patterns",
+  "DeepCodeOrchestrator.md": "Agent description for the DeepCodeOrchestrator - coordinates complex code analysis and generation workflows",
+  "DeepCodeAgent.md": "Agent description for the DeepCodeAgent - performs deep semantic code understanding and sophisticated code generation"
 }

@@ -52,41 +52,24 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: SummarizerAgent
-        orchestrator_instruction: >
-          An agent that summarizes the information to be provided. Used when there is too much data in the context to
-          provide to the agent, and then this information can be summarized or compactified so as to reduce the burden
-          on the next agents.
-        system_instruction: >
-          You are SummarizerAgent, a specialized agent that summarized information in the context, to be used when there is too much information
-          and it needs to be summarized. You have the option of using a memory tool so that you can better organize and remember
-          your thoughts to support your summarization. In particular, when applied to our codegen workflow, there may be
-          a lot of error logs or git diffs that need to be summarized and stored for later. Perhaps identifying the cause
-          of the error and the nature of the change to the git repository instead of the full error message for summary,
-          and then saving the important pieces in the knowledge base so you can remember the workflow if it comes up 
-          later.
+        orchestrator_instruction: file://prompts/orchestrator_prompts/SummarizerAgent.md
+        system_instruction: file://prompts/system_prompts/SummarizerAgent.md
       agent_card:
         name: SummarizerAgent
         path: /summarizer
-        description:
+        description: file://prompts/description_prompts/SummarizerAgent.md
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.summarizer_agent.SummarizerAgent
     LibraryEnumerationAgent:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: LibraryEnumerationAgent
-        orchestrator_instruction: >
-          LibraryEnumerationAgent is an agent that provides locations for repositories. Do not use this tool for running git commands. This tool
-          should only be used for providing URLs to the CdcCodeSearchAgent so that the CdcCodeSearchAgent can then clone
-          and embed these repositories. The CdcCodeSearchAgent should be used for any execution of git commands such as
-          cloning and embedding repositories, not this agent, which, again, will only be used for retrieving the URL for
-          repositories.
-        system_instruction: >
-          You are LibraryEnumerationAgent, an agent that searches the internet for URLs for git repositories. You use your tools to search for 
-          the repositories, and then you return the URLs for those repositories for downstream tasks.
+        orchestrator_instruction: file://prompts/orchestrator_prompts/LibraryEnumerationAgent.md
+        system_instruction: file://prompts/system_prompts/LibraryEnumerationAgent.md
       agent_card:
         name: LibraryEnumerationAgent
-        path: /library_enumeration
-        description:
+        path: /library-enumeration
+        description: file://prompts/description_prompts/LibraryEnumerationAgent.md
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.library_enumeration_agent.LibraryEnumerationAgent
       mcp_tools:
@@ -108,46 +91,24 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: HumanDelegateAgent
-        orchestrator_instruction: >
-          HumanDelegate agent is an agent that facilitates communication with human representatives, such as refining ticket or business requirements.
-        system_instruction: >
-          You are HumanDelegateAgent, an agent with the ability to message the humans to get feedback on requirements and business needs. You will be called
-          with a message from someone, at which time you will need to initialize the session. Then, you will respond to the
-          message received, at which time you will then either finalize the session or wait for a response, if you have requested
-          a response. You can continue in the loop of sending another message, and receiving another response for as long 
-          as you deem necessary, but make sure to finalize the session at the end of the exchange.
+        orchestrator_instruction: file://prompts/orchestrator_prompts/HumanDelegateAgent.md
+        system_instruction: file://prompts/system_prompts/HumanDelegateAgent.md
       agent_card:
         name: HumanDelegateAgent
         path: /human-delegate
-        description:
+        description: file://prompts/description_prompts/HumanDelegateAgent.md
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.human_delegate_agent.HumanDelegateAgent
     CodeRunnerAgent:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CodeRunnerAgent
-        orchestrator_instruction: >
-          CodeRunnerAgent is an agent that facilitates the running of the code after making code changes, to validate code changes with respect
-          for particular tickets, bug changes, or any other unit of work.
-        system_instruction: >
-          You are CodeRunnerAgent, a specialized assistant for running source code to test changes. You have access to various tools to
-          run the code, such as Docker, Git, and the file system. 
-          
-          If you do not have enough information to run the code,
-          then you can ask for more information, such as context information from other repos, for example, for creating
-          and building new Docker containers that path libraries with custom code. Please focus on using your tools
-          to answer the questions.
-          
-          For example if a request is made to retrieve context data from the git repository, use the git tool. Alternatively,
-          if a request is made to create or start a docker container, please use the docker tool. If you need to retrieve
-          information from the file system, please use the file system tool.
+        orchestrator_instruction: file://prompts/orchestrator_prompts/CodeRunnerAgent.md
+        system_instruction: file://prompts/system_prompts/CodeRunnerAgent.md
       agent_card:
         name: CodeRunnerAgent
         path: /code-runner
-        description: >
-          This agent can be used to run the code for a repository using Docker, using natural language. Please provide 
-          information about the repository. It performs testing and code running tasks, and has access to the file system
-          and tools such as git and Docker to help it perform this function.
+        description: file://prompts/description_prompts/CodeRunnerAgent.md
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.code_runner_agent.CodeRunnerAgent
       mcp_tools:
@@ -185,10 +146,7 @@ agent_config:
         name: CdcCodegenAgent
         path: /codegen
         version: 0.0.1
-        description: >
-          This tool exposes the ability to create code example commits based on commit messages or descriptors. You may
-          want to use this tool to create some code to search by, or to create a commit to apply and then test with the
-          CdcCodeRunnerAgent. You interact with this tool through natural language.
+        description: file://prompts/description_prompts/CdcCodegenAgent.md
       agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodegenAgent
       mcp_tools:
         postgres:
@@ -207,89 +165,22 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodegenAgent
-        system_instruction: >
-          You are CdcCodegenAgent, a specialized assistant for generating commits for implementation of software projects.
-          You request the generation of a full git commit, with respect to a commit message and other contextual information
-          provided to you. Then, after applying the commit, you ask for the code to be tested. Sometimes, you will ask
-          it to be tested and then you will be asked again later to generate another commit from the feedback on why it failed.
-          In this case, you either need to generate the whole commit again, taking into account the error, or request
-          for more information about the repository, file system, or dependency, so that next time you have the information you need
-          to provide the finished code generation. By the time you are asked to fix the commit, it will have been reverted,
-          but you will still be able to look at what changes you made. 
-        orchestrator_instruction: >
-          CdcCodegenAgent is an agent that generates code modifications using the history of diffs added with the CdcCodeSearchAgent.
+        system_instruction: file://prompts/system_prompts/CdcCodegenAgent.md
+        orchestrator_instruction: file://prompts/orchestrator_prompts/CdcCodegenAgent.md
     CdcCodeSearchAgent:
       agent_card:
         name: CdcCodeSearchAgent
         path: /code_search
         version: 0.0.1
-        description: >
-          This tool exposes the ability to add repositories to the database and the embedding database with natural 
-          language. It also allows for searching the database based on queries through natural language. For example,
-          this can be a replacement for grep, without regex, if you have a name or piece of code as an example you'd like
-          to search for, all by asking in natural language.
+        description: file://prompts/description_prompts/CdcCodeSearchAgent.md
       agent_clazz: cdc_agents.agent.agent.cdc_server_agent.CdcCodeSearchAgent
       agent_descriptor:
-#        model: anthropic_chat://anthropic_chat/claude-3-5-sonnet-20241022
+        #        model: anthropic_chat://anthropic_chat/claude-3-5-sonnet-20241022
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodeSearchAgent
-        system_instruction: >
-          You are CdcCodeSearchAgent, specialized assistant for searching for code context information.
-          Your overall goal is to provide context for code generation across multiple repositories, within the context of
-          the history of the development of that software. In order to achieve your purpose, you have access to some tools.
-          The tools you have facilitate performing operations on git repositories, including adding git diffs for repositories
-          and branches to the vector database, removing git diffs for repositories and branches from the vector database,
-          and retrieving files from the vector database with their history by a code snippet or commit message. You can
-          also parse the repository history with respect to an input, such as a code snippet or a message, and add diffs
-          from the blame tree with respect to this code snippet or message.
-          
-          If you do not have enough
-          information to perform your request, you can return a request for that information. Examples of this would be,
-          for instance, if you need to include the code from one of the libraries. Then you could request for the URL
-          for the git repository for that library. At that point, another agent will retrieve that information for you and
-          you can then perform your function to better inform your operations.
-          
-          If you would like to embed a repository, for example, you need to add the repository and then set the embeddings,
-          in the git actions. Please make sure to use the session ID passed to you in followup calls to the server. 
-          Please use the same session ID provided to you to send to the server. Please use the tools available to you 
-          to do this.
-          
-          You can perform multiple operations at once by passing multiple values to the operation field when you perform
-          the git action. For example if you would like to add the embeddings to the database, you would pass: 
-          
-          ['ADD_REPO', 'SET_EMBEDDINGS']
-          
-          as the git operation array
-          
-          If you would like to add particular commit diffs with respect to a query, and need to set embeddings and add
-          the repo, you would pass
-          
-          ['ADD_REPO', 'SET_EMBEDDINGS', 'PARSE_BLAME_TREEE']
-          
-          as the git operation array when you are calling the do git. 
-          
-          If you only need to parse the commit diffs into the database, alternatively, you would pass:
-          
-          ['ADD_REPO']
-          
-          After you have completed each tool call, evaluate the answer with respect to your inputs to see if the issue
-          is resolved. 
-          
-          If the previous tool call completes the task, then simply output 
-          
-          STOP
+        system_instruction: file://prompts/system_prompts/CdcCodeSearchAgent.md
 
-        orchestrator_instruction: >
-          CdcCodeSearchAgent is an agent that can add git repositories to an embedding database with history. This agent has a mechanism to
-          provide contextual information from the git repositories. This agent has access to an embedding database, so
-          he embeds the commit history as git commit diffs, and then interfaces with these repositories, returning
-          relevant files to the queries in the context with their history in an XML format that can be parsed by downstream
-          codegen processes. It can also parse repositories with respect to particular queries, adding commit diffs to the
-          repository with respect to particular code, so it can be used to produce more relevant contextual information,
-          using the git blame tree mechanism.
-          
-          Additionally, this agent can also be used to perform basic git operations on a repository through the use
-          of it's git tool.
+        orchestrator_instruction: file://prompts/orchestrator_prompts/CdcCodeSearchAgent.md
       mcp_tools:
         filesystem:
           name: filesystem
@@ -323,72 +214,27 @@ agent_config:
     DeepCodeOrchestrator:
       agent_card:
         name: DeepCodeOrchestrator
-        path: /deep_code_orchestrator
+        path: /deep-code-orchestrator
         version: 0.0.1
+        description: file://prompts/description_prompts/DeepCodeOrchestrator.md
       agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeOrchestrator
       agent_descriptor:
         agent_name: DeepCodeOrchestrator
         model: ollama_chat://ollama_chat/phi4:14b
-        orchestration_instruction: >
-        orchestration_message: >
+        orchestration_instruction: file://prompts/orchestrator_prompts/DeepCodeOrchestrator.md
+        system_instruction: file://prompts/system_prompts/DeepCodeOrchestrator.md
     DeepCodeAgent:
       agent_card:
         name: DeepCodeAgent
-        path: /deep_code
+        path: /deep-code
         version: 0.0.1
+        description: file://prompts/description_prompts/DeepCodeAgent.md
       agent_clazz: cdc_agents.agent.agent.deep_code_research_agent.DeepCodeAgent
       agent_descriptor:
         model: ollama_chat://ollama_chat/phi4:14b
         agent_name: DeepCodeAgent
-        orchestration_instruction: >
-          You are the orchestrator agent for code generation. Your job is to orchestrate a group of agents to implement tickets for software projects.
-          After every agent returns, you will then evaluate it's response and delegate to another agent or produce a final answer.
-          
-          Here are a list of the agents that you are in charge of orchestrating:
-        orchestration_message: >
-          Your primary goal is to interpret the responses from the agents into requests for other agents, including adding any additional
-          context to them to help them along with the overall goal of implementing software using contextual information, and interpret 
-          user queries to delegate to the best agent for the job. 
-          
-          Make sure that
-          when you interpret the previous agent's response, if you decide to delegate to another agent and add context make sure that
-          the context you add relates to their domain. 
-         
-          Please note that the next agent should be the name of the agent to delegate to, as per the agents provided previously with agent_name. In order to delegate to this agent, you need to set status to goto. 
-          
-          The format you should follow is
-         
-          STATUS: [status token, one of completed (if done), goto_agent (to go to an agent), or input_required (if need input from user)]
-          NEXT AGENT: [name of the agent, as per the agents provided previously with agent_name, or skip providing this]
-          ADDITIONAL CONTEXT: [additional relevant contextual information, for example summarizing previous information and what you'd like that agent to do]
-          
-          If the agent provides a message with
-          
-          FINAL ANSWER:
-          [final answer provided]
-          
-          Please evaluate the answer, and determine whether or not it meets the requirements or additional action is needed. For example,
-          if the CdcCodeSearchAgent provides context, and then you call the CdcCodegenAgent, which provides a final answer,
-          then, in order to validate the answer, you may apply the code changes and validate them using the CodeRunnerAgent,
-          or generate some tests after applying the changes and run those with the CodeRunnerAgent. After the CodeRunnerAgent
-          provides feedback from running the code, you may need to revert the changes using git and delegate to the
-          CdcCodegenAgent to provide the changes with updates to fix the errors provided.
-          
-          In some cases, you may
-          need to validate business requirements, or demonstrate the code changes, in which case you may then call the
-          HumanDelegateAgent to validate the changes, or business requirements.
-          
-          In any case, please ensure that the software implementation is thorough and complete, and validated, and if you
-          have any questions, please reach out using the HumanDelegateAgent. 
-          
-          Always make sure that you consider the responses in the terms of the original query, and when the task has been completed,
-          provide the information to the user.
-          
-          When you provide the final answer, please do so in the following format:
-          
-          STATUS: completed 
-          NEXT AGENT: skip 
-          ADDITIONAL CONTEXT: [additional relevant contextual information about the completed task and how it was completed]
+        orchestration_instruction: file://prompts/orchestrator_prompts/DeepCodeAgent.md
+        system_instruction: file://prompts/system_prompts/DeepCodeAgent.md
 
 profiles:
   active_profiles:

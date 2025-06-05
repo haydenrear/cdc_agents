@@ -1,3 +1,5 @@
 {
-  "prompts": "This directory contains the versioned prompts that are used ..."
+  "prompts": "This directory contains the versioned prompts that are used to define agent behaviors, orchestration instructions, and system configurations for the CDC agent system. All prompts are formatted as markdown with a ```properties ... ``` header containing the agent name and the version, and a ```prompt_markdown ... ``` section containing the prompt itself",
+  "resources": "Contains configuration files and resources used by the CDC agent system for runtime configuration and environment setup",
+  "always": ["resources/application.yml", ".env"]
 }
