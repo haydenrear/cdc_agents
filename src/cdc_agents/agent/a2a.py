@@ -1,28 +1,24 @@
 import abc
-import dataclasses
-import enum
-import time
-
-import pydantic
-from langgraph.graph.state import CompiledStateGraph
-import json
 import re
+import time
 import typing
-from typing import AsyncIterable, Dict, Any
 
-import regex
+from langgraph.graph.state import CompiledStateGraph
 from langchain_core.messages import BaseMessage
-
-import asyncio
-from langchain_core.messages import AIMessage, ToolMessage, HumanMessage
 from langchain_core.runnables import AddableDict
 from langgraph.checkpoint.memory import MemorySaver
 
+from cdc_agents.agent.response_format_parser import (
+    ResponseFormatParser, ResponseFormatBuilder, MessageTypeResponseFormatParser,
+    StatusResponseFormatParser, NextAgentResponseFormatParser,
+    AdditionalContextResponseFormatParser, StatusValidationResponseFormatParser
+)
 from cdc_agents.common.server import TaskManager
 from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 from cdc_agents.config.agent_config_props import AgentMcpTool
+from python_di.inject.profile_composite_injector.inject_context_di import InjectionDescriptor, InjectionType, \
+    autowire_fn
 from python_util.logger.logger import LoggerFacade
-from pydantic import BaseModel
 
 class BaseAgent(abc.ABC):
 
@@ -63,7 +59,8 @@ class BaseAgent(abc.ABC):
 
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_instruction=None,
-                 memory: MemorySaver = MemorySaver(), content_types = None):
+                 memory: MemorySaver = MemorySaver(), content_types = None,
+                 response_parsers: typing.Optional[typing.List[ResponseFormatParser]] = None):
         self._content_types = content_types if content_types is not None else ['text', 'text/plain']
         self.task_manager: typing.Optional[TaskManager] = None
         self.model = model
@@ -81,17 +78,14 @@ class A2AAgent(BaseAgent, abc.ABC):
             re.IGNORECASE | re.VERBOSE | re.MULTILINE,
             )
 
-        self.STATUS_RX = re.compile(
-            r"""^.*?
-            STATUS\s*:\s*
-            (?P<state>[A-Za-z_]+)
-            \s*$
-            """,
-            re.IGNORECASE | re.VERBOSE | re.MULTILINE)
-
-        self.NEXT_AGENT_RX = re.compile(r"NEXT AGENT\s*:\s*(?P<state>[A-Za-z0-9_]+)", re.IGNORECASE)
-
-        self.ADDITIONAL_CTX_RX = re.compile(r"ADDITIONAL CONTEXT\s*:\s*(?P<state>.*)", re.IGNORECASE)
+        # Initialize response format parsers - use injected parsers if available, otherwise default ones
+        self._response_parsers = response_parsers or [
+            MessageTypeResponseFormatParser(),
+            StatusResponseFormatParser(),
+            NextAgentResponseFormatParser(),
+            AdditionalContextResponseFormatParser(),
+            StatusValidationResponseFormatParser()
+        ]
 
     def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
@@ -122,7 +116,7 @@ class A2AAgent(BaseAgent, abc.ABC):
     def get_agent_response(self, config, graph):
         pass
 
-    def add_mcp_tools(self, props, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
+    def add_mcp_tools(self, props, additional_tools: typing.Optional[typing.Dict[str, AgentMcpTool]] = None, loop = None):
         """
         MCP tools are descriptors of external tools for a particular agent to use.
         Append these tools to the list of tools available for this particular agent.
@@ -132,7 +126,7 @@ class A2AAgent(BaseAgent, abc.ABC):
         """
         pass
 
-    async def add_mcp_tools_async(self, props, additional_tools: typing.Dict[str, AgentMcpTool] = None, loop = None):
+    async def add_mcp_tools_async(self, props, additional_tools: typing.Optional[typing.Dict[str, AgentMcpTool]] = None, loop = None):
         """
         MCP tools are descriptors of external tools for a particular agent to use.
         Append these tools to the list of tools available for this particular agent.
@@ -169,69 +163,38 @@ class A2AAgent(BaseAgent, abc.ABC):
         current_state = graph.get_state(config)
         return self._do_get_res(current_state.values)
 
-    def _do_get_res(self, values, is_completed = None):
+    @autowire_fn(descr={
+        'parsers': InjectionDescriptor(injection_ty=InjectionType.Dependency),
+        'values': InjectionDescriptor(injection_ty=InjectionType.Provided),
+        'is_completed': InjectionDescriptor(injection_ty=InjectionType.Provided)
+    })
+    def _do_get_res(self, values, is_completed = None,
+                    parsers: typing.List[ResponseFormatParser] = None):
         messages = values.get('messages')
         last_message: BaseMessage = messages[-1]
-        content = ''.join([c for c in last_message.content])
 
-        if last_message.type == 'tool':
-            structured_response = ResponseFormat(status=self.next_agent, history=messages, content=content,
-                                                 route_to='orchestrator')
+        # Use injected parsers if available, otherwise use instance parsers
+        active_parsers = parsers if parsers is not None else self._response_parsers
+
+        # Sort parsers by ordering
+        sorted_parsers = sorted(active_parsers, key=lambda p: p.ordering())
+
+        # Initialize builder
+        builder = ResponseFormatBuilder()
+
+        # Apply all parsers in order
+        for parser in sorted_parsers:
+            builder = parser.parse(builder, last_message, values)
+
+        # Build the final response format
+        structured_response = builder.build()
+
+        # Determine task completion status
+        is_task_completed = structured_response.status == self.completed
+        if is_completed is not None:
+            is_task_completed = is_completed
+        elif builder.is_tool_message:
             is_task_completed = True
-        else:
-            content = content.replace('**', '')
-
-            match = self.STATUS_RX.search(content)
-
-            if match:
-                status_token = self._do_get_match_group(match)
-                if status_token == 'skip':
-                    status_token = self.completed
-                if status_token == 'input_needed':
-                    status_token = self.needs_input_string
-                header_end = content.find("\n", match.end())  # first newline after the header we matched
-                content = content[header_end + 1:] if header_end != -1 else ""
-                agent = None
-                additional_ctx = None
-                match_agent = None
-                match_ctx = None
-                for c in content.splitlines():
-                    if match_agent is None:
-                        match_agent = self.NEXT_AGENT_RX.search(c)
-                        if match_agent is not None:
-                            agent = self._do_get_match_group(match_agent)
-                            if agent == 'skip':
-                                agent = None
-                    if match_ctx is None:
-                        match_ctx = self.ADDITIONAL_CTX_RX.search(c)
-                        if match_ctx is not None:
-                            additional_ctx = self._do_get_match_group(match_ctx)
-                    else:
-                        additional_ctx += '\n'
-                        additional_ctx += c
-
-                content = additional_ctx if additional_ctx is not None \
-                    else content
-
-                if status_token not in [self.completed, self.next_agent, self.needs_input_string]:
-                    LoggerFacade.info(f"Found unknown status token {status_token}.")
-                    status_token = self.completed
-                structured_response = ResponseFormat(status=status_token, message=content, history=messages,
-                                                     route_to=agent)
-            else:
-                try:
-                    if isinstance(content, dict):
-                        content = json.dumps(content)
-                        structured_response = ResponseFormat(message=content, history=messages, status=self.completed)
-                    else:
-                        structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
-                except Exception as e:
-                    structured_response = ResponseFormat(status=self.completed, message=str(content), history=messages)
-
-            is_task_completed = structured_response.status == self.completed
-
-            if is_completed is not None:
-                is_task_completed = is_completed
 
         if structured_response and isinstance(structured_response, ResponseFormat):
             if structured_response.status == self.needs_input_string:
@@ -265,12 +228,6 @@ class A2AAgent(BaseAgent, abc.ABC):
             "content": "We are unable to process your request at the moment. Please try again.",
         })
 
-    def _do_get_match_group(self, match):
-        status_token = match.group("state")
-        if status_token is not None:
-            status_token = status_token.strip()
-        return status_token
-
     def stream_agent_response_graph(self, query, sessionId, graph: CompiledStateGraph):
         inputs = TaskManager.get_user_query_message(query, sessionId)
         config = {"configurable": {"thread_id": sessionId, 'checkpoint_time': time.time_ns()}}
@@ -283,4 +240,3 @@ class A2AAgent(BaseAgent, abc.ABC):
             else:
                 res =  self._do_get_res(item)
                 yield res
-

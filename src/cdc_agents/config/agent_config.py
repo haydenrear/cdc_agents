@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from starlette.applications import Starlette
 
 from cdc_agents.agent.agent_server import AgentServerRunner
+from cdc_agents.agent.response_format_parser import ResponseFormatParser
 from cdc_agents.agents.cdc_server_agent import CdcCodeSearchAgent
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator, DeepCodeAgent
 from cdc_agents.agents.human_delegate_agent import HumanDelegateAgent
@@ -87,7 +88,7 @@ class JsonSerializationProtocol(UntypedSerializerProtocol):
                                                HumanDelegateConfigProps, RunnerConfigProps, ToolCallProps, SecretConfigProps])
 @component_scan(base_classes=[ModelServerModel, CdcCodeSearchAgent, DeepCodeAgent,
                               DeepCodeOrchestrator, ModelProvider, AgentServerRunner, HumanDelegateAgent,
-                              SummarizerAgent, LibraryEnumerationAgent, ToolCallDecorator])
+                              SummarizerAgent, LibraryEnumerationAgent, ToolCallDecorator, ResponseFormatParser])
 class AgentConfig:
 
     @bean(profile='test', scope=profile_scope, bindings=[Starlette])
