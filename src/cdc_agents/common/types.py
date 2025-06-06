@@ -375,30 +375,24 @@ def read_from_file_if(name: str):
 class AgentDescriptor(BaseModel):
     model: typing.Union[str, ModelDescriptor]
     agent_name: str
-    system_instruction: str = None
+    system_prompts: str = None
     tools: typing.List[str] = None
-    orchestrator_instruction: str = None
-    orchestration_instruction: str = None
-    orchestration_message: str = None
+    orchestrated_prompts: str = None
+    orchestrator_system_prompt: str = None
 
-    @field_validator('orchestrator_instruction')
+    @field_validator('orchestrated_prompts')
     @classmethod
-    def serialize_orchestrator_instruction(cls, v: typing.Any):
+    def serialize_orchestrated_prompts(cls, v: typing.Any):
         return read_from_file_if(v)
 
-    @field_validator('orchestration_instruction')
-    @classmethod
-    def serialize_orchestration_instruction(cls, v: typing.Any):
-        return read_from_file_if(v)
-
-    @field_validator('orchestration_message')
+    @field_validator('orchestrator_system_prompt')
     @classmethod
     def serialize_orchestrator_message(cls, v: typing.Any):
         return read_from_file_if(v)
 
-    @field_validator('system_instruction')
+    @field_validator('system_prompts')
     @classmethod
-    def serialize_system_instruction(cls, v: typing.Any):
+    def serialize_system_prompts(cls, v: typing.Any):
         return read_from_file_if(v)
 
 AgentCardForward = typing.ForwardRef("AgentCard")

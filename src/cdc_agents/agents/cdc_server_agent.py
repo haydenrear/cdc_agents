@@ -600,7 +600,7 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
                                   self.tool_call_provider.produce_reset_any_staged(),
                                   self.tool_call_provider.produce_perform_commit_diff_context_git_actions()
                                ],
-                               self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
+                               self_card.agent_descriptor.system_prompts, memory_saver, model_provider)
 
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
@@ -618,4 +618,4 @@ class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
                                    self.tool_call_provider.produce_retrieve_next_code_commit(),
                                    self.tool_call_provider.produce_retrieve_and_apply_code_commit()
                                ],
-                               self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
+                               self_card.agent_descriptor.system_prompts, memory_saver, model_provider)

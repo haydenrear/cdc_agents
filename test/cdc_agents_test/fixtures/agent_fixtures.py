@@ -124,7 +124,7 @@ class TestOrchestratorAgent(A2AReactAgent, OrchestratorAgent):
         return ""
 
     @property
-    def orchestration_messages(self):
+    def orchestrator_system_prompts(self):
         return ""
 
     @property
@@ -172,7 +172,7 @@ def create_test_agent_task_manager(
     if not hasattr(test_agent, 'graph') or test_agent.graph is None:
         test_agent.graph = create_react_agent(
             test_agent.model, tools=test_agent.tools, checkpointer=memory,
-            prompt=test_agent.system_instruction
+            prompt=test_agent.system_prompts
         )
     
     return test_agent, task_manager

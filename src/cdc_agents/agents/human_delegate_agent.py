@@ -440,7 +440,7 @@ class HumanDelegateAgent(DeepResearchOrchestrated, A2AReactAgent):
                 produce_handle_message(config_props),
                 produce_finalize_session(config_props)
             ],
-            self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
+            self_card.agent_descriptor.system_prompts, memory_saver, model_provider)
         
         self.agent_config: AgentCardItem = self_card
         self.config_props = config_props

@@ -43,17 +43,17 @@ from cdc_agents.util.nest_async_util import do_run_on_event_loop
 
 
 class A2ASmolAgent(A2AAgent, abc.ABC):
-    def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
+    def __init__(self, agent_config: AgentConfigProps, tools, system_prompts,
                  memory: MemorySaver, model = None):
         this_agent_name = self.__class__.__name__
         model = agent_config.agents[this_agent_name].agent_descriptor.model \
             if this_agent_name in agent_config.agents.keys() else None \
             if model is None else model
-        A2AAgent.__init__(self, model, tools, system_instruction, memory)
+        A2AAgent.__init__(self, model, tools, system_prompts, memory)
 
 class A2AReactAgent(A2AAgent, abc.ABC):
 
-    def __init__(self, agent_config: AgentConfigProps, tools, system_instruction,
+    def __init__(self, agent_config: AgentConfigProps, tools, system_prompts,
                  memory: MemorySaver,
                  model_server_provider: ModelProvider, model = None):
         self.max_recurs = agent_config.orchestrator_max_recurs if agent_config.orchestrator_max_recurs else 5000
@@ -64,7 +64,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         self.model = self.model_server_provider.retrieve_model(
             agent_config.agents[this_agent_name] if this_agent_name in agent_config.agents.keys() else None, model)
 
-        A2AAgent.__init__(self, self.model, tools, system_instruction, memory, inputs)
+        A2AAgent.__init__(self, self.model, tools, system_prompts, memory, inputs)
 
         self.add_mcp_tools(additional_tools=self.agent_config.mcp_tools)
 
@@ -90,7 +90,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
     def _create_react_agent(self):
         self.graph = create_react_agent(
             self.model, tools=self.tools, checkpointer=self.memory,
-            prompt=self.system_instruction)
+            prompt=self.system_prompts)
 
     def _set_tools_return_direct(self):
         for t in self.tools:

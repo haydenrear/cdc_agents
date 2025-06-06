@@ -52,8 +52,8 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: SummarizerAgent
-        orchestrator_instruction: file://prompts/orchestrator_prompts/SummarizerAgent.md
-        system_instruction: file://prompts/system_prompts/SummarizerAgent.md
+        orchestrated_prompts: file://prompts/orchestrated_prompts/SummarizerAgent.md
+        system_prompts: file://prompts/system_prompts/SummarizerAgent.md
       agent_card:
         name: SummarizerAgent
         path: /summarizer
@@ -64,8 +64,8 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: LibraryEnumerationAgent
-        orchestrator_instruction: file://prompts/orchestrator_prompts/LibraryEnumerationAgent.md
-        system_instruction: file://prompts/system_prompts/LibraryEnumerationAgent.md
+        orchestrated_prompts: file://prompts/orchestrated_prompts/LibraryEnumerationAgent.md
+        system_prompts: file://prompts/system_prompts/LibraryEnumerationAgent.md
       agent_card:
         name: LibraryEnumerationAgent
         path: /library-enumeration
@@ -91,8 +91,8 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: HumanDelegateAgent
-        orchestrator_instruction: file://prompts/orchestrator_prompts/HumanDelegateAgent.md
-        system_instruction: file://prompts/system_prompts/HumanDelegateAgent.md
+        orchestrated_prompts: file://prompts/orchestrated_prompts/HumanDelegateAgent.md
+        system_prompts: file://prompts/system_prompts/HumanDelegateAgent.md
       agent_card:
         name: HumanDelegateAgent
         path: /human-delegate
@@ -103,8 +103,8 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CodeRunnerAgent
-        orchestrator_instruction: file://prompts/orchestrator_prompts/CodeRunnerAgent.md
-        system_instruction: file://prompts/system_prompts/CodeRunnerAgent.md
+        orchestrated_prompts: file://prompts/orchestrated_prompts/CodeRunnerAgent.md
+        system_prompts: file://prompts/system_prompts/CodeRunnerAgent.md
       agent_card:
         name: CodeRunnerAgent
         path: /code-runner
@@ -165,8 +165,8 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodegenAgent
-        system_instruction: file://prompts/system_prompts/CdcCodegenAgent.md
-        orchestrator_instruction: file://prompts/orchestrator_prompts/CdcCodegenAgent.md
+        system_prompts: file://prompts/system_prompts/CdcCodegenAgent.md
+        orchestrated_prompts: file://prompts/orchestrated_prompts/CdcCodegenAgent.md
     CdcCodeSearchAgent:
       agent_card:
         name: CdcCodeSearchAgent
@@ -178,9 +178,8 @@ agent_config:
         #        model: anthropic_chat://anthropic_chat/claude-3-5-sonnet-20241022
         model: ollama_chat://ollama_chat/hermes3:8b
         agent_name: CdcCodeSearchAgent
-        system_instruction: file://prompts/system_prompts/CdcCodeSearchAgent.md
-
-        orchestrator_instruction: file://prompts/orchestrator_prompts/CdcCodeSearchAgent.md
+        system_prompts: file://prompts/system_prompts/CdcCodeSearchAgent.md
+        orchestrated_prompts: file://prompts/orchestrated_prompts/CdcCodeSearchAgent.md
       mcp_tools:
         filesystem:
           name: filesystem
@@ -221,8 +220,8 @@ agent_config:
       agent_descriptor:
         agent_name: DeepCodeOrchestrator
         model: ollama_chat://ollama_chat/phi4:14b
-        orchestration_instruction: >
-        orchestration_message: >
+        orchestrated_prompts: >
+        orchestrator_system_prompt: >
     DeepCodeAgent:
       agent_card:
         name: DeepCodeAgent
@@ -233,8 +232,9 @@ agent_config:
       agent_descriptor:
         model: ollama_chat://ollama_chat/phi4:14b
         agent_name: DeepCodeAgent
-        orchestration_instruction: file://prompts/orchestrator_prompts/DeepCodeAgent.md
-        system_instruction: file://prompts/orchestration_system_prompts/DeepCodeAgent.md
+        orchestrated_prompts: >
+        system_prompts: file://prompts/system_prompts/DeepCodeAgent.md
+        orchestrator_system_prompt: file://prompts/orchestrator_system_prompts/DeepCodeAgent.md
 
 profiles:
   active_profiles:

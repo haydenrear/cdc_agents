@@ -5,5 +5,5 @@
   "CodeRunnerAgent.md": "System instruction for CodeRunnerAgent - defines behavior for code execution, testing, and tool usage",
   "CdcCodegenAgent.md": "System instruction for CdcCodegenAgent - defines behavior for git commit generation and code implementation",
   "CdcCodeSearchAgent.md": "System instruction for CdcCodeSearchAgent - defines behavior for code context search and repository operations",
-  "DeepCodeAgent.md": "System instruction preamble for DeepCodeAgent - the agent that orchestrates other agents for completing software development tasks in an end to end way. This prompt is concatenated with the prompts provided by all the agents that it manages and then it's own orchestration system prompt, under the orchestration_system_prompts directory"
+  "DeepCodeAgent.md": "System instruction preamble for DeepCodeAgent - the agent that orchestrates other agents for completing software development tasks in an end to end way. This prompt is concatenated with the prompts provided by all the agents that it manages and then it's own orchestration system prompt, under the orchestrator_system_prompts directory"
 }

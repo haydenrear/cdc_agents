@@ -1,7 +1,7 @@
 ```properties
 Version=0.0.1
 AgentName=DeepCodeAgent
-PromptType=System Instruction
+PromptType=Orchestration System Prompt
 ```
 
 # DeepCodeAgent System Instruction

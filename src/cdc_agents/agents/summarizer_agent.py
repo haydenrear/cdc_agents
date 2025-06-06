@@ -20,7 +20,7 @@ class SummarizerAgent(DeepResearchOrchestrated, A2AReactAgent):
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
         DeepResearchOrchestrated.__init__(self, self_card)
 
-        A2AReactAgent.__init__(self,agent_config, [], self_card.agent_descriptor.system_instruction,
+        A2AReactAgent.__init__(self,agent_config, [], self_card.agent_descriptor.system_prompts,
                                memory_saver, model_provider)
 
     def do_collapse(self, message_state: list[BaseMessage], config) -> list[BaseMessage]:

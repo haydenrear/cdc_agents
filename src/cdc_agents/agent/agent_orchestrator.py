@@ -58,16 +58,16 @@ class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
 class OrchestratorAgent(abc.ABC):
 
     def __init__(self, self_card: AgentCardItem):
-        self._orchestration_message = self_card.agent_descriptor.orchestration_message
-        self._orchestration_prompt = self_card.agent_descriptor.system_instruction
+        self._orchestrator_system_prompt = self_card.agent_descriptor.orchestrator_system_prompt
+        self._orchestration_prompt = self_card.agent_descriptor.system_prompts
 
     @property
     def orchestration_prompt(self):
         return self._orchestration_prompt
 
     @property
-    def orchestration_messages(self):
-        return self._orchestration_message
+    def orchestrator_system_prompts(self):
+        return self._orchestrator_system_prompt
 
 
 class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):

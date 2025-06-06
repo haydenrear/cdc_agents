@@ -199,7 +199,7 @@ class DynamicA2AServer:
         try:
             tools = [importlib.import_module(t) for t in agent_descriptor.tools]
             model = agent_descriptor.model
-            system_instructions = agent_descriptor.system_instruction
+            system_promptss = agent_descriptor.system_prompts
 
             loaded = importlib.import_module(python_util.io_utils.file_dirs.create_py_import(to_write_to, __file__))
             notification_sender_auth = PushNotificationSenderAuth()
@@ -208,7 +208,7 @@ class DynamicA2AServer:
             for k, v in loaded.__dict__.items():
                 from cdc_agents.agent.a2a import A2AAgent
                 if isinstance(v, type) and reflection_utils.is_type_instance_of(A2AAgent, v):
-                    agent: A2AAgent = v(model, tools, system_instructions)
+                    agent: A2AAgent = v(model, tools, system_promptss)
                     importlib.import_module(agent_code.code)
                     _add_managed_agents(agent_card, self.agents)
                     agent_value = A2AServer(agent_card=agent_card,

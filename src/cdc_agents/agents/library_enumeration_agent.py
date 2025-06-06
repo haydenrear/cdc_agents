@@ -37,5 +37,5 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AReactAgent):
         A2AReactAgent.__init__(self,
                           agent_config,
                           [],
-                          self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
+                          self_card.agent_descriptor.system_prompts, memory_saver, model_provider)
 

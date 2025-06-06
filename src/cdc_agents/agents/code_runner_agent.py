@@ -78,7 +78,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                                    # self.produce_delete_code_execution_registration(),
                                    # self.produce_get_code_execution_registration(),
                                ],
-                               self_card.agent_descriptor.system_instruction,
+                               self_card.agent_descriptor.system_prompts,
                                memory_saver, model_provider)
         self.tool_call_decorator = tool_call_decorator
         self.cdc_server = cdc_server

@@ -80,7 +80,7 @@ class AgentServerRunner:
 
             task_manager = AgentTaskManager(agent=self.agents[name].agent, notification_sender_auth=notification_sender_auth)
             self.agents[name].agent.set_task_manager(task_manager)
-            self.agents[name].agent.system_instruction = a.agent_descriptor.system_instruction
+            self.agents[name].agent.system_prompts = a.agent_descriptor.system_prompts
             A2AServer(
                 agent_card=agent_card,
                 task_manager=task_manager,

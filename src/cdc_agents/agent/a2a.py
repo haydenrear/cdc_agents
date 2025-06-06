@@ -58,14 +58,14 @@ class BaseAgent(abc.ABC):
         return answer in last_message.content or any([answer in c for c in last_message.content])
 
 class A2AAgent(BaseAgent, abc.ABC):
-    def __init__(self, model=None, tools=None, system_instruction=None,
+    def __init__(self, model=None, tools=None, system_prompts=None,
                  memory: MemorySaver = MemorySaver(), content_types = None,
                  response_parsers: typing.Optional[typing.List[ResponseFormatParser]] = None):
         self._content_types = content_types if content_types is not None else ['text', 'text/plain']
         self.task_manager: typing.Optional[TaskManager] = None
         self.model = model
         self.tools = tools
-        self.system_instruction = system_instruction
+        self.system_prompts = system_prompts
         self.memory = memory
         self._agent_name = self.__class__.__name__
         self.AWAITING_RX = re.compile(
