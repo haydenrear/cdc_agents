@@ -1,10 +1,9 @@
 {
-  "SummarizerAgent.md": "Orchestrator instruction for SummarizerAgent - coordinates summarization of large volumes of contextual information",
-  "LibraryEnumerationAgent.md": "Orchestrator instruction for LibraryEnumerationAgent - coordinates discovery and cataloging of software libraries",
-  "HumanDelegateAgent.md": "Orchestrator instruction for HumanDelegateAgent - coordinates communication with human representatives",
-  "CodeRunnerAgent.md": "Orchestrator instruction for CodeRunnerAgent - coordinates code execution and validation workflows",
-  "CdcCodegenAgent.md": "Orchestrator instruction for CdcCodegenAgent - coordinates code generation using historical diffs",
-  "CdcCodeSearchAgent.md": "Orchestrator instruction for CdcCodeSearchAgent - coordinates code search and repository embedding operations",
-  "DeepCodeAgent.md": "Orchestrator instruction for DeepCodeAgent - coordinates deep code analysis and generation workflows",
-  "description": "This directory contains orchestrator prompts that coordinate and manage multi-agent workflows for complex code analysis and generation tasks"
+  "SummarizerAgent.md": "Orchestrator instruction provided by SummarizerAgent - coordinates summarization of large volumes of contextual information",
+  "LibraryEnumerationAgent.md": "Orchestrator instruction provided by LibraryEnumerationAgent - coordinates discovery of software libraries from web sources such as Github",
+  "HumanDelegateAgent.md": "Orchestrator instruction provided by HumanDelegateAgent - coordinates communication with human representatives",
+  "CodeRunnerAgent.md": "Orchestrator instruction provided by CodeRunnerAgent - coordinates code execution, validation, build, and deployment workflows",
+  "CdcCodegenAgent.md": "Orchestrator instruction provided by CdcCodegenAgent - coordinates code generation and workflows",
+  "CdcCodeSearchAgent.md": "Orchestrator instruction for CdcCodeSearchAgent - coordinates code search and repository embedding operations across multiple repositories",
+  "DeepCodeAgent.md": "Instruction for DeepCodeAgent - the agent that orchestrates other agents for completing software development tasks in an end to end way"
 }

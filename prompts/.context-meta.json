@@ -1,7 +1,7 @@
 {
   "description_prompts": "Contains the descriptions that are propagated to the users of the tools, providing a synopsis of the capabilities and the method of interaction.",
-  "orchestrator_prompts": "Prompts that are provided to the orchestrating agent, so that the orchestrating agent knows the capabilities of the agents it is managing. They are the prompts that go after the orchestrator",
+  "orchestrator_prompts": "Prompts that are provided to the orchestrating agent by the agent being orchestrated, so that the orchestrating agent knows the capabilities of the agents it is managing",
   "system_prompts": "Prompts that provide the system prompts for the agent.",
-  "orchestration_message_prompts": "Contains the second part of the system prompt for the agents that orchestrate other agents. This goes after the prompt associated for them in orchestrator_prompts and before the orchestrator_prompts prompt for the agents it manages.",
-  "completion_definition": "Prompts that provide a definition of what 'done' or 'complete' is for a particular agent, for the various capabilities of that agent. This is used by the orchestrator agent as input to determine whether the agent being managed has finished the task or sub-task"
+  "orchestration_message_prompts": "Contains the second part of the system prompt for the orchestrator agent: the agent that orchestrates other agents. It is appended to the end of the system prompt for the agent that orchestrates other agents, after each agent's message for the orchestrator agent describing it's capabilities, which are provided in orchestrator_prompts",
+  "completion_definition": "Prompts that provide a definition of what 'done' or 'complete' is for a particular agent, for the various capabilities of that agent. This is used by the orchestrator agent as input to determine whether the agent has finished the task or sub-task"
 }
