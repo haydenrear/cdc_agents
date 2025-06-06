@@ -4,6 +4,5 @@
   "HumanDelegateAgent.md": "Orchestrator instruction provided by HumanDelegateAgent - coordinates communication with human representatives",
   "CodeRunnerAgent.md": "Orchestrator instruction provided by CodeRunnerAgent - coordinates code execution, validation, build, and deployment workflows",
   "CdcCodegenAgent.md": "Orchestrator instruction provided by CdcCodegenAgent - coordinates code generation and workflows",
-  "CdcCodeSearchAgent.md": "Orchestrator instruction for CdcCodeSearchAgent - coordinates code search and repository embedding operations across multiple repositories",
-  "DeepCodeAgent.md": "Instruction for DeepCodeAgent - the agent that orchestrates other agents for completing software development tasks in an end to end way"
+  "CdcCodeSearchAgent.md": "Orchestrator instruction for CdcCodeSearchAgent - coordinates code search and repository embedding operations across multiple repositories"
 }

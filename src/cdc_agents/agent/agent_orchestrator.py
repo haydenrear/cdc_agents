@@ -59,7 +59,7 @@ class OrchestratorAgent(abc.ABC):
 
     def __init__(self, self_card: AgentCardItem):
         self._orchestration_message = self_card.agent_descriptor.orchestration_message
-        self._orchestration_prompt = self_card.agent_descriptor.orchestration_instruction
+        self._orchestration_prompt = self_card.agent_descriptor.system_instruction
 
     @property
     def orchestration_prompt(self):

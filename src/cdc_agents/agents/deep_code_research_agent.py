@@ -103,7 +103,6 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
 
         OrchestratorAgent.__init__(self, self_card)
 
-
         self.SYSTEM_INSTRUCTION = f"""
         {self.orchestration_prompt}
         {self._parse_agents_lines(orchestrator_prompts)}

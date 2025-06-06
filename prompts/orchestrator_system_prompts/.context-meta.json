@@ -1,0 +1,3 @@
+{
+  "DeepCodeAgent.md": "System prompt for DeepCodeAgent - provides the system prompt for the DeepCodeAgent, to be written after the orchestrator_prompts for all agents that it manages."
+}

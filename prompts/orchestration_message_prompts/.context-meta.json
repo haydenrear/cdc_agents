@@ -1,3 +1,0 @@
-{
-  "DeepCodeAgent.md": "Orchestration message instruction for DeepCodeAgent - provides the prompt preamble to be written before the orchestrator_prompts for each agent it manages."
-}
