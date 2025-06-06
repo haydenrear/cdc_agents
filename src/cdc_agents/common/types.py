@@ -1,5 +1,7 @@
 import abc
 import enum
+import os.path
+
 from langchain_core.runnables import AddableDict
 import typing
 from typing import Union, Any, Literal
@@ -8,13 +10,15 @@ from langchain_core.messages import ToolCall
 from pydantic import BaseModel, Field, TypeAdapter
 from typing import Literal, List, Annotated, Optional
 from datetime import datetime
-from pydantic import model_validator, ConfigDict, field_serializer
+from pydantic import model_validator, ConfigDict, field_serializer, field_validator
 from uuid import uuid4
 from enum import Enum
 from typing_extensions import Self
 
 from langchain_core.messages import BaseMessage
 from langgraph.types import Interrupt
+
+from python_util.io_utils.file_dirs import get_dir
 
 
 class TaskState(str, Enum):
@@ -343,7 +347,15 @@ class ModelDescriptor(BaseModel):
 
 def read_from_file_if(name: str):
     if name.startswith('file://'):
-        with open(name.replace('file://', ''), 'r') as f:
+        name = name.replace('file://', '')
+        if not os.path.exists(name):
+            name = os.path.join(os.environ['PROJ_HOME'], name)
+        if not os.path.exists(name):
+            raise ValueError(f"Could not find {name}")
+
+        if not os.path.exists(name):
+            name = get_dir(__file__, name)
+        with open(name, 'r') as f:
             lines = f.readlines()
             out_lines = []
             found_start_prompt = False
@@ -369,21 +381,25 @@ class AgentDescriptor(BaseModel):
     orchestration_instruction: str = None
     orchestration_message: str = None
 
-    @field_serializer('orchestrator_instruction')
-    def serialize_orchestrator_instruction(self, orchestrator_instruction: str):
-        return read_from_file_if(orchestrator_instruction)
+    @field_validator('orchestrator_instruction')
+    @classmethod
+    def serialize_orchestrator_instruction(cls, v: typing.Any):
+        return read_from_file_if(v)
 
-    @field_serializer('orchestration_instruction')
-    def serialize_orchestration_instruction(self, orchestration_instruction: str):
-        return read_from_file_if(orchestration_instruction)
+    @field_validator('orchestration_instruction')
+    @classmethod
+    def serialize_orchestration_instruction(cls, v: typing.Any):
+        return read_from_file_if(v)
 
-    @field_serializer('orchestration_message')
-    def serialize_orchestrator_message(self, orchestration_message: str):
-        return read_from_file_if(orchestration_message)
+    @field_validator('orchestration_message')
+    @classmethod
+    def serialize_orchestrator_message(cls, v: typing.Any):
+        return read_from_file_if(v)
 
-    @field_serializer('system_instruction')
-    def serialize_system_instruction(self, system_instruction: str):
-        return read_from_file_if(system_instruction)
+    @field_validator('system_instruction')
+    @classmethod
+    def serialize_system_instruction(cls, v: typing.Any):
+        return read_from_file_if(v)
 
 AgentCardForward = typing.ForwardRef("AgentCard")
 

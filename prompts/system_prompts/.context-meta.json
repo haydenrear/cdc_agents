@@ -4,7 +4,5 @@
   "HumanDelegateAgent.md": "System instruction for HumanDelegateAgent - defines behavior for human communication and session management",
   "CodeRunnerAgent.md": "System instruction for CodeRunnerAgent - defines behavior for code execution, testing, and tool usage",
   "CdcCodegenAgent.md": "System instruction for CdcCodegenAgent - defines behavior for git commit generation and code implementation",
-  "CdcCodeSearchAgent.md": "System instruction for CdcCodeSearchAgent - defines behavior for code context search and repository operations",
-  "DeepCodeOrchestrator.md": "System instruction for DeepCodeOrchestrator - defines behavior for high-level workflow coordination",
-  "DeepCodeAgent.md": "System instruction for DeepCodeAgent - defines behavior for advanced code analysis and generation"
+  "CdcCodeSearchAgent.md": "System instruction for CdcCodeSearchAgent - defines behavior for code context search and repository operations"
 }

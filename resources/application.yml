@@ -221,8 +221,8 @@ agent_config:
       agent_descriptor:
         agent_name: DeepCodeOrchestrator
         model: ollama_chat://ollama_chat/phi4:14b
-        orchestration_instruction: file://prompts/orchestrator_prompts/DeepCodeOrchestrator.md
-        system_instruction: file://prompts/system_prompts/DeepCodeOrchestrator.md
+        orchestration_instruction: >
+        orchestration_message: >
     DeepCodeAgent:
       agent_card:
         name: DeepCodeAgent
@@ -234,7 +234,7 @@ agent_config:
         model: ollama_chat://ollama_chat/phi4:14b
         agent_name: DeepCodeAgent
         orchestration_instruction: file://prompts/orchestrator_prompts/DeepCodeAgent.md
-        system_instruction: file://prompts/system_prompts/DeepCodeAgent.md
+        orchestration_message: file://prompts/orchestration_message_prompts/DeepCodeAgent.md
 
 profiles:
   active_profiles:

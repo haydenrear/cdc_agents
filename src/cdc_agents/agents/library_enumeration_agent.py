@@ -39,12 +39,3 @@ class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AReactAgent):
                           [],
                           self_card.agent_descriptor.system_instruction, memory_saver, model_provider)
 
-    @property
-    def orchestrator_prompt(self):
-        return """
-        An agent that identifies important dependencies in the repository to be included in the code search when including
-        code and code history in the context, and returns a mechanism for how those dependencies can be downloaded to be 
-        used in the downstream tasks. 
-        """
-
-

@@ -1,5 +1,6 @@
 {
   "description_prompts": "Contains the descriptions that are propagated to the users of the tools, providing a synopsis of the capabilities and the method of interaction.",
   "orchestrator_prompts": "Contains the prompts provided to the orchestrating agent, so that the orchestrating agent knows the capabilities of the agents it is managing.",
-  "system_prompts": "Contains the system prompts for the agent."
+  "system_prompts": "Contains the system prompts for the agent.",
+  "orchestration_message_prompts": "Contains the second part of the system prompt for the agents that orchestrator other agents. This goes after the prompt associated for them in orchestrator_prompts and the agents orchestrator_prompts for the agents it manages."
 }
