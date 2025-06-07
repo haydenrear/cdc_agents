@@ -27,8 +27,3 @@ class TestGraphCodeBuildAgent(CodeBuildAgent, TestGraphOrchestrated):
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
         CodeBuildAgent.__init__(self, agent_config, memory_saver, model_provider, cdc_server, tool_call_decorator)
         TestGraphOrchestrated.__init__(self, self_card)
-
-    @property
-    def agent_name(self) -> str:
-        return self.__class__.__name__
-
