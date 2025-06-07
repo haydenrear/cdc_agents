@@ -169,29 +169,26 @@ class A2AAgent(BaseAgent, abc.ABC):
                 r.add_status([self.completed, self.next_agent, self.needs_input_string], self.completed)
             if isinstance(r, NextAgentResponseFormatParser):
                 r.set_agents([self.__class__.__name__])
+
+
+        parsers = sorted(parsers, key=lambda p: p.ordering())
         return parsers
 
     def _do_get_res(self, values, is_completed = None):
         messages = values.get('messages')
         last_message: BaseMessage = messages[-1]
 
-        # Use injected parsers if available, otherwise use instance parsers
-        active_parsers = self._response_parsers
-
-        # Sort parsers by ordering
-        sorted_parsers = sorted(active_parsers, key=lambda p: p.ordering())
-
         # Initialize builder
         builder = ResponseFormatBuilder()
 
         # Apply all parsers in order
-        for parser in sorted_parsers:
+        for parser in self._response_parsers:
             builder = parser.parse(builder, last_message, values)
 
         # Build the final response format
         structured_response = builder.build()
 
-        is_task_completed = not structured_response.status or structured_response.status == self.completed
+        is_task_completed = not structured_response.status or structured_response.status.lower().startswith(self.completed.lower())
 
         if is_completed is not None:
             is_task_completed = is_completed

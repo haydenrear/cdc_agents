@@ -82,11 +82,10 @@ class ResponseFormatBuilder:
         except Exception:
             final_message = str(final_message) if final_message is not None else ""
 
-        # Ensure status is valid
-        valid_status = self.status if self.status in ["input_required", "completed", "error", "goto_agent"] else "completed"
+        assert self.status is not None
 
         return ResponseFormat(
-            status=valid_status,
+            status=self.status,
             message=final_message,
             history=self.history or [],
             route_to=self.route_to or self.next_agent
@@ -295,14 +294,14 @@ class StatusValidationResponseFormatParser(ResponseFormatParser):
         status = builder.status
         if status:
             did_any_status = False
-            for s in self.status:
-                if status.startswith(s):
+            for s in filter(lambda x: x is not None, self.status):
+                if status.lower().startswith(s.lower()):
                     builder.set_status(s)
                     did_any_status = True
                     break
 
             if not did_any_status:
-                LoggerFacade.info(f"Found unknown status token {status}.")
+                LoggerFacade.info(f"Found unknown status token {status} - setting to {self.completed_token}.")
                 builder.set_status(self.completed_token)
 
         return builder
