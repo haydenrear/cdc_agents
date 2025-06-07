@@ -12,8 +12,8 @@ from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 
 
-@component(bind_to=[A2AAgent, A2AReactAgent, TestGraphOrchestrated])
-@injectable()
+# @component(bind_to=[A2AAgent, A2AReactAgent, TestGraphOrchestrated])
+# @injectable()
 class TestGraphSummarizerAgent(SummarizerAgent, TestGraphOrchestrated):
     """
     TestGraph variant of SummarizerAgent specialized for test_graph integration workflows.
@@ -32,10 +32,6 @@ class TestGraphSummarizerAgent(SummarizerAgent, TestGraphOrchestrated):
         A2AReactAgent.__init__(self, agent_config, [],
                               self_card.agent_descriptor.system_prompts,
                               memory_saver, model_provider)
-
-    @property
-    def agent_name(self) -> str:
-        return self.__class__.__name__
 
     def do_collapse(self, message_state: list[BaseMessage], config) -> list[BaseMessage]:
         """
@@ -61,44 +57,3 @@ class TestGraphSummarizerAgent(SummarizerAgent, TestGraphOrchestrated):
         # Use parent collapse logic on filtered messages
         return super().do_collapse(preserved_messages, config)
 
-    def orchestrator_prompt(self) -> str:
-        """
-        Override to provide test_graph specific orchestration prompt.
-        """
-        return """
-TestGraphSummarizerAgent specializes in summarizing test_graph workflow outputs including:
-
-**Core Capabilities:**
-- Test execution result summarization
-- Build and deployment status consolidation
-- Service health and error analysis
-- Integration test outcome reporting
-- Validation result compilation
-
-**Test Context Focus:**
-- Preserves critical test execution data
-- Highlights build failures and successes
-- Tracks service dependency status
-- Maintains error context for debugging
-
-**Usage in TestGraph:**
-- Call after test execution phases
-- Use for consolidating build outputs
-- Employ for service status reporting
-- Utilize for final workflow summaries
-
-The agent optimizes for test-relevant information retention and provides concise summaries
-that maintain essential debugging and validation context for test_graph workflows.
-"""
-
-    def completion_definition(self) -> str:
-        """
-        Define completion criteria for test_graph summarization tasks.
-        """
-        return """
-TestGraphSummarizerAgent completes when:
-1. All requested test-related content has been summarized
-2. Key test results, errors, and status information are preserved
-3. Summary maintains essential context for test workflow decisions
-4. Output is formatted for consumption by other test_graph agents
-"""
