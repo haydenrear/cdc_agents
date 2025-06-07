@@ -2,7 +2,7 @@
   "SummarizerAgent.md": "Orchestrator instruction provided by SummarizerAgent - coordinates summarization of large volumes of contextual information",
   "LibraryEnumerationAgent.md": "Orchestrator instruction provided by LibraryEnumerationAgent - coordinates discovery of software libraries from web sources such as Github",
   "HumanDelegateAgent.md": "Orchestrator instruction provided by HumanDelegateAgent - coordinates communication with human representatives",
-  "CodeRunnerAgent.md": "Orchestrator instruction provided by CodeRunnerAgent - coordinates code execution, validation, build, and deployment workflows",
+  "TestRunnerAgent.md": "Orchestrator instruction provided by TestRunnerAgent - coordinates code execution, validation, build, and deployment workflows",
   "CdcCodegenAgent.md": "Orchestrator instruction provided by CdcCodegenAgent - coordinates code generation and workflows",
   "CdcCodeSearchAgent.md": "Orchestrator instruction for CdcCodeSearchAgent - coordinates code search and repository embedding operations across multiple repositories"
 }

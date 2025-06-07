@@ -30,8 +30,8 @@ FINAL ANSWER:
 
 Please evaluate the answer, and determine whether or not it meets the requirements or additional action is needed. For example,
 if the CdcCodeSearchAgent provides context, and then you call the CdcCodegenAgent, which provides a final answer,
-then, in order to validate the answer, you may apply the code changes and validate them using the CodeRunnerAgent,
-or generate some tests after applying the changes and run those with the CodeRunnerAgent. After the CodeRunnerAgent
+then, in order to validate the answer, you may apply the code changes and validate them using the TestRunnerAgent,
+or generate some tests after applying the changes and run those with the TestRunnerAgent. After the TestRunnerAgent
 provides feedback from running the code, you may need to revert the changes using git and delegate to the
 CdcCodegenAgent to provide the changes with updates to fix the errors provided.
 

@@ -58,15 +58,15 @@ class CodeExecutionRegistration(pydantic.BaseModel):
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
-class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
+class TestRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
     """Agent that provides tools for code execution based on the commit-diff-context GraphQL schema."""
 
     @injector.inject
-    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider, 
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
                  cdc_server: CdcServerConfigProps, tool_call_decorator: ToolCallDecorator):
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
         DeepResearchOrchestrated.__init__(self, self_card)
-        A2AReactAgent.__init__(self, agent_config, 
+        A2AReactAgent.__init__(self, agent_config,
                                [
                                    self.produce_execute_code(),
                                    self.produce_retrieve_executions(),
@@ -87,7 +87,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         @tool
         def execute_code(registration_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> CodeExecutionResult:
             """Execute code using a registered code execution configuration.
-            
+
             Args:
                 registration_id: ID of the registered code execution to run
 
@@ -108,14 +108,14 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             variables = {
                 "options": {
                     "registrationId": registration_id,
                     "sessionId": session_id
                 }
             }
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -131,13 +131,13 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 )
 
         return execute_code
-    
+
     def produce_execute_code_with_output_file(self):
         @tool
         def execute_code_with_output_file(registration_id: str, output_file_path: str, session_id: Annotated[str, InjectedState("session_id")],
                                          arguments: str = None, timeout_seconds: int = None) -> CodeExecutionResult:
             """Execute code and write the output to a file.
-            
+
             Args:
                 registration_id: ID of the registered code execution to run
                 output_file_path: Path where the output should be written
@@ -161,7 +161,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             variables = {
                 "options": {
                     "registrationId": registration_id,
@@ -172,7 +172,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 },
                 "outputFilePath": output_file_path
             }
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -191,10 +191,10 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
     def produce_register_code_execution(self):
         @tool
         def register_code_execution(registration_id: str, command: str, session_id: Annotated[str, InjectedState("session_id")], working_directory: str = None,
-                                   description: str = None, arguments: str = None, 
+                                   description: str = None, arguments: str = None,
                                    timeout_seconds: int = None, enabled: bool = True) -> CodeExecutionRegistration:
             """Register a new code execution configuration.
-            
+
             Args:
                 registration_id: Unique identifier for this code execution registration
                 command: The command to execute
@@ -220,7 +220,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             variables = {
                 "registration": {
                     "registrationId": registration_id,
@@ -233,7 +233,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     "sessionId": session_id
                 }
             }
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -257,7 +257,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                                                working_directory: str = None, arguments: str = None,
                                                timeout_seconds: int = None) -> CodeExecutionRegistration:
             """Update an existing code execution registration.
-            
+
             Args:
                 registration_id: ID of the registration to update
                 enabled: Optional new enabled status
@@ -286,12 +286,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             variables = {
                 "registrationId": registration_id,
                 "sessionId": session_id
             }
-            
+
             if enabled is not None:
                 variables["enabled"] = str(enabled)
             if command is not None:
@@ -302,7 +302,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 variables["arguments"] = arguments
             if timeout_seconds is not None:
                 variables["timeoutSeconds"] = str(timeout_seconds)
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -324,7 +324,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         @tool
         def delete_code_execution_registration(registration_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> bool:
             """Delete a code execution registration.
-            
+
             Args:
                 registration_id: ID of the registration to delete
 
@@ -336,12 +336,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 deleteCodeExecutionRegistration(registrationId: $registrationId)
             }
             """
-            
+
             variables = {
                 "registrationId": registration_id,
                 "sessionId": session_id
             }
-            
+
             try:
                 result = execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -360,7 +360,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         @tool
         def retrieve_executions() -> List[CodeExecution]:
             """Retrieve all code execution
-            
+
             Returns:
                 List of code executions
             """
@@ -379,7 +379,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -397,7 +397,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         @tool
         def retrieve_registrations() -> List[CodeExecutionRegistration]:
             """Retrieve all code execution registrations. You could use this method to retrieve the registrations to retrieve a particular registration id to call the execute_code function, to run the code.
-            
+
             Returns:
                 List of code execution registrations for commands that can be run, so you can run the code by retrieving their registration id.
             """
@@ -414,7 +414,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -432,7 +432,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         @tool
         def get_code_execution_registration(registration_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> CodeExecutionRegistration:
             """Get a specific code execution registration by the registration_id.
-            
+
             Args:
                 registration_id: ID of the registration to get
 
@@ -452,12 +452,12 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             variables = {
                 "registrationId": registration_id,
                 "sessionId": session_id
             }
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -479,7 +479,7 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
         @tool
         def get_execution_output(execution_id: str, session_id: Annotated[str, InjectedState("session_id")]) -> CodeExecutionResult:
             """Get the output of a specific code execution.
-            
+
             Args:
                 execution_id: ID of the execution to get output for
 
@@ -500,11 +500,11 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                 }
             }
             """
-            
+
             variables = {
                 "executionId": execution_id
             }
-            
+
             try:
                 return execute_graphql_request(
                     endpoint=self.cdc_server.graphql_endpoint,
@@ -519,4 +519,3 @@ class CodeRunnerAgent(DeepResearchOrchestrated, A2AReactAgent):
                     error=[Error(message=f"Failed to get execution output: {str(e)}")]
                 )
         return get_execution_output
-
