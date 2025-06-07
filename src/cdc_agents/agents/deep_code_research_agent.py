@@ -108,6 +108,7 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
         {self._parse_agents_lines(orchestrated_prompts)}
         {self.orchestrator_system_prompts}
         """
+
         A2AReactAgent.__init__(self, agent_config, [], self.SYSTEM_INSTRUCTION, memory_saver,
                                model_provider)
 
