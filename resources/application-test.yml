@@ -1,2 +1,4 @@
 runner:
   runner_option: SKIP
+checkpoint:
+  uri: postgresql://postgres:postgres@localhost:5450/postgres?sslmode=disable

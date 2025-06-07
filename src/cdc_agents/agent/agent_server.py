@@ -72,7 +72,7 @@ class AgentServerRunner:
         for name, a in self.agent_config_props.agents.items():
             agent_card = a.agent_card
 
-            if not a.enabled:
+            if not a.exposed_externally:
                 continue
 
             if name not in self.agents.keys():

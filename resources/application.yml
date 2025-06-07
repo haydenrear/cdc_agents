@@ -30,7 +30,7 @@ agent_config:
   orchestrator_max_recurs: 100
   agents:
     SummarizerAgent:
-      enabled: false
+      exposed_externally: false
       mcp_tools:
         memory:
           name: memory
@@ -219,6 +219,7 @@ agent_config:
         orchestrator_graph_agent_completion_prompt: file://prompts/orchestrator_graph_agent_completion_prompts/StateGraphOrchestratorAgentCompletion.md
         orchestrator_graph_agent_tool_completion_prompt: file://prompts/orchestrator_graph_agent_completion_prompts/StateGraphOrchestratorAgentToolCompletion.md
     DeepCodeAgent:
+      exposed_externally: false
       agent_card:
         name: DeepCodeAgent
         path: /deep-code

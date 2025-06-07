@@ -48,7 +48,7 @@ def _add_managed_agents(agent_card: AgentCard, agent_config_props):
 def _add_all_managed_agents(agent_config_props: AgentConfigProps):
     for name, a in agent_config_props.agents.items():
         LoggerFacade.info(f"Loading agent: {name}")
-        if a.enabled:
+        if a.exposed_externally:
             _add_managed_agents(a.agent_card, agent_config_props)
 
 def create_json_response(result: Any) -> JSONResponse | EventSourceResponse:

@@ -81,8 +81,6 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
         A2AReactAgent.__init__(self, agent_config, [], self.SYSTEM_INSTRUCTION, memory_saver,
                                model_provider)
 
-
-
     def invoke(self, query, sessionId) -> AgentGraphResponse:
         config = self._parse_query_config(sessionId)
         if isinstance(query, dict) and "messages" in query.keys():

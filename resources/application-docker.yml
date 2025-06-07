@@ -1,0 +1,14 @@
+runner:
+  runner_option: SKIP
+
+cdc_server:
+  graphql_endpoint: http://host.docker.internal:8080/graphql
+model_server:
+  host: localhost
+  port: 9991
+
+human_delegate:
+  base_dir: ./human_delegate_data
+
+checkpoint:
+  uri: postgresql://postgres:postgres@host.docker.internal:5450/postgres?sslmode=disable
