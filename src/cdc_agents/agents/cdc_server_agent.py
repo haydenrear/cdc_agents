@@ -582,7 +582,7 @@ class CdcServerAgentToolCallProvider:
         return reset_any_staged
 
 
-class CodeSearchAgent(A2AReactAgent):
+class BaseCdcCodeSearchAgent(A2AReactAgent):
     """Base code search agent that can be orchestrated by different orchestration types."""
 
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
@@ -604,7 +604,7 @@ class CodeSearchAgent(A2AReactAgent):
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
-class CdcCodeSearchAgent(CodeSearchAgent, DeepResearchOrchestrated):
+class CdcCodeSearchAgent(BaseCdcCodeSearchAgent, DeepResearchOrchestrated):
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
@@ -612,7 +612,7 @@ class CdcCodeSearchAgent(CodeSearchAgent, DeepResearchOrchestrated):
         super().__init__(agent_config, memory_saver, model_provider, cdc_server, tool_call_provider, DeepResearchOrchestrated)
 
 
-class CodegenAgent(A2AReactAgent):
+class BaseCdcCodegenAgent(A2AReactAgent):
     """Base code generation agent that can be orchestrated by different orchestration types."""
 
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver,
@@ -631,7 +631,7 @@ class CodegenAgent(A2AReactAgent):
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
-class CdcCodegenAgent(CodegenAgent, DeepResearchOrchestrated):
+class CdcCodegenAgent(BaseCdcCodegenAgent, DeepResearchOrchestrated):
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver,

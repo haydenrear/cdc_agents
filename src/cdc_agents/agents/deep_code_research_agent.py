@@ -17,48 +17,6 @@ from python_di.configs.autowire import injectable
 from python_di.configs.component import component
 
 
-@tool
-def rate_codegen_trajectory():
-    """Suffering from collapse? Each time, we check to see whether we should revert to previous state.
-    :return:
-    """
-    pass
-
-@tool
-def refactor_advisory():
-    """
-    :return:
-    """
-    pass
-
-@tool
-def dead_code_advisory():
-    """
-    :return:
-    """
-    pass
-
-@tool
-def review_test_validity():
-    """Are we actually testing something?
-    :return:
-    """
-    pass
-
-@tool
-def review_business_requirement():
-    """Did we resolve anything?
-    :return:
-    """
-    pass
-
-@tool
-def is_agent_response_refinable():
-    """Should we ask the agent to try again?
-    :return:
-    """
-    pass
-
 @component(bind_to=[A2AAgent, A2AReactAgent])
 @injectable()
 class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):

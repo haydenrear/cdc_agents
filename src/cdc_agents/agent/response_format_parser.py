@@ -142,6 +142,11 @@ class StatusResponseFormatParser(ResponseFormatParser):
             """,
             re.IGNORECASE | re.VERBOSE | re.MULTILINE
         )
+        self.status = set([])
+
+    def add_status(self, status):
+        for s in status:
+            self.status.add(s)
 
     def parse(self, builder: ResponseFormatBuilder, last_message: BaseMessage, values: Dict[str, Any]) -> ResponseFormatBuilder:
         if builder.is_tool_message:
@@ -157,7 +162,10 @@ class StatusResponseFormatParser(ResponseFormatParser):
             if status_token == 'input_needed':
                 status_token = "input_required"
 
-            builder.set_status(status_token)
+            if status_token in self.status:
+                builder.set_status(status_token)
+            else:
+                LoggerFacade.error(f"Found unknown status token {status_token}")
 
             # Remove the status header from content
             header_end = content.find("\n", match.end())
@@ -183,6 +191,11 @@ class NextAgentResponseFormatParser(ResponseFormatParser):
 
     def __init__(self):
         self.NEXT_AGENT_RX = re.compile(r"NEXT AGENT\s*:\s*(?P<state>[A-Za-z0-9_]+)", re.IGNORECASE)
+        self.possible_agents = set([])
+
+    def set_agents(self, agents):
+        for a in agents:
+            self.possible_agents.add(a)
 
     def parse(self, builder: ResponseFormatBuilder, last_message: BaseMessage, values: Dict[str, Any]) -> ResponseFormatBuilder:
         if builder.is_tool_message:
@@ -196,8 +209,10 @@ class NextAgentResponseFormatParser(ResponseFormatParser):
                 agent = self._get_match_group(match)
                 if agent == 'skip':
                     agent = None
-                if agent:
+                elif agent is not None and agent in self.possible_agents:
                     builder.set_next_agent(agent)
+                else:
+                    LoggerFacade.error(f"Found unknown agent {agent}")
                 break
 
         return builder
@@ -236,12 +251,12 @@ class AdditionalContextResponseFormatParser(ResponseFormatParser):
                     found_ctx = True
             else:
                 # Continue accumulating additional context lines
-                if additional_ctx is None:
+                if additional_ctx is None and line is not None and len(line) != 0:
                     additional_ctx = line
-                else:
+                elif line is not None and len(line) != 0:
                     additional_ctx += '\n' + line
 
-        if additional_ctx is not None:
+        if additional_ctx is not None and len(additional_ctx) != 0:
             builder.set_additional_context(additional_ctx)
 
         return builder
@@ -260,15 +275,35 @@ class AdditionalContextResponseFormatParser(ResponseFormatParser):
 @injectable()
 class StatusValidationResponseFormatParser(ResponseFormatParser):
     """Parser to validate and normalize status values."""
+    def __init__(self):
+        self.status = set([])
+        self.completed_token = None
+
+    def add_status(self, status, completed_status):
+        for s in status:
+            self.status.add(s)
+        self.completed_token = completed_status
+
 
     def parse(self, builder: ResponseFormatBuilder, last_message: BaseMessage, values: Dict[str, Any]) -> ResponseFormatBuilder:
+        if not self.completed_token:
+            raise NotImplementedError("Did not initialize status.")
+
         if builder.is_tool_message:
             return builder
 
         status = builder.status
-        if status and status not in ["completed", "goto_agent", "input_required"]:
-            LoggerFacade.info(f"Found unknown status token {status}.")
-            builder.set_status("completed")
+        if status:
+            did_any_status = False
+            for s in self.status:
+                if status.startswith(s):
+                    builder.set_status(s)
+                    did_any_status = True
+                    break
+
+            if not did_any_status:
+                LoggerFacade.info(f"Found unknown status token {status}.")
+                builder.set_status(self.completed_token)
 
         return builder
 

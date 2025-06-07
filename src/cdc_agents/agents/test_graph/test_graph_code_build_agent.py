@@ -24,4 +24,5 @@ class TestGraphCodeBuildAgent(BuildAgent, TestGraphOrchestrated):
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
                  cdc_server: CdcServerConfigProps, tool_call_decorator: ToolCallDecorator):
-        BuildAgent.__init__(self, agent_config, memory_saver, model_provider, cdc_server, tool_call_decorator, TestGraphOrchestrated)
+        BuildAgent.__init__(self, agent_config, memory_saver, model_provider, cdc_server, tool_call_decorator,
+                            TestGraphOrchestrated)

@@ -59,8 +59,8 @@ class BaseAgent(abc.ABC):
 
 class A2AAgent(BaseAgent, abc.ABC):
     def __init__(self, model=None, tools=None, system_prompts=None,
-                 memory: MemorySaver = MemorySaver(), content_types = None,
-                 response_parsers: typing.Optional[typing.List[ResponseFormatParser]] = None):
+                 memory: MemorySaver = MemorySaver(), content_types = None):
+        self._response_parsers = self.initialize_response_format_parsers()
         self._content_types = content_types if content_types is not None else ['text', 'text/plain']
         self.task_manager: typing.Optional[TaskManager] = None
         self.model = model
@@ -79,13 +79,6 @@ class A2AAgent(BaseAgent, abc.ABC):
             )
 
         # Initialize response format parsers - use injected parsers if available, otherwise default ones
-        self._response_parsers = response_parsers or [
-            MessageTypeResponseFormatParser(),
-            StatusResponseFormatParser(),
-            NextAgentResponseFormatParser(),
-            AdditionalContextResponseFormatParser(),
-            StatusValidationResponseFormatParser()
-        ]
 
     def peek_to_process_task(self, session_id) -> typing.Optional[Message]:
         if not self.task_manager:
@@ -168,13 +161,22 @@ class A2AAgent(BaseAgent, abc.ABC):
         'values': InjectionDescriptor(injection_ty=InjectionType.Provided),
         'is_completed': InjectionDescriptor(injection_ty=InjectionType.Provided)
     })
-    def _do_get_res(self, values, is_completed = None,
-                    parsers: typing.List[ResponseFormatParser] = None):
+    def initialize_response_format_parsers(self, parsers: typing.List[ResponseFormatParser] = None):
+        for r in parsers:
+            if isinstance(r, StatusResponseFormatParser):
+                r.add_status([self.completed, self.next_agent, self.needs_input_string])
+            if isinstance(r, StatusValidationResponseFormatParser):
+                r.add_status([self.completed, self.next_agent, self.needs_input_string], self.completed)
+            if isinstance(r, NextAgentResponseFormatParser):
+                r.set_agents([self.__class__.__name__])
+        return parsers
+
+    def _do_get_res(self, values, is_completed = None):
         messages = values.get('messages')
         last_message: BaseMessage = messages[-1]
 
         # Use injected parsers if available, otherwise use instance parsers
-        active_parsers = parsers if parsers is not None else self._response_parsers
+        active_parsers = self._response_parsers
 
         # Sort parsers by ordering
         sorted_parsers = sorted(active_parsers, key=lambda p: p.ordering())
@@ -189,8 +191,8 @@ class A2AAgent(BaseAgent, abc.ABC):
         # Build the final response format
         structured_response = builder.build()
 
-        # Determine task completion status
-        is_task_completed = structured_response.status == self.completed
+        is_task_completed = not structured_response.status or structured_response.status == self.completed
+
         if is_completed is not None:
             is_task_completed = is_completed
         elif builder.is_tool_message:
