@@ -115,7 +115,7 @@ class CdcServerAgentToolCallProvider:
                     operations = [action.value if isinstance(action, GitAction) else str(action)
                                   for action in actions_to_perform]
             else:
-                return _git_repo_result_err("""No valid operation provided. Could not call server with nothing to do. 
+                return _git_repo_result_err("""No valid operation provided. Could not call server with nothing to do.
                                                Options are ADD_BRANCH, REMOVE_BRANCH, REMOVE_REPO, PARSE_BLAME_TREE, SET_EMBEDDINGS, ADD_REPO.""")
 
             # Construct GraphQL query
@@ -405,7 +405,7 @@ class CdcServerAgentToolCallProvider:
                                 name
                                 linesWithLineNumbers
                             }
-                        } 
+                        }
                     }
                     error {
                         message
@@ -466,7 +466,7 @@ class CdcServerAgentToolCallProvider:
                             name
                             linesWithLineNumbers
                         }
-                    } 
+                    }
                 }
                 error {
                     message
@@ -547,7 +547,7 @@ class CdcServerAgentToolCallProvider:
                                 name
                                 linesWithLineNumbers
                             }
-                        } 
+                        }
                     }
                     error {
                         message
@@ -582,16 +582,15 @@ class CdcServerAgentToolCallProvider:
         return reset_any_staged
 
 
-@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
-@injectable()
-class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
+class CodeSearchAgent(A2AReactAgent):
+    """Base code search agent that can be orchestrated by different orchestration types."""
 
-    @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
-                 cdc_server: CdcServerConfigProps, tool_call_provider: CdcServerAgentToolCallProvider):
+                 cdc_server: CdcServerConfigProps, tool_call_provider: CdcServerAgentToolCallProvider,
+                 orchestration_type: type):
         self.tool_call_provider = tool_call_provider
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
-        DeepResearchOrchestrated.__init__(self, self_card)
+        orchestration_type.__init__(self, self_card)
         A2AReactAgent.__init__(self, agent_config,
                                [
                                   self.tool_call_provider.produce_retrieve_commit_diff_code_context(),
@@ -605,17 +604,36 @@ class CdcCodeSearchAgent(DeepResearchOrchestrated, A2AReactAgent):
 
 @component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
 @injectable()
-class CdcCodegenAgent(DeepResearchOrchestrated, A2AReactAgent):
+class CdcCodeSearchAgent(CodeSearchAgent, DeepResearchOrchestrated):
+
+    @injector.inject
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
+                 cdc_server: CdcServerConfigProps, tool_call_provider: CdcServerAgentToolCallProvider):
+        super().__init__(agent_config, memory_saver, model_provider, cdc_server, tool_call_provider, DeepResearchOrchestrated)
+
+
+class CodegenAgent(A2AReactAgent):
+    """Base code generation agent that can be orchestrated by different orchestration types."""
+
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver,
+                 model_provider: ModelProvider, cdc_server: CdcServerConfigProps,
+                 tool_call_provider: CdcServerAgentToolCallProvider, orchestration_type: type):
+        self.tool_call_provider = tool_call_provider
+        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
+        orchestration_type.__init__(self, self_card)
+        A2AReactAgent.__init__(self, agent_config,
+                               [
+                                   self.tool_call_provider.produce_retrieve_next_code_commit(),
+                                   self.tool_call_provider.produce_retrieve_and_apply_code_commit(),
+                               ],
+                               self_card.agent_descriptor.system_prompts, memory_saver, model_provider)
+
+
+@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
+@injectable()
+class CdcCodegenAgent(CodegenAgent, DeepResearchOrchestrated):
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver,
                  model_provider: ModelProvider, cdc_server: CdcServerConfigProps, tool_call_provider: CdcServerAgentToolCallProvider):
-        self.tool_call_provider = tool_call_provider
-        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
-        DeepResearchOrchestrated.__init__(self, self_card)
-        A2AReactAgent.__init__(self, agent_config,
-                               [
-                                   self.tool_call_provider.produce_retrieve_next_code_commit(),
-                                   self.tool_call_provider.produce_retrieve_and_apply_code_commit()
-                               ],
-                               self_card.agent_descriptor.system_prompts, memory_saver, model_provider)
+        super().__init__(agent_config, memory_saver, model_provider, cdc_server, tool_call_provider, DeepResearchOrchestrated)

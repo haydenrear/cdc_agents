@@ -21,15 +21,15 @@ from cdc_agents.model_server.model_provider import ModelProvider
 from python_util.logger.logger import LoggerFacade
 
 
-class DeepResearchOrchestrated(BaseAgent, abc.ABC):
+class BaseOrchestrated(BaseAgent, abc.ABC):
+    """
+    Base class for orchestrated agents that provides common orchestration functionality.
+    """
 
     def __init__(self, agent: AgentCardItem):
         self._orchestrator_prompt = agent.agent_descriptor.orchestrated_prompts
         self._completion_definition = agent.agent_descriptor.completion_definition
 
-    """
-    Marker interface for DI, marking the agents being orchestrated.
-    """
     @property
     def orchestrator_prompt(self):
         """
@@ -45,33 +45,23 @@ class DeepResearchOrchestrated(BaseAgent, abc.ABC):
         return self._completion_definition
 
 
-class TestGraphOrchestrated(BaseAgent, abc.ABC):
+class DeepResearchOrchestrated(BaseOrchestrated, abc.ABC):
+    """
+    Marker interface for DI, marking the agents being orchestrated by DeepResearch workflows.
+    """
 
     def __init__(self, agent: AgentCardItem):
-        self._orchestrator_prompt = agent.agent_descriptor.orchestrated_prompts
-        self._completion_definition = agent.agent_descriptor.completion_definition
+        super().__init__(agent)
 
+
+class TestGraphOrchestrated(BaseOrchestrated, abc.ABC):
     """
     Marker interface for DI, marking the agents being orchestrated by TestGraph workflows.
     """
-    @property
-    def orchestrator_prompt(self):
-        """
-        :return: what information to provide the test graph orchestrator in a prompt.
-        """
-        return self._orchestrator_prompt
 
-    @property
-    def completion_definition(self):
-        """
-        :return: what defines 'done' or 'complete' for this agent in test graph context.
-        """
-        return self._completion_definition
+    def __init__(self, agent: AgentCardItem):
+        super().__init__(agent)
 
-    @property
-    def supports_test_graph(self) -> bool:
-        """Indicates this agent supports test_graph operations"""
-        return True
 
 @dataclasses.dataclass(init=True)
 class NextAgentResponse:

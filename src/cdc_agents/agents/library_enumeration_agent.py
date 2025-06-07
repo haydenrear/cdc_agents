@@ -26,16 +26,22 @@ def search_gitlab_for_sources():
     pass
 
 
-@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
-@injectable()
-class LibraryEnumerationAgent(DeepResearchOrchestrated, A2AReactAgent):
+class LibraryEnumerationBaseAgent(A2AReactAgent):
+    """Base library enumeration agent that can be orchestrated by different orchestration types."""
 
-    @injector.inject
-    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider, orchestration_type: type):
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
-        DeepResearchOrchestrated.__init__(self, self_card)
+        orchestration_type.__init__(self, self_card)
         A2AReactAgent.__init__(self,
                           agent_config,
                           [],
                           self_card.agent_descriptor.system_prompts, memory_saver, model_provider)
 
+
+@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
+@injectable()
+class LibraryEnumerationAgent(LibraryEnumerationBaseAgent, DeepResearchOrchestrated):
+
+    @injector.inject
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider):
+        super().__init__(agent_config, memory_saver, model_provider, DeepResearchOrchestrated)

@@ -4,7 +4,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.agent.agent import A2AAgent, A2AReactAgent
 from cdc_agents.agent.agent_orchestrator import TestGraphOrchestrated
-from cdc_agents.agents.human_delegate_agent import HumanDelegateAgent
+from cdc_agents.agents.human_delegate_agent import HumanDelegateBaseAgent
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.config.human_delegate_config_props import HumanDelegateConfigProps
@@ -16,7 +16,7 @@ from python_di.configs.component import component
 
 @component(bind_to=[A2AAgent, A2AReactAgent, TestGraphOrchestrated])
 @injectable()
-class TestGraphHumanDelegateAgent(HumanDelegateAgent, TestGraphOrchestrated):
+class TestGraphHumanDelegateAgent(HumanDelegateBaseAgent, TestGraphOrchestrated):
     """
     TestGraph variant of HumanDelegateAgent specialized for test_graph integration workflows.
     Focuses on delegating test validation, test result review, and manual test execution to humans.
@@ -24,9 +24,5 @@ class TestGraphHumanDelegateAgent(HumanDelegateAgent, TestGraphOrchestrated):
 
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
-                 cdc_server: HumanDelegateConfigProps):
-        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
-        HumanDelegateAgent.__init__(self, agent_config, memory_saver, model_provider, cdc_server)
-        TestGraphOrchestrated.__init__(self, self_card)
-
-
+                 config_props: HumanDelegateConfigProps):
+        HumanDelegateBaseAgent.__init__(self, agent_config, memory_saver, model_provider, config_props, TestGraphOrchestrated)

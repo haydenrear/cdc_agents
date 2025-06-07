@@ -58,16 +58,13 @@ class CodeBuildRegistration(pydantic.BaseModel):
     artifactOutputDirectory: Optional[str] = None
     executionType: Optional[str] = None
 
-@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
-@injectable()
-class CodeBuildAgent(DeepResearchOrchestrated, A2AReactAgent):
-    """Agent that provides tools for building code based on the commit-diff-context GraphQL schema."""
+class BuildAgent(A2AReactAgent):
+    """Base build agent that can be orchestrated by different orchestration types."""
 
-    @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
-                 cdc_server: CdcServerConfigProps, tool_call_decorator: ToolCallDecorator):
+                 cdc_server: CdcServerConfigProps, tool_call_decorator: ToolCallDecorator, orchestration_type: type):
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
-        DeepResearchOrchestrated.__init__(self, self_card)
+        orchestration_type.__init__(self, self_card)
         A2AReactAgent.__init__(self, agent_config,
                                [
                                    self.produce_build_code(),
@@ -529,3 +526,14 @@ class CodeBuildAgent(DeepResearchOrchestrated, A2AReactAgent):
                 return None
 
         return get_build_output
+
+
+@component(bind_to=[DeepResearchOrchestrated, A2AAgent, A2AReactAgent])
+@injectable()
+class CodeBuildAgent(BuildAgent, DeepResearchOrchestrated):
+    """Agent that provides tools for building code based on the commit-diff-context GraphQL schema."""
+
+    @injector.inject
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
+                 cdc_server: CdcServerConfigProps, tool_call_decorator: ToolCallDecorator):
+        super().__init__(agent_config, memory_saver, model_provider, cdc_server, tool_call_decorator, DeepResearchOrchestrated)
