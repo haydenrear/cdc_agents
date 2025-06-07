@@ -20,7 +20,7 @@ from python_di.configs.component import component
 
 @component(bind_to=[A2AAgent, A2AReactAgent])
 @injectable()
-class TestGraphAgent(DeepCodeAgent):
+class TestGraphAgent(A2AReactAgent, OrchestratorAgent):
     """
     Orchestrator agent for test_graph integration that manages code generation,
     dependency building, and integration test execution. Acts as a sub-graph
@@ -33,7 +33,8 @@ class TestGraphAgent(DeepCodeAgent):
                  memory_saver: MemorySaver,
                  agents: typing.List[TestGraphOrchestrated],
                  model_provider: ModelProvider):
-        DeepCodeAgent.__init__(self, agent_config, memory_saver, agents, model_provider)
+        OrchestratorAgent.__init__(self, agent_config, memory_saver, agents, model_provider)
+
 
 
 @component(bind_to=[A2AAgent, A2AReactAgent, StateGraphOrchestrator, DeepResearchOrchestrated])

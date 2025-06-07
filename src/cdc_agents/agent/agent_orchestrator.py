@@ -101,9 +101,34 @@ class DelegatingToolA2AAgentOrchestrator(AgentOrchestrator, abc.ABC):
 
 class OrchestratorAgent(abc.ABC):
 
-    def __init__(self, self_card: AgentCardItem):
+    def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver,
+                 agents: typing.List[BaseOrchestrated], model_provider: ModelProvider):
+        orchestrated_agents: dict[str, BaseOrchestrated] = {a.agent_name: a for a in agents}
+
+        self_card: AgentCardItem = agent_config.agents.get(self.__class__.__name__)
         self._orchestrator_system_prompt = self_card.agent_descriptor.orchestrator_system_prompt
         self._orchestration_prompt = self_card.agent_descriptor.system_prompts
+
+        self.SYSTEM_INSTRUCTION = self.create_orchestrator_system_prompt(orchestrated_agents)
+
+        A2AReactAgent.__init__(self, agent_config, [], self.SYSTEM_INSTRUCTION, memory_saver,
+                               model_provider)
+
+    def invoke(self, query, sessionId) -> AgentGraphResponse:
+        config = self._parse_query_config(sessionId)
+        if isinstance(query, dict) and "messages" in query.keys():
+            self.graph.invoke(query, config)
+        else:
+            self.graph.invoke({"messages": [{"content": query}]}, config)
+
+        return self.get_agent_response(config)
+
+    def stream(self, query, sessionId, graph=None) -> AsyncIterable[Dict[str, Any]]:
+        return self.stream_agent_response_graph(query, sessionId, self.graph)
+
+    def get_agent_response(self, config, graph=None):
+        return self.get_agent_response_graph(config, self.graph)
+
 
     @property
     def orchestration_prompt(self):
