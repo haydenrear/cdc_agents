@@ -10,10 +10,13 @@ from starlette.applications import Starlette
 from cdc_agents.agent.agent_server import AgentServerRunner
 from cdc_agents.agent.response_format_parser import ResponseFormatParser
 from cdc_agents.agents.cdc_server_agent import CdcCodeSearchAgent
+from cdc_agents.agents.code_build_agent import CodeBuildAgent
+from cdc_agents.agents.code_deploy_agent import CodeDeployAgent
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator, DeepCodeAgent
 from cdc_agents.agents.human_delegate_agent import HumanDelegateAgent
 from cdc_agents.agents.library_enumeration_agent import LibraryEnumerationAgent
 from cdc_agents.agents.summarizer_agent import SummarizerAgent
+from cdc_agents.agents.test_runner_agent import TestRunnerAgent
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
 from cdc_agents.config.checkpoint_config_props import CheckpointConfigProps
@@ -88,7 +91,8 @@ class JsonSerializationProtocol(UntypedSerializerProtocol):
                                                HumanDelegateConfigProps, RunnerConfigProps, ToolCallProps, SecretConfigProps])
 @component_scan(base_classes=[ModelServerModel, CdcCodeSearchAgent, DeepCodeAgent,
                               DeepCodeOrchestrator, ModelProvider, AgentServerRunner, HumanDelegateAgent,
-                              SummarizerAgent, LibraryEnumerationAgent, ToolCallDecorator, ResponseFormatParser])
+                              SummarizerAgent, LibraryEnumerationAgent, ToolCallDecorator, ResponseFormatParser,
+                              TestRunnerAgent, CodeBuildAgent, CodeDeployAgent])
 class AgentConfig:
 
     @bean(profile='test', scope=profile_scope, bindings=[Starlette])

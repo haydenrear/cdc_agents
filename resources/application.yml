@@ -112,35 +112,6 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agent.agent.test_runner_agent.TestRunnerAgent
       mcp_tools:
-        git:
-          stop_tool: container_id=$(docker ps | grep mcp/git-code-runner | awk '{print $1}') [ -n "$container_id" ] && docker stop "$container_id" >/dev/null 2>&1
-          name: git
-          tool_prompt: "Use git tool"
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /Users/hayde/IdeaProjects/drools:/Users/hayde/IdeaProjects/drools
-              - mcp/git-test-runner
-            env:
-        filesystem:
-          name: filesystem
-          tool_prompt: >
-            Use file system tool to search the file system for repositories, paths, or other data.
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /Users/hayde/IdeaProjects:/Users/hayde/IdeaProjects
-              - mcp/filesystem-test-runner
-              - /Users/hayde/IdeaProjects
-            env:
     CodeBuildAgent:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
@@ -154,35 +125,6 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agents.code_build_agent.CodeBuildAgent
       mcp_tools:
-        git:
-          stop_tool: container_id=$(docker ps | grep mcp/git-code-build | awk '{print $1}') [ -n "$container_id" ] && docker stop "$container_id" >/dev/null 2>&1
-          name: git
-          tool_prompt: "Use git tool for build operations"
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /Users/hayde/IdeaProjects/drools:/Users/hayde/IdeaProjects/drools
-              - mcp/git-code-build
-            env:
-        filesystem:
-          name: filesystem
-          tool_prompt: >
-            Use file system tool to search the file system for build configurations, source code, and build artifacts.
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /Users/hayde/IdeaProjects:/Users/hayde/IdeaProjects
-              - mcp/filesystem-code-build
-              - /Users/hayde/IdeaProjects
-            env:
     CodeDeployAgent:
       agent_descriptor:
         model: ollama_chat://ollama_chat/hermes3:8b
@@ -196,35 +138,6 @@ agent_config:
         version: 0.0.1
       agent_clazz: cdc_agents.agents.code_deploy_agent.CodeDeployAgent
       mcp_tools:
-        git:
-          stop_tool: container_id=$(docker ps | grep mcp/git-code-deploy | awk '{print $1}') [ -n "$container_id" ] && docker stop "$container_id" >/dev/null 2>&1
-          name: git
-          tool_prompt: "Use git tool for deployment operations"
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /Users/hayde/IdeaProjects/drools:/Users/hayde/IdeaProjects/drools
-              - mcp/git-code-deploy
-            env:
-        filesystem:
-          name: filesystem
-          tool_prompt: >
-            Use file system tool to search the file system for deployment configurations, infrastructure code, and deployment artifacts.
-          tool_options:
-            command: docker
-            args:
-              - run
-              - -i
-              - --rm
-              - -v
-              - /Users/hayde/IdeaProjects:/Users/hayde/IdeaProjects
-              - mcp/filesystem-code-deploy
-              - /Users/hayde/IdeaProjects
-            env:
     CdcCodegenAgent:
       agent_card:
         name: CdcCodegenAgent
