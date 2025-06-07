@@ -379,6 +379,19 @@ class AgentDescriptor(BaseModel):
     tools: typing.List[str] = None
     orchestrated_prompts: str = None
     orchestrator_system_prompt: str = None
+    completion_definition: str = None
+    orchestrator_graph_agent_completion_prompt: str = None
+    orchestrator_graph_agent_tool_completion_prompt: str = None
+
+    @field_validator('orchestrator_graph_agent_completion_prompt')
+    @classmethod
+    def serialize_orchestrator_graph_agent_completion_prompt(cls, v: typing.Any):
+        return read_from_file_if(v)
+
+    @field_validator('orchestrator_graph_agent_tool_completion_prompt')
+    @classmethod
+    def serialize_orchestrator_graph_agent_tool_completion_prompt(cls, v: typing.Any):
+        return read_from_file_if(v)
 
     @field_validator('orchestrated_prompts')
     @classmethod
@@ -393,6 +406,11 @@ class AgentDescriptor(BaseModel):
     @field_validator('system_prompts')
     @classmethod
     def serialize_system_prompts(cls, v: typing.Any):
+        return read_from_file_if(v)
+
+    @field_validator('completion_definition')
+    @classmethod
+    def serialize_completion_definition(cls, v: typing.Any):
         return read_from_file_if(v)
 
 AgentCardForward = typing.ForwardRef("AgentCard")

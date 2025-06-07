@@ -1,26 +1,48 @@
 import abc
 import dataclasses
 import time
-from cdc_agents.agent.agent_state import AgentState
-from langchain_core.runnables import AddableDict
 import typing
-from typing import AsyncIterable, Dict, Any, Optional
+from typing import AsyncIterable, Dict, Any
+
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from langchain_core.runnables.utils import Input, Output
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
 from langgraph.graph import StateGraph, MessagesState
-from langgraph.types import Command, Runnable
+from langgraph.types import Command
 
-from cdc_agents.model_server.model_provider import ModelProvider
 from cdc_agents.agent.a2a import A2AAgent, BaseAgent
 from cdc_agents.agent.agent import A2AReactAgent
+from cdc_agents.agent.agent_state import AgentState
 from cdc_agents.common.server import TaskManager
-from cdc_agents.common.types import Message, ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
+from cdc_agents.common.types import ResponseFormat, AgentGraphResponse, AgentGraphResult, WaitStatusMessage
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
+from cdc_agents.model_server.model_provider import ModelProvider
 from python_util.logger.logger import LoggerFacade
 
+
+class DeepResearchOrchestrated(BaseAgent, abc.ABC):
+
+    def __init__(self, agent: AgentCardItem):
+        self._orchestrator_prompt = agent.agent_descriptor.orchestrated_prompts
+        self._completion_definition = agent.agent_descriptor.completion_definition
+
+    """
+    Marker interface for DI, marking the agents being orchestrated.
+    """
+    @property
+    def orchestrator_prompt(self):
+        """
+        :return: what information to provide the orchestrator in a prompt.
+        """
+        return self._orchestrator_prompt
+
+    @property
+    def completion_definition(self):
+        """
+        :return: what defines 'done' or 'complete' for this agent.
+        """
+        return self._completion_definition
 
 @dataclasses.dataclass(init=True)
 class NextAgentResponse:
@@ -69,6 +91,78 @@ class OrchestratorAgent(abc.ABC):
     def orchestrator_system_prompts(self):
         return self._orchestrator_system_prompt
 
+    def create_orchestrator_system_prompt(self, orchestrated_agents: typing.Dict[str, DeepResearchOrchestrated]) -> str:
+        """
+        Creates the complete orchestrator system prompt including agent capabilities and completion definitions.
+
+        :param orchestrated_agents: Dictionary of agent names to their configurations/prompts
+        :return: Complete system prompt for the orchestrator
+        """
+        agents_info = self._parse_agents_lines(orchestrated_agents)
+
+        return f"""
+        {self.orchestration_prompt}
+        
+        # Information about Managed Agents
+        
+        {agents_info}
+
+        {self.orchestrator_system_prompts}
+        """.strip()
+
+    def _parse_agents_lines(self, orchestrated_agents: typing.Dict[str, DeepResearchOrchestrated]) -> str:
+        """Parse agent information into formatted lines."""
+        return '\n\n'.join(self._parse_agents(orchestrated_agents))
+
+    def _parse_agents(self, orchestrated_agents: typing.Dict[str, DeepResearchOrchestrated]) -> typing.List[str]:
+        """Parse individual agent information."""
+        agent_lines = []
+        for agent_name, agent_info in orchestrated_agents.items():
+            completion_definition = agent_info.completion_definition
+            prompt = agent_info.orchestrator_prompt
+
+            agent_lines.append(f'''
+        ## Agent Name 
+            {agent_name}
+        ## Agent Info 
+            {prompt}
+        ## Agent Completion Definition 
+            {completion_definition}
+        ''')
+        return agent_lines
+
+    def _parse_completion_definitions(self, orchestrated_agents: typing.Dict[str, typing.Any]) -> str:
+        """Parse completion definitions for all agents."""
+        completion_lines = []
+
+        for agent_name, agent_info in orchestrated_agents.items():
+            completion_def = None
+
+            # Try to get completion definition from different sources
+            if hasattr(agent_info, 'completion_definition') and agent_info.completion_definition:
+                completion_def = agent_info.completion_definition
+            elif hasattr(agent_info, 'agent_descriptor') and hasattr(agent_info.agent_descriptor, 'completion_definition') and agent_info.agent_descriptor.completion_definition:
+                completion_def = agent_info.agent_descriptor.completion_definition
+
+            if completion_def:
+                completion_lines.append(f'''
+        agent name:
+            {agent_name}
+        completion definition:
+            {completion_def}
+        ''')
+
+        if completion_lines:
+            return f"""
+        ## Agent Completion Definitions
+
+        The following definitions describe when each agent should be considered "done" or "complete" for their assigned tasks:
+
+        {chr(10).join(completion_lines)}
+        """
+        else:
+            return ""
+
 
 class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     """
@@ -86,6 +180,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.props = props
         self.orchestrator_agent = orchestrator_agent
         self.agents = agents
+        self.self_card: typing.Optional[AgentCardItem] = props.agents.get(self.__class__.__name__)
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
         from cdc_agents.agents.summarizer_agent import SummarizerAgent
         self.summarizer_name = SummarizerAgent.__name__
@@ -112,7 +207,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                 LoggerFacade.error(f"Found message route {graph_result.agent_route} not in keys {self.agents.keys()}")
                 graph_result.add_last_message(SystemMessage(content=f"""
                     Agent of name {graph_result.agent_route} was not found from previous message. Can you please to delegate to one of the valid agents:
-                    {','.join([a for a in self.agents.keys()])} 
+                    {','.join([a for a in self.agents.keys()])}
                 """, name=self.orchestrator_agent.agent_name))
                 return self.orchestrator_agent.agent_name
             else:
@@ -186,9 +281,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             messages.append(last_message)
             if agent.agent_name != self.orchestrator_agent.agent_name:
                 # TODO: any of these should then be removed before adding this one
-                messages.append(HumanMessage(content='Can you please consider whether the task is completed, considering the previous tool message response? '
-                                                     'If so can you return the context of the result. If not, can you continue with the task by considering '
-                                                     'what is still necessary and delegating to the agent that can help continue/complete the task?',
+                messages.append(HumanMessage(content=self.self_card.agent_descriptor.orchestrator_graph_agent_tool_completion_prompt.replace('{{agent_name}}', agent.agent_name),
                                              name='human'))
         elif isinstance(result.content, ResponseFormat):
             if result.is_task_complete:
@@ -199,9 +292,7 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
                 if agent.agent_name != self.orchestrator_agent.agent_name:
                     messages.append(AIMessage(content=message, name=agent.agent_name))
                     # TODO: any of these should then be removed before adding this one
-                    messages.append(HumanMessage(content=f'Can you please consider whether the task is completed, considering the previous message from agent {agent.agent_name}? '
-                                                         'If so can you return the context of the result. If not, can you continue with the task by considering '
-                                                         'what is still necessary and delegating to the agent that can help continue/complete the task?',
+                    messages.append(HumanMessage(content=self.self_card.agent_descriptor.orchestrator_graph_agent_completion_prompt.replace('{{agent_name}}', agent.agent_name),
                                                  name='human'))
                 else:
                     messages.append(HumanMessage(content=message, name=agent.agent_name))
@@ -336,3 +427,4 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         if graph is None:
             _, graph = self._create_invoke_graph(query, session_id)
         return self.stream_agent_response_graph(query, session_id, graph)
+

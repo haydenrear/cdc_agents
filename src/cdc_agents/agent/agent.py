@@ -245,7 +245,7 @@ class A2AReactAgent(A2AAgent, abc.ABC):
         if agent_tool.tool_prompt is not None and len(agent_tool.tool_prompt) != 0:
             return f"""
             Please note the following when using this tool:
-            {agent_tool.tool_prompt} 
+            {agent_tool.tool_prompt}
             """
         return ""
 
@@ -280,4 +280,3 @@ class A2AReactAgent(A2AAgent, abc.ABC):
                 "recursion_limit": max_recurs}
         else:
             raise ValueError("Found unsupported!")
-

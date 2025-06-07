@@ -1,0 +1,4 @@
+{
+  "StateGraphOrchestratorTool.md": "The prompt to be appended when a managed agent returns a tool response, to ask the orchestrator agent to consider whether the task should be considered complete, or which agent to delegate to.",
+  "StateGraphOrchestratorAgent.md": "The prompt to be appended when a managed agent returns a message, to ask the orchestrator agent to consider whether the task should be considered complete, or which agent to delegate to."
+}

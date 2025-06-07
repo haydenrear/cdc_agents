@@ -5,7 +5,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.agent.agent import A2AReactAgent
 from cdc_agents.agent.a2a import A2AAgent
-from cdc_agents.agents.deep_code_research_agent import DeepResearchOrchestrated
+from cdc_agents.agent.agent_orchestrator import DeepResearchOrchestrated
 from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable

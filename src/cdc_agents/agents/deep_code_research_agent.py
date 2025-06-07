@@ -1,48 +1,21 @@
-import abc
-import time
-
-from langchain.agents import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 from cdc_agents.agent.agent import A2AReactAgent
-from cdc_agents.agent.agent_orchestrator import OrchestratorAgent, NextAgentResponse, OrchestratedAgent, \
-    StateGraphOrchestrator
-from cdc_agents.agent.a2a import BaseAgent, A2AAgent
-import dataclasses
-import enum
+from cdc_agents.agent.agent_orchestrator import OrchestratorAgent, OrchestratedAgent, \
+    StateGraphOrchestrator, DeepResearchOrchestrated
 import typing
 from typing import Any, Dict, AsyncIterable
 
-import httpx
 import injector
-import torch
-from langchain_core.messages import AIMessage, ToolMessage, BaseMessage
 from langchain_core.tools import tool
 
 from cdc_agents.agent.agent import A2AAgent
-from cdc_agents.common.types import ResponseFormat, AgentGraphResponse
-from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem, AgentMcpTool
+from cdc_agents.common.types import AgentGraphResponse
+from cdc_agents.config.agent_config_props import AgentConfigProps, AgentCardItem
 from cdc_agents.model_server.model_provider import ModelProvider
 from python_di.configs.autowire import injectable
 from python_di.configs.component import component
-from python_di.inject.profile_composite_injector.composite_injector import profile_scope
-from python_di.inject.profile_composite_injector.scopes.profile_scope import ProfileScope
 
-
-class DeepResearchOrchestrated(BaseAgent, abc.ABC):
-
-    def __init__(self, agent: AgentCardItem):
-        self._orchestrator_prompt = agent.agent_descriptor.orchestrated_prompts
-
-    """
-    Marker interface for DI, marking the agents being orchestrated.
-    """
-    @property
-    def orchestrator_prompt(self):
-        """
-        :return: what information to provide the orchestrator in a prompt.
-        """
-        return self._orchestrator_prompt
 
 @tool
 def rate_codegen_trajectory():
@@ -97,31 +70,18 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver,
                  agents: typing.List[DeepResearchOrchestrated], model_provider: ModelProvider):
-        orchestrated_prompts = {a.agent_name: a.orchestrator_prompt for a in agents}
+        orchestrated_agents: dict[str, DeepResearchOrchestrated] = {a.agent_name: a for a in agents}
 
         self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
 
         OrchestratorAgent.__init__(self, self_card)
 
-        self.SYSTEM_INSTRUCTION = f"""
-        {self.orchestration_prompt}
-        {self._parse_agents_lines(orchestrated_prompts)}
-        {self.orchestrator_system_prompts}
-        """
+        self.SYSTEM_INSTRUCTION = self.create_orchestrator_system_prompt(orchestrated_agents)
 
         A2AReactAgent.__init__(self, agent_config, [], self.SYSTEM_INSTRUCTION, memory_saver,
                                model_provider)
 
-    def _parse_agents_lines(self, orchestrated_prompts):
-        return '\n\n'.join(self._parse_agents(orchestrated_prompts))
 
-    def _parse_agents(self, orchestrated_prompts):
-        return [f'''
-        agent name: 
-            {k} 
-        agent info: 
-            {v}
-        ''' for k, v in orchestrated_prompts.items()]
 
     def invoke(self, query, sessionId) -> AgentGraphResponse:
         config = self._parse_query_config(sessionId)

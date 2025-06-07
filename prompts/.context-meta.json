@@ -3,5 +3,6 @@
   "orchestrated_prompts": "Prompts that are provided to the orchestrating agent by the agent being orchestrated, so that the orchestrating agent knows the capabilities of the agents it is managing",
   "system_prompts": "Prompts that provide the system prompts for the agent",
   "orchestrator_system_prompts": "Contains the last part of the system prompt for the orchestrator agent: the agent that orchestrates other agents. It is appended to the end of the system prompt for the agent that orchestrates other agents, after each agent's message for the orchestrator agent describing it's capabilities, which are provided in orchestrated_prompts. This prompt is only provided by orchestrator agents - agents that manage other agents.",
-  "completion_definition": "Prompts that provide a definition of what 'done' or 'complete' is for a particular agent, for the various capabilities of that agent. This is used by the orchestrator agent as input to determine whether the agent has finished the task or sub-task"
+  "completion_definition_prompts": "Prompts that provide a definition of what 'done' or 'complete' is for a particular agent, for the various capabilities of that agent. This is used by the orchestrator agent as input to determine whether the agent has finished the task or sub-task",
+  "orchestrator_graph_agent_completion_prompts": "Prompts to include by the orchestrator graph, for example after a managed agent returns a tool message. These messages are provided to the orchestrator agent which then determines what agent to use next or to complete the task."
 }
