@@ -72,7 +72,7 @@ class DeepCodeAgent(A2AReactAgent, OrchestratorAgent):
                  agents: typing.List[DeepResearchOrchestrated], model_provider: ModelProvider):
         orchestrated_agents: dict[str, DeepResearchOrchestrated] = {a.agent_name: a for a in agents}
 
-        self_card: AgentCardItem = agent_config.agents[self.__class__.__name__]
+        self_card: AgentCardItem = agent_config.agents.get(self.__class__.__name__)
 
         OrchestratorAgent.__init__(self, self_card)
 
@@ -109,14 +109,13 @@ class DeepCodeOrchestrator(StateGraphOrchestrator):
                  props: AgentConfigProps,
                  memory_saver: MemorySaver,
                  model_provider: ModelProvider):
+        # Include TestGraphOrchestrator if provided
+        all_agents = list(agents)
         StateGraphOrchestrator.__init__(self,
-                                        {a.agent_name: OrchestratedAgent(a) for a in agents if
+                                        {a.agent_name: OrchestratedAgent(a) for a in all_agents if
                                             isinstance(a, A2AAgent)},
                                         orchestrator_agent, props, memory_saver, model_provider)
 
-    @property
-    def agent_name(self) -> str:
-        return self.__class__.__name__
-
     def parse_orchestration_response(self, last_message: AgentGraphResponse) -> AgentGraphResponse:
         return last_message
+

@@ -44,6 +44,35 @@ class DeepResearchOrchestrated(BaseAgent, abc.ABC):
         """
         return self._completion_definition
 
+
+class TestGraphOrchestrated(BaseAgent, abc.ABC):
+
+    def __init__(self, agent: AgentCardItem):
+        self._orchestrator_prompt = agent.agent_descriptor.orchestrated_prompts
+        self._completion_definition = agent.agent_descriptor.completion_definition
+
+    """
+    Marker interface for DI, marking the agents being orchestrated by TestGraph workflows.
+    """
+    @property
+    def orchestrator_prompt(self):
+        """
+        :return: what information to provide the test graph orchestrator in a prompt.
+        """
+        return self._orchestrator_prompt
+
+    @property
+    def completion_definition(self):
+        """
+        :return: what defines 'done' or 'complete' for this agent in test graph context.
+        """
+        return self._completion_definition
+
+    @property
+    def supports_test_graph(self) -> bool:
+        """Indicates this agent supports test_graph operations"""
+        return True
+
 @dataclasses.dataclass(init=True)
 class NextAgentResponse:
     next_agent: str
@@ -51,9 +80,12 @@ class NextAgentResponse:
 
 class AgentOrchestrator(A2AAgent, abc.ABC):
 
-    @abc.abstractmethod
     def parse_orchestration_response(self, last_message: AgentGraphResult):
-        pass
+        return last_message
+
+    @property
+    def orchestrator_propagator_prompt(self):
+        raise ValueError(f"Did not override for {self.__class__.__name__}")
 
 
 class OrchestratedAgent:
@@ -102,9 +134,9 @@ class OrchestratorAgent(abc.ABC):
 
         return f"""
         {self.orchestration_prompt}
-        
+
         # Information about Managed Agents
-        
+
         {agents_info}
 
         {self.orchestrator_system_prompts}
@@ -122,11 +154,11 @@ class OrchestratorAgent(abc.ABC):
             prompt = agent_info.orchestrator_prompt
 
             agent_lines.append(f'''
-        ## Agent Name 
+        ## Agent Name
             {agent_name}
-        ## Agent Info 
+        ## Agent Info
             {prompt}
-        ## Agent Completion Definition 
+        ## Agent Completion Definition
             {completion_definition}
         ''')
         return agent_lines
@@ -169,7 +201,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
     Facilitate multi-agent through lang-graph state graph. This means multiple models, each with smaller prompt from lower number of tools.
     """
 
-    def __init__(self, agents: typing.Dict[str, OrchestratedAgent], orchestrator_agent: typing.Union[OrchestratorAgent, A2AAgent],
+    def __init__(self, agents: typing.Dict[str, OrchestratedAgent],
+                 orchestrator_agent: typing.Union[OrchestratorAgent, A2AAgent],
                  props: AgentConfigProps, memory: MemorySaver, model_provider: ModelProvider):
         """
         :param agents: agents being orchestrated
@@ -181,6 +214,9 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
         self.orchestrator_agent = orchestrator_agent
         self.agents = agents
         self.self_card: typing.Optional[AgentCardItem] = props.agents.get(self.__class__.__name__)
+        self._orchestrator_propagator = self.self_card.agent_descriptor.orchestrator_propagator_prompt
+        if not self._orchestrator_propagator:
+            self._orchestrator_propagator = ""
         self.max_recurs = props.orchestrator_max_recurs if props.orchestrator_max_recurs else 5000
         from cdc_agents.agents.summarizer_agent import SummarizerAgent
         self.summarizer_name = SummarizerAgent.__name__
@@ -191,11 +227,25 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             **summarizer_card.options)
         self.graph = self._build_graph()
 
+        # Track sub-orchestrators for propagation handling
+        self._sub_orchestrators: typing.Dict[str, StateGraphOrchestrator] = {
+            name: agent.agent for name, agent in agents.items()
+            if isinstance(agent.agent, StateGraphOrchestrator)
+        }
+
+    @property
+    def orchestrator_propagator_prompt(self):
+        return self._orchestrator_propagator
+
     def get_next_node(self, last_executed_agent: BaseAgent, graph_result: AgentGraphResult,
                       state: MessagesState, config):
 
         last_executed_agent_name = last_executed_agent.agent_name
         is_this_agent_orchestrator = self._is_orchestrator(last_executed_agent_name)
+
+        # Check if returning from a sub-orchestrator
+        if self._is_sub_orchestrator_return(last_executed_agent_name):
+            return self.orchestrator_agent.agent_name
 
         if not is_this_agent_orchestrator:
             return self.summarizer_name
@@ -304,7 +354,9 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             agent_route=result.content.route_to if isinstance(result.content, ResponseFormat) else None,
             last_message=messages[-1])
 
+
         agent_graph_parsed = self.parse_orchestration_response(agent_graph_parsed)
+        agent_graph_parsed = self.process_sub_orchestrator_propagation(agent.agent_name, agent_graph_parsed)
 
         found = self.parse_messages(agent, agent_graph_parsed, session_id, state, config)
 
@@ -354,6 +406,8 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             goto = self.get_next_node(agent, result, state, session_id)
         else:
             goto = self.get_next_node(agent, result, state, session_id)
+
+
         if goto == self.orchestrator_agent.agent_name and agent.agent_name == self.orchestrator_agent.agent_name:
             result.add_to_last_message(
                 f"Did not receive a {self.terminal_string} delimited with {self.terminal_string} or which agent to forward to. "
@@ -428,3 +482,27 @@ class StateGraphOrchestrator(AgentOrchestrator, abc.ABC):
             _, graph = self._create_invoke_graph(query, session_id)
         return self.stream_agent_response_graph(query, session_id, graph)
 
+    def _is_sub_orchestrator_return(self, agent_name: str) -> bool:
+        """Check if this is a return from a sub-orchestrator"""
+        if agent_name not in self._sub_orchestrators:
+            return False
+
+        return True
+
+    def process_sub_orchestrator_propagation(self, agent_name: str, graph_result: AgentGraphResult):
+        """Process propagation from sub-orchestrator"""
+        sub_orchestrator = self._sub_orchestrators.get(agent_name)
+        if not sub_orchestrator:
+            return graph_result
+
+        # Extract propagation prompt if available
+        propagation_prompt = sub_orchestrator.orchestrator_propagator_prompt
+
+        # Add propagation context to the result
+        propagation_message = SystemMessage(
+            content=f"Sub-orchestrator {agent_name} has completed\n{propagation_prompt}",
+            name=self.orchestrator_agent.agent_name
+        )
+        graph_result.content.append(propagation_message)
+        graph_result.last_message = propagation_message
+        return graph_result

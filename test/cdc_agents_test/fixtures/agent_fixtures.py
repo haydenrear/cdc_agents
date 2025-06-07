@@ -41,7 +41,7 @@ class MockExecutor:
         next_res = next(self.iter_res)
         return next_res
 
-        
+
     def get_config_props(self) -> ModelServerConfigProps:
         return ModelServerConfigProps()
 
@@ -61,11 +61,11 @@ class TestStreamingAgent(A2AReactAgent):
     """Agent for testing streaming responses"""
     SUPPORTED_CONTENT_TYPES = ["text"]
     _agent_name = "TestStreamingAgent"
-    
+
     @property
     def supported_content_types(self) -> list[str]:
         return self.SUPPORTED_CONTENT_TYPES
-    
+
     @staticmethod
     def get_mock_responses():
         """Default mock responses for streaming"""
@@ -79,11 +79,11 @@ class VideoStreamingAgent(A2AReactAgent):
     """Agent for testing video streaming responses"""
     SUPPORTED_CONTENT_TYPES = ["text", "video"]
     _agent_name = "VideoStreamingAgent"
-    
+
     @property
     def supported_content_types(self) -> list[str]:
         return self.SUPPORTED_CONTENT_TYPES
-    
+
     @staticmethod
     def get_mock_responses():
         """Default mock responses for video streaming"""
@@ -99,15 +99,15 @@ class TestA2AAgent(A2AReactAgent):
     did_call = False
     _agent_name = "TestA2AAgent"
     SUPPORTED_CONTENT_TYPES = ["text"]
-    
+
     @property
     def supported_content_types(self) -> list[str]:
         return self.SUPPORTED_CONTENT_TYPES
-    
+
     def invoke(self, query, sessionId) -> Dict[str, Any]:
         TestA2AAgent.did_call = True
         return super().invoke(get_query(query), sessionId)
-    
+
     @staticmethod
     def reset_tracking():
         """Reset the tracking flag"""
@@ -130,12 +130,12 @@ class TestOrchestratorAgent(A2AReactAgent, OrchestratorAgent):
     @property
     def supported_content_types(self) -> list[str]:
         return self.SUPPORTED_CONTENT_TYPES
-    
+
     def invoke(self, query, sessionId) -> Dict[str, Any]:
         TestOrchestratorAgent.did_call = True
         invoked_value = super().invoke(query, sessionId)
         return invoked_value
-    
+
     @staticmethod
     def reset_tracking():
         """Reset the tracking flag"""
@@ -155,26 +155,26 @@ def create_test_agent_task_manager(
 
     ai_suite.agents[agent_class.__name__] = next(iter(ai_suite.agents.values()))
 
-    test_agent = agent_class(ai_suite, tools, "Test system instruction", 
+    test_agent = agent_class(ai_suite, tools, "Test system instruction",
                             memory, model_provider, mock_model)
-    
+
     # Create notification auth
     # Create a real task manager with our test agent
     notification_auth = PushNotificationSenderAuth()
     notification_auth.generate_jwk()
     mock_push_notification_auth(notification_auth)
-    
+
     # Create task manager
     task_manager = AgentTaskManager(test_agent, notification_auth)
     test_agent.set_task_manager(task_manager)
-    
+
     # Build the agent's graph if needed
     if not hasattr(test_agent, 'graph') or test_agent.graph is None:
         test_agent.graph = create_react_agent(
             test_agent.model, tools=test_agent.tools, checkpointer=memory,
             prompt=test_agent.system_prompts
         )
-    
+
     return test_agent, task_manager
 
 from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator, DeepCodeAgent
@@ -190,7 +190,7 @@ def create_test_streaming_task_manager(
     """Create a test streaming agent and task manager"""
     if responses is None:
         responses = TestStreamingAgent.get_mock_responses()
-    
+
     # Use the standard test agent creator but with the streaming agent class
     return create_test_agent_task_manager(
         ai_suite, memory, model_provider, model, responses, TestStreamingAgent
@@ -204,14 +204,15 @@ def create_test_orchestrator(
     model: ModelServerModel,
     orchestrator_responses: List[str],
     orchestrator: DeepCodeOrchestrator,
-    agent_responses: typing.Optional[List[str]] = None
+    agent_responses: typing.Optional[List[str]] = None,
+    additional_agents: typing.Optional[List[A2AAgent]] = None
 ) -> tuple[DeepCodeOrchestrator, AgentTaskManager]:
     """Create a test orchestrator with inner agents"""
 
     # Reset the tracking for both agent types
     TestA2AAgent.reset_tracking()
     TestOrchestratorAgent.reset_tracking()
-    
+
     mock_orchestrator_model = create_mock_model(model, orchestrator_responses)
 
     if agent_responses is not None:
@@ -220,18 +221,18 @@ def create_test_orchestrator(
         mock_agent_model = mock_orchestrator_model
 
     tools = [test_tool]
-    
+
     # Create the orchestrator
     ai_suite.agents['TestOrchestratorAgent'] = next(iter(ai_suite.agents.values()))
     orchestrator_agent = TestOrchestratorAgent(
-        ai_suite, tools, "Test orchestrator instruction", 
+        ai_suite, tools, "Test orchestrator instruction",
         memory, model_provider, mock_orchestrator_model
     )
 
     ai_suite.agents['TestA2AAgent'] = next(iter(ai_suite.agents.values()))
     # Create an inner agent
     inner_agent = TestA2AAgent(
-        ai_suite, tools, "Test agent instruction", 
+        ai_suite, tools, "Test agent instruction",
         memory, model_provider, mock_agent_model
     )
 
@@ -239,7 +240,7 @@ def create_test_orchestrator(
     notification_auth = PushNotificationSenderAuth()
     notification_auth.generate_jwk()
     mock_push_notification_auth(notification_auth)
-    
+
     # Create task managers for the inner agent
     inner_task_manager = AgentTaskManager(inner_agent, notification_auth)
     inner_agent.set_task_manager(inner_task_manager)
@@ -249,7 +250,22 @@ def create_test_orchestrator(
     agents = {
         "TestA2AAgent": OrchestratedAgent(inner_agent)
     }
-    
+
+    # Add any additional agents
+    if additional_agents:
+        for agent in additional_agents:
+            agent_name = agent.agent_name
+            # Add agent to ai_suite if not already present
+            if agent_name not in ai_suite.agents:
+                ai_suite.agents[agent_name] = next(iter(ai_suite.agents.values()))
+
+            # Create task manager for the additional agent
+            agent_task_manager = AgentTaskManager(agent, notification_auth)
+            agent.set_task_manager(agent_task_manager)
+
+            # Add to orchestrated agents
+            agents[agent_name] = OrchestratedAgent(agent)
+
     # Modify the orchestrator to use these agents
     orchestrator.orchestrator_agent = orchestrator_agent
     orchestrator.agents = agents
@@ -262,7 +278,7 @@ def create_test_orchestrator(
     orchestrator_task_manager = AgentTaskManager(orchestrator, notification_auth)
     orchestrator.set_task_manager(orchestrator_task_manager)
     orchestrator_agent.set_task_manager(orchestrator_task_manager)
-    
+
     return orchestrator, orchestrator_task_manager
 
 def mock_push_notification_auth(auth: PushNotificationSenderAuth):
@@ -288,7 +304,7 @@ def create_video_streaming_task_manager(
     """Create a test video streaming agent and task manager"""
     if responses is None:
         responses = VideoStreamingAgent.get_mock_responses()
-    
+
     # Use the standard test agent creator but with the video streaming agent class
     return create_test_agent_task_manager(
         ai_suite, memory, model_provider, model, responses, VideoStreamingAgent

@@ -382,6 +382,12 @@ class AgentDescriptor(BaseModel):
     completion_definition: str = None
     orchestrator_graph_agent_completion_prompt: str = None
     orchestrator_graph_agent_tool_completion_prompt: str = None
+    orchestrator_propagator_prompt: str = None
+
+    @field_validator('orchestrator_propagator_prompt')
+    @classmethod
+    def serialize_orchestrator_propagator_prompt(cls, v: typing.Any):
+        return read_from_file_if(v)
 
     @field_validator('orchestrator_graph_agent_completion_prompt')
     @classmethod

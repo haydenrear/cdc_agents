@@ -16,6 +16,7 @@ from cdc_agents.agents.deep_code_research_agent import DeepCodeOrchestrator, Dee
 from cdc_agents.agents.human_delegate_agent import HumanDelegateAgent
 from cdc_agents.agents.library_enumeration_agent import LibraryEnumerationAgent
 from cdc_agents.agents.summarizer_agent import SummarizerAgent
+from cdc_agents.agents.test_graph.test_graph_config import TestGraphConfig
 from cdc_agents.agents.test_runner_agent import TestRunnerAgent
 from cdc_agents.config.agent_config_props import AgentConfigProps
 from cdc_agents.config.cdc_server_config_props import CdcServerConfigProps
