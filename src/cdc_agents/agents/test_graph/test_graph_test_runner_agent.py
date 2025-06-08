@@ -25,4 +25,5 @@ class TestGraphTestRunnerAgent(TestRunnerBaseAgent, TestGraphOrchestrated):
     @injector.inject
     def __init__(self, agent_config: AgentConfigProps, memory_saver: MemorySaver, model_provider: ModelProvider,
                  cdc_server: CdcServerConfigProps, tool_call_provider: ToolCallDecorator):
-        TestRunnerBaseAgent.__init__(self, agent_config, memory_saver, model_provider, cdc_server, tool_call_provider, TestGraphOrchestrated)
+        TestRunnerBaseAgent.__init__(self, agent_config, memory_saver, model_provider, cdc_server, tool_call_provider,
+                                     TestGraphOrchestrated)
