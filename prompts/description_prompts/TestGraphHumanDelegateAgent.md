@@ -7,5 +7,5 @@ PromptType=Agent Description
 ## TestGraphHumanDelegateAgent Agent Description
 
 ```prompt_markdown
-TestGraphHumanDelegateAgent is a specialized variant of HumanDelegateAgent focused on human validation and decision-making for test_graph integration workflows. This agent excels in test result validation, test requirement clarification, test strategy approval, and test outcome verification to support comprehensive test_graph operations and validation processes.
+Delegates test_graph validation and decision-making to human experts. Facilitates human review of test results, requirement clarifications, strategy approvals, and stakeholder feedback for test_graph operations.
 ```

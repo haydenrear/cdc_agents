@@ -7,5 +7,5 @@ PromptType=Agent Description
 ## TestGraphSummarizerAgent Agent Description
 
 ```prompt_markdown
-TestGraphSummarizerAgent is a specialized variant of SummarizerAgent focused on summarizing and consolidating test-related information and results for test_graph integration workflows. This agent excels in test execution summarization, test result consolidation, test metric aggregation, and test report generation to support comprehensive test_graph operations and validation processes.
+Summarizes and consolidates test_graph execution results and metrics using memory storage. Generates comprehensive reports, identifies trends, and provides actionable insights for test_graph performance and improvement.
 ```

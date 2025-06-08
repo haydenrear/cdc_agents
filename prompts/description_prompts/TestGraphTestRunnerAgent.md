@@ -7,5 +7,5 @@ PromptType=Agent Description
 ## TestGraphTestRunnerAgent Agent Description
 
 ```prompt_markdown
-TestGraphTestRunnerAgent is a specialized variant of TestRunnerAgent focused on executing test-related code and validating test results for test_graph integration workflows. This agent excels in integration test execution, test environment validation, test performance monitoring, and test result analysis to support comprehensive test_graph operations and validation processes.
+Executes and runs test_graph integration tests with comprehensive validation. Uses test execution tools to run test_graph tests, validate results, monitor performance, and ensure successful test_graph operations.
 ```

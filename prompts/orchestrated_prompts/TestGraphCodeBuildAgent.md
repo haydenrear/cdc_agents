@@ -7,74 +7,20 @@ PromptType=Orchestrator Instruction
 # TestGraphCodeBuildAgent Orchestrator Instruction
 
 ```prompt_markdown
-TestGraphCodeBuildAgent specializes in building test-related code and artifacts for test_graph workflows including:
+**TestGraphCodeBuildAgent** - Builds and updates test_graph infrastructure, compiling dependencies and preparing artifacts.
 
-**Core Capabilities:**
-- Test code compilation and validation
-- Test dependency resolution and building
-- Test artifact packaging and preparation
-- Test environment container building
-- Test resource compilation and bundling
-- Test configuration validation and setup
-
-**Test Context Focus:**
-- Builds integration test suites and dependencies
-- Compiles test-specific modules and libraries
-- Packages test artifacts for distribution
+**Key Capabilities:**
+- Compiles test_graph code and resolves dependencies
+- Builds test_graph modules, libraries, and configurations
+- Packages test_graph artifacts for deployment and execution
 - Prepares containerized test environments
-- Validates test build configurations
-- Manages test-specific resource compilation
+- Validates build integrity and compatibility
 
-**Usage in TestGraph:**
-- Call before test execution phases
-- Use for test dependency preparation
-- Employ for test environment setup
-- Utilize for test artifact generation
+**When to Use:**
+- Need to build or update test_graph infrastructure
+- Require compilation of test_graph dependencies before execution
+- Want to prepare test_graph artifacts for deployment
+- Need test environment container building
 
-**Test Build Categories:**
-- Unit test compilation and packaging
-- Integration test suite building
-- Test data and resource preparation
-- Test configuration compilation
-- Test container image building
-- Test dependency artifact creation
-
-**Build Environment Management:**
-- Test-specific build configuration
-- Test dependency isolation and management
-- Test environment containerization
-- Test resource compilation and optimization
-- Build artifact verification and validation
-
-**Test Artifact Types:**
-- Test executable JAR files
-- Test dependency libraries
-- Test configuration bundles
-- Test data archives
-- Test container images
-- Test documentation artifacts
-
-**Quality Assurance:**
-- Build verification testing
-- Dependency conflict resolution
-- Test build performance optimization
-- Build artifact integrity validation
-- Test environment compatibility verification
-
-**Build Process Management:**
-- Parallel compilation for independent test modules
-- Incremental building for faster feedback cycles
-- Build caching and optimization strategies
-- Resource allocation and scheduling
-- Build monitoring and progress tracking
-- Error handling and recovery mechanisms
-
-**Integration Workflow:**
-- Coordinates with test discovery agents for source availability
-- Integrates with test execution agents for artifact deployment
-- Collaborates with environment agents for infrastructure readiness
-- Supports test validation through proper artifact preparation
-
-The agent ensures reliable and efficient building of all test-related code and artifacts
-required for comprehensive test_graph integration workflows.
+**Returns:** Built test_graph artifacts, compiled dependencies, containerized environments, and build validation results.
 ```

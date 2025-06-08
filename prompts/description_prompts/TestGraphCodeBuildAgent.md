@@ -7,5 +7,5 @@ PromptType=Agent Description
 ## TestGraphCodeBuildAgent Agent Description
 
 ```prompt_markdown
-TestGraphCodeBuildAgent is a specialized variant of CodeBuildAgent focused on building test-related code and artifacts for test_graph integration workflows. This agent excels in test code compilation, test dependency resolution, test artifact packaging, and test environment preparation to support comprehensive test_graph operations and validation processes.
+Builds and updates test_graph infrastructure by compiling test code, resolving dependencies, packaging artifacts, and preparing containerized environments for test_graph execution.
 ```

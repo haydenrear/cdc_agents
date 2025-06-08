@@ -7,5 +7,5 @@ PromptType=Agent Description
 ## TestGraphAgent Agent Description
 
 ```prompt_markdown
-TestGraphAgent is a specialized orchestrator agent for test_graph integration that manages code generation, dependency building, and integration test execution. Acts as a sub-graph within DeepCodeOrchestrator to coordinate comprehensive test validation workflows including test discovery, test environment preparation, test execution, and results analysis.
+Orchestrates the complete test_graph lifecycle including discovery, building, deployment, execution, and validation. Manages TestGraphOrchestrated agents as a sub-graph within DeepCodeOrchestrator for comprehensive test_graph integration.
 ```
