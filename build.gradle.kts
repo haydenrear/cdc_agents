@@ -1,4 +1,5 @@
 import Com_hayden_docker_gradle.DockerContext;
+import java.nio.file.Paths
 
 plugins {
     id("com.hayden.docker")
@@ -33,6 +34,11 @@ if (enableDocker && buildCdcAgents) {
 
         tasks.register("buildDocker") {
             dependsOn("copyLibs", "bootJar", "cdcAgentsDockerImage", "pushImages")
+            doLast {
+                delete(fileTree(Paths.get(projectDir.path, "src/main/docker")) {
+                    include("**/*.jar")
+                })
+            }
         }
 
         tasks.register("copyLibs") {
